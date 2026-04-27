@@ -1,0 +1,643 @@
+// ──────────────────────────────────────────────────────
+// СПО — Система Планирования и Отчетности
+// Prisma Schema v2.0
+// Architecture: Clean Architecture + DDD, Modular Monolith
+// Principle: No Float types — money in kopecks, hours in minutes,
+//            percentages in basis points (1% = 100)
+// ──────────────────────────────────────────────────────
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["jsonProtocol"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────
+// Administration (Администрирование)
+// ──────────────────────────────
+
+model User {
+  id              String    @id @default(uuid()) @map("id")
+  login           String    @unique @map("login")
+  email           String?   @map("email")
+  fullName        String?   @map("full_name")
+  youtrackLogin   String?   @map("youtrack_login")
+  youtrackUserId  String?   @map("youtrack_user_id")
+  adLogin         String?   @map("ad_login")
+  isActive        Boolean   @default(true) @map("is_active")
+  isBlocked       Boolean   @default(false) @map("is_blocked")
+  employmentDate  DateTime? @map("employment_date")
+  terminationDate DateTime? @map("termination_date")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+  extensions      Json?     @map("extensions")
+
+  roles            UserRole[]
+  employeeProfile  EmployeeProfile?            @relation("EmployeeProfileUser")
+  supervisedProfiles EmployeeProfile[]         @relation("EmployeeSupervisor")
+  rateHistory      EmployeeRateHistory[]
+  auditLogs        AuditLog[]
+  plannedTasks     PlannedTask[]
+  createdPeriods   ReportingPeriod[]
+  userEvaluations  ManagerEvaluation[]         @relation("ManagerEvaluatedUser")
+  evaluatorEvaluations ManagerEvaluation[]     @relation("ManagerEvaluatorUser")
+  businessEvaluations BusinessEvaluation[]     @relation("BusinessEvaluatorUser")
+  personalReports  PersonalReport[]
+
+  @@index([isActive])
+  @@index([adLogin])
+  @@index([youtrackLogin])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @map("id")
+  name        String   @unique @map("name")
+  description String?  @map("description")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  extensions  Json?    @map("extensions")
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId    String   @map("user_id")
+  roleId    String   @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model WorkRole {
+  id          String            @id @default(uuid()) @map("id")
+  name        String            @unique @map("name")
+  description String?           @map("description")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  extensions  Json?             @map("extensions")
+
+  employees EmployeeProfile[]
+
+  @@map("work_roles")
+}
+
+model EmployeeProfile {
+  id                  String   @id @default(uuid()) @map("id")
+  userId              String   @unique @map("user_id")
+  workRoleId          String?  @map("work_role_id")
+  managerId           String?  @map("manager_id")
+  plannedHoursPerYear Int?     @map("planned_hours_per_year") // в минутах
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  extensions          Json?    @map("extensions")
+
+  user         User       @relation("EmployeeProfileUser", fields: [userId], references: [id])
+  workRole     WorkRole?  @relation(fields: [workRoleId], references: [id])
+  supervisor   User?      @relation("EmployeeSupervisor", fields: [managerId], references: [id])
+
+  @@index([managerId])
+  @@index([workRoleId])
+  @@map("employee_profiles")
+}
+
+// ──────────────────────────────
+// Auth / Sessions
+// ──────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @map("id")
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ──────────────────────────────
+// Planning (Планирование)
+// ──────────────────────────────
+
+model ReportingPeriod {
+  id                   String   @id @default(uuid()) @map("id")
+  month                Int      @map("month")
+  year                 Int      @map("year")
+  state                String   @default("PLANNING") @map("state")
+  workHoursPerMonth    Int?     @map("work_hours_per_month") // в минутах
+  reservePercent       Int?     @default(30) @map("reserve_percent") // basis points (30 = 0.3%)
+  testPercent          Int?     @default(2000) @map("test_percent") // basis points (2000 = 20%)
+  debugPercent         Int?     @default(3000) @map("debug_percent") // basis points (3000 = 30%)
+  mgmtPercent          Int?     @default(1000) @map("mgmt_percent") // basis points (1000 = 10%)
+  yellowThreshold      Int?     @default(8000) @map("yellow_threshold") // basis points (8000 = 80%)
+  redThreshold         Int?     @default(10000) @map("red_threshold") // basis points (10000 = 100%)
+  businessGroupingLevel String? @default("STORY") @map("business_grouping_level")
+  closedAt             DateTime? @map("closed_at")
+  reopenedAt           DateTime? @map("reopened_at")
+  reopenReason         String?   @map("reopen_reason")
+  createdById          String    @map("created_by_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  extensions           Json?     @map("extensions")
+
+  createdBy        User               @relation(fields: [createdById], references: [id])
+  sprintPlans      SprintPlan[]
+  periodTransitions PeriodTransition[]
+  summaryReports   PeriodSummaryReport[]
+  personalReports  PersonalReport[]
+  managerEvaluations  ManagerEvaluation[]
+  businessEvaluations BusinessEvaluation[]
+
+  @@index([month, year])
+  @@index([state])
+  @@index([year, month, state])
+  @@map("reporting_periods")
+}
+
+model PeriodTransition {
+  id        String   @id @default(uuid()) @map("id")
+  periodId  String   @map("period_id")
+  fromState String   @map("from_state")
+  toState   String   @map("to_state")
+  reason    String?  @map("reason")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  period ReportingPeriod @relation(fields: [periodId], references: [id])
+
+  @@index([periodId])
+  @@map("period_transitions")
+}
+
+model SprintPlan {
+  id            String   @id @default(uuid()) @map("id")
+  periodId      String   @map("period_id")
+  versionNumber Int      @default(1) @map("version_number")
+  isFixed       Boolean  @default(false) @map("is_fixed")
+  fixedAt       DateTime? @map("fixed_at")
+  fixedBy       String?  @map("fixed_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  extensions    Json?    @map("extensions")
+
+  period       ReportingPeriod      @relation(fields: [periodId], references: [id])
+  plannedTasks PlannedTask[]
+  versions     SprintPlanVersion[]
+
+  @@index([periodId])
+  @@index([periodId, versionNumber])
+  @@map("sprint_plans")
+}
+
+model SprintPlanVersion {
+  id            String   @id @default(uuid()) @map("id")
+  sprintPlanId  String   @map("sprint_plan_id")
+  versionNumber Int      @map("version_number")
+  snapshot      Json     @map("snapshot")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  sprintPlan SprintPlan @relation(fields: [sprintPlanId], references: [id])
+
+  @@index([sprintPlanId])
+  @@map("sprint_plan_versions")
+}
+
+model PlannedTask {
+  id              String   @id @default(uuid()) @map("id")
+  sprintPlanId    String   @map("sprint_plan_id")
+  youtrackIssueId String   @map("youtrack_issue_id")
+  assigneeId      String?  @map("assignee_id")
+  plannedMinutes  Int      @default(0) @map("planned_minutes") // в минутах
+  debugMinutes    Int      @default(0) @map("debug_minutes") // в минутах
+  testMinutes     Int      @default(0) @map("test_minutes") // в минутах
+  mgmtMinutes     Int      @default(0) @map("mgmt_minutes") // в минутах
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  sprintPlan SprintPlan @relation(fields: [sprintPlanId], references: [id])
+  assignee  User?       @relation(fields: [assigneeId], references: [id])
+
+  @@index([sprintPlanId])
+  @@index([assigneeId])
+  @@index([youtrackIssueId])
+  @@map("planned_tasks")
+}
+
+// ──────────────────────────────
+// Integration (Интеграция)
+// ──────────────────────────────
+
+model YouTrackIssue {
+  id                 String   @id @default(uuid()) @map("id")
+  youtrackId         String   @unique @map("youtrack_id")
+  issueNumber        String   @map("issue_number")
+  summary            String   @map("summary")
+  description        String?  @map("description")
+  projectName        String?  @map("project_name")
+  systemName         String?  @map("system_name")
+  sprintName         String?  @map("sprint_name")
+  typeName           String?  @map("type_name")
+  priorityName       String?  @map("priority_name")
+  stateName          String?  @map("state_name")
+  isResolved         Boolean  @default(false) @map("is_resolved")
+  reporterId         String?  @map("reporter_id")
+  assigneeId         String?  @map("assignee_id")
+  estimationMinutes  Int?     @map("estimation_minutes") // в минутах
+  parentIssueId      String?  @map("parent_issue_id")
+  parentYtId         String?  @map("parent_yt_id")
+  lastSyncAt         DateTime? @map("last_sync_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  extensions         Json?    @map("extensions")
+
+  parentIssue YouTrackIssue? @relation("IssueHierarchy", fields: [parentIssueId], references: [id])
+  childIssues YouTrackIssue[] @relation("IssueHierarchy")
+  workItems   WorkItem[]
+
+  @@index([projectName])
+  @@index([systemName])
+  @@index([assigneeId])
+  @@index([parentIssueId])
+  @@index([isResolved])
+  @@map("youtrack_issues")
+}
+
+model WorkItem {
+  id                   String   @id @default(uuid()) @map("id")
+  issueId              String   @map("issue_id")
+  youtrackWorkItemId   String?  @map("youtrack_work_item_id")
+  authorId             String?  @map("author_id")
+  durationMinutes       Int     @default(0) @map("duration_minutes") // в минутах
+  description          String?  @map("description")
+  workDate             DateTime? @map("work_date")
+  workTypeName         String?  @map("work_type_name")
+  periodId             String?  @map("period_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  issue YouTrackIssue @relation(fields: [issueId], references: [id])
+
+  @@index([issueId])
+  @@index([periodId])
+  @@index([authorId])
+  @@index([periodId, authorId])
+  @@map("work_items")
+}
+
+model IntegrationSettings {
+  id                String   @id @default(uuid()) @map("id")
+  baseUrl           String   @map("base_url")
+  apiTokenEncrypted String   @map("api_token_encrypted")
+  projects          Json     @map("projects")
+  searchQuery       String?  @map("search_query")
+  agileBoardId      String?  @map("agile_board_id")
+  sprintFieldId     String?  @map("sprint_field_id")
+  syncInterval      String?  @default("0 */6 * * *") @map("sync_interval")
+  batchSize         Int      @default(50) @map("batch_size")
+  requestTimeout    Int      @default(30000) @map("request_timeout")
+  retryCount        Int      @default(3) @map("retry_count")
+  errorEmail        String?  @map("error_email")
+  fieldMapping      Json?    @map("field_mapping")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  extensions        Json?    @map("extensions")
+
+  @@map("integration_settings")
+}
+
+model SyncRun {
+  id           String   @id @default(uuid()) @map("id")
+  triggerType  String   @map("trigger_type")
+  startedById  String?  @map("started_by_id")
+  status       String   @default("RUNNING") @map("status")
+  totalIssues  Int      @default(0) @map("total_issues")
+  createdCount Int      @default(0) @map("created_count")
+  updatedCount Int      @default(0) @map("updated_count")
+  errorCount   Int      @default(0) @map("error_count")
+  errors       Json?    @map("errors")
+  startedAt    DateTime @default(now()) @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  duration     Int?     @map("duration") // секунды
+  extensions   Json?    @map("extensions")
+
+  logs SyncLogEntry[]
+
+  @@index([status])
+  @@index([startedAt])
+  @@map("sync_runs")
+}
+
+model SyncLogEntry {
+  id         String   @id @default(uuid()) @map("id")
+  syncRunId  String   @map("sync_run_id")
+  level      String   @map("level")
+  message    String   @map("message")
+  entityId   String?  @map("entity_id")
+  entityType String?  @map("entity_type")
+  details    Json?    @map("details")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  syncRun SyncRun @relation(fields: [syncRunId], references: [id])
+
+  @@index([syncRunId])
+  @@map("sync_log_entries")
+}
+
+// ──────────────────────────────
+// Reporting (Отчётность)
+// ──────────────────────────────
+
+model ManagerEvaluation {
+  id              String   @id @default(uuid()) @map("id")
+  periodId        String   @map("period_id")
+  youtrackIssueId String   @map("youtrack_issue_id")
+  userId          String   @map("user_id")
+  evaluatedById   String   @map("evaluated_by_id")
+  evaluationType  String   @map("evaluation_type")
+  comment         String?  @map("comment")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  extensions      Json?    @map("extensions")
+
+  period      ReportingPeriod @relation(fields: [periodId], references: [id])
+  user        User            @relation("ManagerEvaluatedUser", fields: [userId], references: [id])
+  evaluatedBy User            @relation("ManagerEvaluatorUser", fields: [evaluatedById], references: [id])
+
+  @@index([periodId])
+  @@index([userId])
+  @@index([periodId, userId])
+  @@map("manager_evaluations")
+}
+
+model BusinessEvaluation {
+  id              String   @id @default(uuid()) @map("id")
+  periodId        String   @map("period_id")
+  youtrackIssueId String   @map("youtrack_issue_id")
+  evaluatedById   String   @map("evaluated_by_id")
+  evaluationType  String   @map("evaluation_type")
+  comment         String?  @map("comment")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  extensions      Json?    @map("extensions")
+
+  period      ReportingPeriod @relation(fields: [periodId], references: [id])
+  evaluatedBy User            @relation("BusinessEvaluatorUser", fields: [evaluatedById], references: [id])
+
+  @@index([periodId])
+  @@index([youtrackIssueId])
+  @@map("business_evaluations")
+}
+
+model PersonalReport {
+  id                   String   @id @default(uuid()) @map("id")
+  periodId             String   @map("period_id")
+  userId               String   @map("user_id")
+  totalBaseAmount       Int     @default(0) @map("total_base_amount") // в копейках
+  totalManagerAmount    Int     @default(0) @map("total_manager_amount") // в копейках
+  totalBusinessAmount   Int     @default(0) @map("total_business_amount") // в копейках
+  totalOnHand           Int     @default(0) @map("total_on_hand") // в копейках
+  totalNdfl             Int     @default(0) @map("total_ndfl") // в копейках
+  totalInsurance        Int     @default(0) @map("total_insurance") // в копейках
+  totalReserve          Int     @default(0) @map("total_reserve") // в копейках
+  totalWithTax          Int     @default(0) @map("total_with_tax") // в копейках
+  totalMinutes          Int     @default(0) @map("total_minutes") // в минутах
+  isFrozen              Boolean @default(false) @map("is_frozen")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  extensions            Json?    @map("extensions")
+
+  period ReportingPeriod     @relation(fields: [periodId], references: [id])
+  user   User                @relation(fields: [userId], references: [id])
+  lines  PersonalReportLine[]
+
+  @@unique([periodId, userId])
+  @@index([periodId])
+  @@index([userId])
+  @@map("personal_reports")
+}
+
+model PersonalReportLine {
+  id                 String   @id @default(uuid()) @map("id")
+  personalReportId   String   @map("personal_report_id")
+  youtrackIssueId    String   @map("youtrack_issue_id")
+  minutes            Int      @default(0) @map("minutes") // в минутах
+  baseAmount          Int     @default(0) @map("base_amount") // в копейках
+  managerPercent      Int?    @map("manager_percent") // basis points
+  managerAmount       Int     @default(0) @map("manager_amount") // в копейках
+  businessPercent     Int?    @map("business_percent") // basis points
+  businessAmount      Int     @default(0) @map("business_amount") // в копейках
+  totalOnHand         Int     @default(0) @map("total_on_hand") // в копейках
+  ndfl                Int     @default(0) @map("ndfl") // в копейках
+  insurance           Int     @default(0) @map("insurance") // в копейках
+  reserveVacation     Int     @default(0) @map("reserve_vacation") // в копейках
+  totalWithTax        Int     @default(0) @map("total_with_tax") // в копейках
+  effectiveRate       Int     @default(0) @map("effective_rate") // в копейках за минуту
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  personalReport PersonalReport @relation(fields: [personalReportId], references: [id])
+
+  @@index([personalReportId])
+  @@map("personal_report_lines")
+}
+
+model PeriodSummaryReport {
+  id                 String   @id @default(uuid()) @map("id")
+  periodId           String   @unique @map("period_id")
+  totalPlannedMinutes Int     @default(0) @map("total_planned_minutes") // в минутах
+  totalActualMinutes  Int     @default(0) @map("total_actual_minutes") // в минутах
+  totalDeviation      Int     @default(0) @map("total_deviation") // в минутах
+  completionPercent   Int     @default(0) @map("completion_percent") // basis points
+  unplannedMinutes    Int     @default(0) @map("unplanned_minutes") // в минутах
+  unplannedPercent    Int     @default(0) @map("unplanned_percent") // basis points
+  remainingMinutes    Int     @default(0) @map("remaining_minutes") // в минутах
+  unfinishedTasks     Int     @default(0) @map("unfinished_tasks")
+  dataSnapshot        Json?   @map("data_snapshot")
+  isFrozen            Boolean @default(false) @map("is_frozen")
+  calculatedAt        DateTime? @map("calculated_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  extensions          Json?    @map("extensions")
+
+  period ReportingPeriod @relation(fields: [periodId], references: [id])
+
+  @@map("period_summary_reports")
+}
+
+// ──────────────────────────────
+// Finance (Финансы)
+// ──────────────────────────────
+
+model EmployeeRateHistory {
+  id              String   @id @default(uuid()) @map("id")
+  userId          String   @map("user_id")
+  monthlySalary   Int      @map("monthly_salary") // в копейках
+  annualMinutes   Int      @map("annual_minutes") // в минутах
+  hourlyRate      Int      @map("hourly_rate") // в копейках за минуту (rate per minute * 60)
+  effectiveFrom   DateTime @map("effective_from")
+  effectiveTo     DateTime? @map("effective_to")
+  changedById     String   @map("changed_by_id")
+  changeReason    String?  @map("change_reason")
+  createdAt       DateTime @default(now()) @map("created_at")
+  extensions      Json?    @map("extensions")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([effectiveFrom])
+  @@index([userId, effectiveFrom])
+  @@map("employee_rate_history")
+}
+
+model FormulaConfiguration {
+  id          String   @id @default(uuid()) @map("id")
+  name        String   @unique @map("name")
+  formulaType String   @map("formula_type")
+  value       Int      @map("value") // basis points (проценты * 100) или копейки
+  description String?  @map("description")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  extensions  Json?    @map("extensions")
+
+  versions FormulaConfigurationVersion[]
+
+  @@map("formula_configurations")
+}
+
+model FormulaConfigurationVersion {
+  id            String   @id @default(uuid()) @map("id")
+  formulaId     String   @map("formula_id")
+  versionNumber Int      @map("version_number")
+  value         Int      @map("value") // basis points или копейки
+  changedById   String   @map("changed_by_id")
+  changeReason  String?  @map("change_reason")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  formula FormulaConfiguration @relation(fields: [formulaId], references: [id])
+
+  @@index([formulaId])
+  @@map("formula_configuration_versions")
+}
+
+// ──────────────────────────────
+// Notifications (Уведомления)
+// ──────────────────────────────
+
+model NotificationTemplate {
+  id        String   @id @default(uuid()) @map("id")
+  eventName String   @unique @map("event_name")
+  subject   String   @map("subject")
+  body      String   @map("body")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  extensions Json?   @map("extensions")
+
+  runs NotificationRun[]
+
+  @@map("notification_templates")
+}
+
+model NotificationRun {
+  id          String    @id @default(uuid()) @map("id")
+  templateId  String?   @map("template_id")
+  eventName   String    @map("event_name")
+  recipientId String    @map("recipient_id")
+  status      String    @default("PENDING") @map("status")
+  error       String?   @map("error")
+  sentAt      DateTime? @map("sent_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  template NotificationTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("notification_runs")
+}
+
+// ──────────────────────────────
+// Transactional Outbox
+// ──────────────────────────────
+
+model OutboxMessage {
+  id            String   @id @default(uuid()) @map("id")
+  aggregateId   String   @map("aggregate_id")
+  aggregateType String   @map("aggregate_type")
+  eventName     String   @map("event_name")
+  payload       Json     @map("payload")
+  correlationId String?  @map("correlation_id")
+  causationId   String?  @map("causation_id")
+  userId        String?  @map("user_id")
+  status        String   @default("PENDING") @map("status")
+  retryCount    Int      @default(0) @map("retry_count")
+  maxRetries    Int      @default(3) @map("max_retries")
+  error         String?  @map("error")
+  scheduledAt   DateTime? @map("scheduled_at")
+  processedAt   DateTime? @map("processed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([status, scheduledAt])
+  @@index([aggregateId, aggregateType])
+  @@index([createdAt])
+  @@map("outbox_messages")
+}
+
+// ──────────────────────────────
+// Audit (Аудит)
+// ──────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid()) @map("id")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String   @map("action")
+  userId     String?  @map("user_id")
+  changes    Json?    @map("changes")
+  metadata   Json?    @map("metadata")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ──────────────────────────────
+// Snapshot закрытого периода
+// ──────────────────────────────
+
+model PeriodSnapshot {
+  id              String   @id @default(uuid()) @map("id")
+  periodId        String   @unique @map("period_id")
+  employeeRates   Json     @map("employee_rates")
+  formulas        Json     @map("formulas")
+  evaluationScales Json    @map("evaluation_scales")
+  workItems       Json     @map("work_items")
+  issues          Json     @map("issues")
+  issueHierarchy  Json     @map("issue_hierarchy")
+  reportLines     Json     @map("report_lines")
+  aggregates      Json     @map("aggregates")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("period_snapshots")
+}

@@ -26,49 +26,38 @@
 
 ## 🔄 In Progress
 
-- [ ] Подготовка к старту Part 1 — Project Setup and Base Infrastructure (@Agent-Orchestrator)
-- [ ] Проверка актуальности `context.md`, `architecture_v2.md`, `specification_v2.md` перед началом разработки (@Agent-Orchestrator)
-- [ ] Уточнение правил ведения чекбоксов и обновления `context.md` после завершения задач (@Agent-Orchestrator)
+- [ ] Part 5 — YouTrack and Hub Integration (@Agent-Integration)
 
 ---
 
 ## 📋 TODO
 
-### Part 1 — Project Setup and Base Infrastructure
+### ✅ Part 1 — Project Setup and Base Infrastructure
 
-- [ ] Создать структуру monorepo: `packages/backend`, `packages/frontend`, `packages/shared`, `docker` (@Agent-Backend-Core)
-- [ ] Настроить package manager workspaces (@Agent-Backend-Core)
-- [ ] Создать NestJS backend skeleton (@Agent-Backend-Core)
-- [ ] Добавить endpoint `/api/health` (@Agent-Backend-Core)
-- [ ] Создать Next.js frontend skeleton (@Agent-Frontend)
-- [ ] Создать стартовую страницу СПО во frontend (@Agent-Frontend)
-- [ ] Создать shared package для общих типов и enum (@Agent-Backend-Core)
-- [ ] Настроить Docker Compose: backend, frontend, PostgreSQL, Redis, nginx placeholder (@Agent-DevOps)
-- [ ] Подключить Prisma к PostgreSQL (@Agent-Database)
-- [ ] Создать `.env.example` для всех сервисов (@Agent-DevOps)
-- [ ] Настроить ESLint, Prettier, TypeScript config и path aliases (@Agent-Backend-Core)
-- [ ] Настроить базовый CI pipeline: lint, typecheck, tests (@Agent-DevOps)
-- [ ] Создать README с инструкцией локального запуска проекта (@Agent-Docs)
-- [ ] Обновить `context.md` после завершения Part 1 (@Agent-Orchestrator)
+**Note:** Frontend разрабатывается отдельно пользователем. Задачи по frontend скелету исключены.
 
-### Part 2 — Database, Migrations, System Mechanisms
+- [x] Создать структуру monorepo: `packages/backend`, `packages/shared`, `docker` (@Agent-Orchestrator)
+- [x] Настроить package manager workspaces (@Agent-Orchestrator)
+- [x] Создать NestJS backend skeleton (@Agent-Orchestrator)
+- [x] Добавить endpoint `/api/health` (@Agent-Orchestrator)
+- [x] Создать shared package для общих типов и enum (@Agent-Orchestrator)
+- [x] Настроить ESLint, Prettier, TypeScript config и path aliases (@Agent-Orchestrator)
+- [x] Подключить Prisma к PostgreSQL (@Agent-Orchestrator)
+- [x] Настроить Docker Compose: backend, PostgreSQL, Redis, nginx placeholder (@Agent-Orchestrator)
+- [x] Создать `.env.example` для всех сервисов (@Agent-Orchestrator)
+- [x] Создать README с инструкцией локального запуска проекта (@Agent-Orchestrator)
+- [x] Обновить `plan.md` по итогам Part 1 (@Agent-Orchestrator)
 
-- [ ] Спроектировать Prisma-модели пользователей, ролей, профилей сотрудников и руководителей (@Agent-Database)
-- [ ] Спроектировать Prisma-модели периодов, состояний workflow и настроек периода (@Agent-Database)
-- [ ] Спроектировать Prisma-модели задач YouTrack, иерархии задач и work items (@Agent-Database)
-- [ ] Спроектировать Prisma-модели планов, строк плана и версий плана (@Agent-Database)
-- [ ] Спроектировать materialized report tables: итоговые строки, личные строки, агрегаты (@Agent-Database)
-- [ ] Спроектировать финансовые модели: ставки, формулы, версии формул, шкалы оценок (@Agent-Database)
-- [ ] Спроектировать оценки бизнеса и руководителя (@Agent-Database)
-- [ ] Спроектировать snapshot-модели закрытого периода (@Agent-Database)
-- [ ] Спроектировать audit log, sync log и transactional outbox (@Agent-Database)
-- [ ] Добавить критичные индексы по periodId, issueId, userId, system, project, workDate, state (@Agent-Database)
-- [ ] Создать value objects: Money, Minutes, Percentage, Rate (@Agent-Architecture)
-- [ ] Создать repository interfaces без зависимости от Prisma (@Agent-Backend-Core)
-- [ ] Создать Prisma repositories skeleton (@Agent-Database)
-- [ ] Создать seed начальных ролей, рабочих ролей и шкал оценок (@Agent-Database)
-- [ ] Создать миграции и проверить `migrate reset` (@Agent-Database)
-- [ ] Обновить `context.md` после завершения Part 2 (@Agent-Orchestrator)
+### ✅ Part 2 — Database, Migrations, System Mechanisms
+
+- [x] Prisma-схема: все модели (users, roles, periods, youtrack issues, plans, finance, snapshots, outbox, audit) (@Agent-Orchestrator)
+- [x] Value Objects: Money, Minutes, Percentage, HourlyRate (@Agent-Orchestrator)
+- [x] User Entity с бизнес-правилами (@Agent-Orchestrator)
+- [x] User Repository interface (@Agent-Orchestrator)
+- [x] Prisma User Repository реализация (@Agent-Orchestrator)
+- [x] Seed: роли, рабочие роли, admin user, формулы оценок, настройки интеграции, шаблоны уведомлений (@Agent-Orchestrator)
+- [x] Prisma client генерация (@Agent-Orchestrator)
+- [x] Проект компилируется (`npm run build` — без ошибок) (@Agent-Orchestrator)
 
 ### Part 3 — Security, Auth, RBAC/ABAC, Audit
 

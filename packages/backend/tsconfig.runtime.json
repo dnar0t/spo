@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "./dist",
+    "paths": {
+      "@domain/*": ["./domain/*"],
+      "@application/*": ["./application/*"],
+      "@infrastructure/*": ["./infrastructure/*"],
+      "@presentation/*": ["./presentation/*"],
+      "@config/*": ["./config/*"],
+      "@common/*": ["./common/*"],
+      "@event-bus/*": ["./event-bus/*"],
+      "@spo/shared": ["../../shared/dist"],
+      "@spo/shared/*": ["../../shared/dist/*"]
+    }
+  }
+}

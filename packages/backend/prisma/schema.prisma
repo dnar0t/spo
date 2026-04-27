@@ -1,0 +1,65 @@
+// ============================================
+// СПО — Prisma Schema
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Core — Пользователи
+// ============================================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  role      String   @default("employee") // Role enum from shared
+  avatar    String?
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  reports   Report[]
+}
+
+// ============================================
+// Core — Планирование
+// ============================================
+
+model PlanningPeriod {
+  id        String   @id @default(uuid())
+  title     String
+  state     String   @default("draft") // PeriodState enum
+  startDate DateTime
+  endDate   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// Reporting — Отчёты
+// ============================================
+
+model Report {
+  id        String   @id @default(uuid())
+  title     String
+  type      String   // ReportType enum
+  status    String   @default("draft") // ReportStatus enum
+  content   Json?
+  authorId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author    User     @relation(fields: [authorId], references: [id])
+}
