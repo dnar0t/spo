@@ -141,7 +141,7 @@
 - [x] Реализовать workflow controller: state, transition, reopen, history (@Agent-Reporting)
 - [x] Реализовать reporting controller: summary, personal, evaluations, recalculate (@Agent-Reporting)
 - [x] Реализовать Evaluation entities (ManagerEvaluation, BusinessEvaluation) и use cases (submit, update) (@Agent-Reporting)
-- [ ] Создать frontend итогового и личного отчёта (@Agent-Frontend)
+- [x] Создать frontend итогового и личного отчёта (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 7 (@Agent-Orchestrator)
 
 ### Part 8 — Finance, Evaluations, Cost Calculation

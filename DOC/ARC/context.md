@@ -853,6 +853,8 @@ CLOSED → REOPENED → DIRECTOR_REVIEW → CLOSED
 
 | 11.0 | 2026-04-27 | Team Lead | Part 6 (Frontend) — Экран планирования интегрирован с реальным API: создан usePlanning hook (React Query: периоды, бэклог, capacity, назначения, фиксация плана, версии, переходы), Planning.tsx переведён с моков на API-вызовы, функции remainingEstimate/effectiveEstimate/effectiveSpent/getSubtasks/isSubtaskOf перенесены из planningMock в planning.ts (lib), сохранены dnd-kit drag-and-drop, фильтры, load-zone индикация. Build — без ошибок. |
 
+| 12.0 | 2026-04-27 | Team Lead | Part 7 (Frontend) — Страница отчётов интегрирована с реальным API: создан useReports hook (React Query: summary report, personal report, statistics, manager/business evaluations, recalculate), Reports.tsx переведён с моков на API-вызовы с тремя табами (личный/команда/компания), селектор периода и сотрудников, оценка руководителя и бизнеса. Build — без ошибок. |
+
 | 2.0 | 2026-04-27 | TeamLead | Part 1 (Project Setup) завершён: monorepo, NestJS, health endpoint, shared package, Docker Compose, ESLint/Prettier, README. Part 2 (Database) завершён: полная Prisma-схема (без Float), Value Objects (Money, Minutes, Percentage, HourlyRate), User Entity, User Repository, PrismaUserRepository, seed данных, Prisma client генерация. Проект компилируется (`npm run build` — 37 файлов без ошибок). plan.md обновлён. |
 
 
