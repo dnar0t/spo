@@ -25,10 +25,12 @@
 - [x] Part 7 — Period Workflow, Fact Loading, Report Recalculation (@Agent-Reporting)
 - [x] Part 8 — Finance, Evaluations, Cost Calculation (@Agent-Finance)
 - [x] Part 9 — Period Closing, Snapshots, Reopen (@Agent-Planning)
+- [x] Part 10 — Notifications and Export (@Agent-Notifications, @Agent-Export)
 
 ---
 
 ## 🔄 In Progress
+
 
 
 
