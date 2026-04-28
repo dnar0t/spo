@@ -156,8 +156,8 @@
 - [x] Реализовать planned cost для разработки, тестирования и управления (@Agent-Finance)
 - [x] Реализовать remaining cost calculator (@Agent-Finance)
 - [x] Реализовать freeze financial inputs for report lines (@Agent-Finance)
-- [ ] Реализовать frontend оценок руководителя и бизнеса (@Agent-Frontend)
-- [ ] Реализовать frontend финансовых колонок личного отчёта (@Agent-Frontend)
+- [x] Реализовать frontend оценок руководителя и бизнеса (@Agent-Frontend)
+- [x] Реализовать frontend финансовых колонок личного отчёта (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 8 (@Agent-Orchestrator)
 
 ### Part 9 — Period Closing, Snapshots, Reopen
