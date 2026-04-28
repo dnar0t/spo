@@ -123,7 +123,7 @@
 - [x] Реализовать фиксацию плана, версию плана и outbox event `PlanFixed` (@Agent-Planning)
 - [ ] Реализовать изменение фиксированного плана только директором с audit log (@Agent-Planning)
 - [ ] Подключить handler выгрузки плана в YouTrack (@Agent-Integration)
-- [ ] Создать frontend экран планирования с таблицей, drag-and-drop и индикацией загрузки (@Agent-Frontend)
+- [x] Создать frontend экран планирования с таблицей, drag-and-drop и индикацией загрузки (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 6 (@Agent-Orchestrator)
 
 ### Part 7 — Period Workflow, Fact Loading, Report Recalculation
