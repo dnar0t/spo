@@ -1,3 +1,14 @@
+/**
+ * YouTrack Controller
+ *
+ * REST API endpoints для управления интеграцией с YouTrack:
+ * - GET /api/youtrack/status — статус подключения
+ * - POST /api/youtrack/sync — запуск полной синхронизации
+ * - GET /api/youtrack/sync-runs — история синхронизаций
+ * - GET /api/youtrack/sync-runs/:id — детали синхронизации
+ * - GET /api/youtrack/issues — список синхронизированных задач
+ * - POST /api/youtrack/test-connection — тест подключения к YouTrack
+ */
 import {
   Controller,
   Get,
@@ -13,17 +24,6 @@ import { SyncEngine } from '../../infrastructure/youtrack/sync-engine';
 import { YouTrackApiClient } from '../../infrastructure/youtrack/youtrack-api.client';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 
-/**
- * YouTrack Controller
- *
- * REST API endpoints для управления интеграцией с YouTrack:
- * - GET /api/youtrack/status — статус подключения
- * - POST /api/youtrack/sync — запуск полной синхронизации
- * - GET /api/youtrack/sync-runs — история синхронизаций
- * - GET /api/youtrack/sync-runs/:id — детали синхронизации
- * - GET /api/youtrack/issues — список синхронизированных задач
- * - POST /api/youtrack/test-connection — тест подключения к YouTrack
- */
 @Controller('youtrack')
 export class YouTrackController {
   private readonly logger = new Logger(YouTrackController.name);
@@ -64,15 +64,14 @@ export class YouTrackController {
     message: string;
     details?: Record<string, unknown>;
   }> {
-    try {
-      if (!this.apiClient.isConfigured) {
-        return {
-          success: false,
-          message:
-            'YouTrack API client is not configured. Set YOUTRACK_BASE_URL and YOUTRACK_TOKEN.',
-        };
-      }
+    if (!this.apiClient.isConfigured) {
+      return {
+        success: false,
+        message: 'YouTrack API client is not configured. Set YOUTRACK_BASE_URL and YOUTRACK_TOKEN.',
+      };
+    }
 
+    try {
       // Пробуем получить информацию о текущем пользователе API
       const currentUser = await this.apiClient.get<{
         id: string;
@@ -123,16 +122,11 @@ export class YouTrackController {
   }> {
     this.logger.log('Manual sync requested');
 
-    try {
-      const result = await this.syncEngine.runFullSync('MANUAL');
-      return {
-        message: `Sync completed: ${result.status}`,
-        syncRunId: undefined, // ID будет в логах
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`Sync failed: ${message}`);
-    }
+    const result = await this.syncEngine.runFullSync('MANUAL');
+    return {
+      message: `Sync completed: ${result.status}`,
+      syncRunId: undefined,
+    };
   }
 
   /**
@@ -404,12 +398,8 @@ export class YouTrackController {
             completedAt: lastSyncRun.completed_at,
           }
         : null,
-      issuesByProject: Object.fromEntries(
-        projectAgg.map((p) => [p.project_name!, p._count.id]),
-      ),
-      issuesByState: Object.fromEntries(
-        stateAgg.map((s) => [s.state_name!, s._count.id]),
-      ),
+      issuesByProject: Object.fromEntries(projectAgg.map((p) => [p.project_name!, p._count.id])),
+      issuesByState: Object.fromEntries(stateAgg.map((s) => [s.state_name!, s._count.id])),
     };
   }
 }

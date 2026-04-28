@@ -91,17 +91,13 @@ export class AdminController {
   ) {
     this.logger.log('Getting users list');
 
-    try {
-      const result = await this.getUsersUseCase.execute({
-        page,
-        limit,
-        search,
-        isActive: isActive !== undefined ? isActive === 'true' : undefined,
-      });
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const result = await this.getUsersUseCase.execute({
+      page,
+      limit,
+      search,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+    });
+    return result;
   }
 
   /**
@@ -115,17 +111,13 @@ export class AdminController {
   async createUser(@Body() dto: CreateUserDto, @Req() req?: any) {
     this.logger.log(`Creating user: ${dto.login}`);
 
-    try {
-      const userId = req?.user?.id ?? 'system';
-      const result = await this.createUserUseCase.execute(dto, {
-        userId,
-        ipAddress: req?.ip,
-        userAgent: req?.headers?.['user-agent'],
-      });
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const userId = req?.user?.id ?? 'system';
+    const result = await this.createUserUseCase.execute(dto, {
+      userId,
+      ipAddress: req?.ip,
+      userAgent: req?.headers?.['user-agent'],
+    });
+    return result;
   }
 
   /**
@@ -135,27 +127,19 @@ export class AdminController {
    */
   @Put('users/:id')
   @Roles('ADMIN', 'DIRECTOR')
-  async updateUser(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
-    @Req() req?: any,
-  ) {
+  async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req?: any) {
     this.logger.log(`Updating user: ${id}`);
 
-    try {
-      const userId = req?.user?.id ?? 'system';
-      const result = await this.updateUserUseCase.execute(
-        { ...dto, id },
-        {
-          userId,
-          ipAddress: req?.ip,
-          userAgent: req?.headers?.['user-agent'],
-        },
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const userId = req?.user?.id ?? 'system';
+    const result = await this.updateUserUseCase.execute(
+      { ...dto, id },
+      {
+        userId,
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
+    return result;
   }
 
   /**
@@ -169,19 +153,15 @@ export class AdminController {
   async deactivateUser(@Param('id') id: string, @Req() req?: any) {
     this.logger.log(`Deactivating user: ${id}`);
 
-    try {
-      const userId = req?.user?.id ?? 'system';
-      await this.deactivateUserUseCase.execute(
-        { id },
-        {
-          userId,
-          ipAddress: req?.ip,
-          userAgent: req?.headers?.['user-agent'],
-        },
-      );
-    } catch (error) {
-      this.handleError(error);
-    }
+    const userId = req?.user?.id ?? 'system';
+    await this.deactivateUserUseCase.execute(
+      { id },
+      {
+        userId,
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
   }
 
   /**
@@ -192,26 +172,18 @@ export class AdminController {
   @Put('users/:id/roles')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles('ADMIN', 'DIRECTOR')
-  async assignRoles(
-    @Param('id') id: string,
-    @Body() dto: AssignRolesDto,
-    @Req() req?: any,
-  ) {
+  async assignRoles(@Param('id') id: string, @Body() dto: AssignRolesDto, @Req() req?: any) {
     this.logger.log(`Assigning roles to user: ${id}`);
 
-    try {
-      const userId = req?.user?.id ?? 'system';
-      await this.assignRolesUseCase.execute(
-        { ...dto, userId: id },
-        {
-          userId,
-          ipAddress: req?.ip,
-          userAgent: req?.headers?.['user-agent'],
-        },
-      );
-    } catch (error) {
-      this.handleError(error);
-    }
+    const userId = req?.user?.id ?? 'system';
+    await this.assignRolesUseCase.execute(
+      { ...dto, userId: id },
+      {
+        userId,
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
   }
 
   /**
@@ -222,26 +194,18 @@ export class AdminController {
   @Put('users/:id/manager')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles('ADMIN', 'DIRECTOR', 'MANAGER')
-  async assignManager(
-    @Param('id') id: string,
-    @Body() dto: AssignManagerDto,
-    @Req() req?: any,
-  ) {
+  async assignManager(@Param('id') id: string, @Body() dto: AssignManagerDto, @Req() req?: any) {
     this.logger.log(`Assigning manager to user: ${id}`);
 
-    try {
-      const userId = req?.user?.id ?? 'system';
-      await this.assignManagerUseCase.execute(
-        { ...dto, userId: id },
-        {
-          userId,
-          ipAddress: req?.ip,
-          userAgent: req?.headers?.['user-agent'],
-        },
-      );
-    } catch (error) {
-      this.handleError(error);
-    }
+    const userId = req?.user?.id ?? 'system';
+    await this.assignManagerUseCase.execute(
+      { ...dto, userId: id },
+      {
+        userId,
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
   }
 
   // ====================================================================
@@ -257,12 +221,8 @@ export class AdminController {
   async getCurrentRate(@Param('userId') userId: string) {
     this.logger.log(`Getting current rate for user: ${userId}`);
 
-    try {
-      const result = await this.getRatesUseCase.getCurrent(userId);
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const result = await this.getRatesUseCase.getCurrent(userId);
+    return result;
   }
 
   /**
@@ -273,26 +233,18 @@ export class AdminController {
   @Post('rates/:userId')
   @HttpCode(HttpStatus.CREATED)
   @Roles('ADMIN', 'DIRECTOR', 'HR')
-  async createRate(
-    @Param('userId') userId: string,
-    @Body() dto: CreateRateDto,
-    @Req() req?: any,
-  ) {
+  async createRate(@Param('userId') userId: string, @Body() dto: CreateRateDto, @Req() req?: any) {
     this.logger.log(`Creating rate for user: ${userId}`);
 
-    try {
-      const changedById = req?.user?.id ?? 'system';
-      const result = await this.createRateUseCase.execute(
-        { ...dto, userId, changedById },
-        {
-          ipAddress: req?.ip,
-          userAgent: req?.headers?.['user-agent'],
-        },
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const changedById = req?.user?.id ?? 'system';
+    const result = await this.createRateUseCase.execute(
+      { ...dto, userId, changedById },
+      {
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
+    return result;
   }
 
   /**
@@ -304,12 +256,8 @@ export class AdminController {
   async getRateHistory(@Param('userId') userId: string) {
     this.logger.log(`Getting rate history for user: ${userId}`);
 
-    try {
-      const result = await this.getRatesUseCase.getHistory(userId);
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const result = await this.getRatesUseCase.getHistory(userId);
+    return result;
   }
 
   // ====================================================================
@@ -325,12 +273,8 @@ export class AdminController {
   async getFormulas() {
     this.logger.log('Getting formulas list');
 
-    try {
-      const result = await this.getFormulasUseCase.execute();
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const result = await this.getFormulasUseCase.execute();
+    return result;
   }
 
   /**
@@ -340,27 +284,19 @@ export class AdminController {
    */
   @Put('formulas/:id')
   @Roles('ADMIN', 'DIRECTOR', 'FINANCE')
-  async updateFormula(
-    @Param('id') id: string,
-    @Body() dto: UpdateFormulaDto,
-    @Req() req?: any,
-  ) {
+  async updateFormula(@Param('id') id: string, @Body() dto: UpdateFormulaDto, @Req() req?: any) {
     this.logger.log(`Updating formula: ${id}`);
 
-    try {
-      const userId = req?.user?.id ?? 'system';
-      const result = await this.updateFormulaUseCase.execute(
-        { ...dto, formulaId: id },
-        {
-          userId,
-          ipAddress: req?.ip,
-          userAgent: req?.headers?.['user-agent'],
-        },
-      );
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const userId = req?.user?.id ?? 'system';
+    const result = await this.updateFormulaUseCase.execute(
+      { ...dto, formulaId: id },
+      {
+        userId,
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
+    return result;
   }
 
   // ====================================================================
@@ -376,12 +312,8 @@ export class AdminController {
   async getDictionaries() {
     this.logger.log('Getting dictionaries');
 
-    try {
-      const result = await this.getDictionariesUseCase.execute();
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const result = await this.getDictionariesUseCase.execute();
+    return result;
   }
 
   // ====================================================================
@@ -397,12 +329,8 @@ export class AdminController {
   async getEvaluationScales() {
     this.logger.log('Getting evaluation scales');
 
-    try {
-      const result = await this.getEvaluationScalesUseCase.execute();
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const result = await this.getEvaluationScalesUseCase.execute();
+    return result;
   }
 
   /**
@@ -419,20 +347,15 @@ export class AdminController {
   ) {
     this.logger.log(`Updating evaluation scale: ${id}`);
 
-    try {
-      const userId = req?.user?.id ?? 'system';
-      await this.updateEvaluationScaleUseCase.execute(
-        { ...dto, scaleId: id },
-        {
-          userId,
-          ipAddress: req?.ip,
-          userAgent: req?.headers?.['user-agent'],
-        },
-      );
-      return { success: true };
-    } catch (error) {
-      this.handleError(error);
-    }
+    const userId = req?.user?.id ?? 'system';
+    await this.updateEvaluationScaleUseCase.execute(
+      { ...dto, scaleId: id },
+      {
+        userId,
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
   }
 
   // ====================================================================
@@ -458,21 +381,17 @@ export class AdminController {
   ) {
     this.logger.log('Getting audit log');
 
-    try {
-      const result = await this.getAuditLogUseCase.execute({
-        page,
-        limit,
-        userId,
-        action,
-        entityType,
-        entityId,
-        dateFrom,
-        dateTo,
-      });
-      return result;
-    } catch (error) {
-      this.handleError(error);
-    }
+    const result = await this.getAuditLogUseCase.execute({
+      page,
+      limit,
+      userId,
+      action,
+      entityType,
+      entityId,
+      dateFrom,
+      dateTo,
+    });
+    return result;
   }
 
   // ====================================================================
@@ -486,39 +405,16 @@ export class AdminController {
    */
   @Put('settings/planning')
   @Roles('ADMIN', 'DIRECTOR')
-  async updatePlanningSettings(
-    @Body() dto: UpdatePlanningSettingsDto,
-    @Req() req?: any,
-  ) {
+  async updatePlanningSettings(@Body() dto: UpdatePlanningSettingsDto, @Req() req?: any) {
     this.logger.log('Updating planning settings');
 
-    try {
-      const updatedBy = req?.user?.id ?? 'system';
-      await this.updatePlanningSettingsUseCase.execute(
-        { ...dto, updatedBy },
-        {
-          ipAddress: req?.ip,
-          userAgent: req?.headers?.['user-agent'],
-        },
-      );
-      return { success: true };
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  // ====================================================================
-  // Error Handling
-  // ====================================================================
-
-  /**
-   * Обработка доменных ошибок.
-   */
-  private handleError(error: unknown): never {
-    if (error instanceof Error) {
-      this.logger.error(`Admin operation failed: ${error.message}`, error.stack);
-      throw error;
-    }
-    throw error;
+    const updatedBy = req?.user?.id ?? 'system';
+    await this.updatePlanningSettingsUseCase.execute(
+      { ...dto, updatedBy },
+      {
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
   }
 }

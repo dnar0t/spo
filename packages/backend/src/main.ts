@@ -1,8 +1,12 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './presentation/filters/global-exception.filter';
+import { ResponseWrapperInterceptor } from './presentation/interceptors/response-wrapper.interceptor';
+import { RequestLoggingInterceptor } from './presentation/interceptors/request-logging.interceptor';
+import { CustomValidationPipe } from './presentation/pipes/validation.pipe';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -17,7 +21,7 @@ async function bootstrap() {
 
   // ---- Global Validation Pipe ----
   app.useGlobalPipes(
-    new ValidationPipe({
+    new CustomValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
@@ -26,6 +30,12 @@ async function bootstrap() {
       },
     }),
   );
+
+  // ---- Global Exception Filter ----
+  app.useGlobalFilters(new GlobalExceptionFilter());
+
+  // ---- Global Interceptors ----
+  app.useGlobalInterceptors(new RequestLoggingInterceptor(), new ResponseWrapperInterceptor());
 
   // ---- CORS ----
   app.enableCors({

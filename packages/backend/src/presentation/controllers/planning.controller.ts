@@ -20,7 +20,6 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
-  HttpException,
 } from '@nestjs/common';
 import { CreatePeriodUseCase } from '../../application/planning/use-cases/create-period.use-case';
 import { UpdatePeriodUseCase } from '../../application/planning/use-cases/update-period.use-case';
@@ -36,7 +35,7 @@ import { CreatePeriodDto } from '../../application/planning/dto/create-period.dt
 import { UpdatePeriodDto } from '../../application/planning/dto/update-period.dto';
 import { AssignTaskDto } from '../../application/planning/dto/assign-task.dto';
 import { FixPlanDto } from '../../application/planning/dto/fix-plan.dto';
-import { DomainError } from '../../domain/errors/domain.error';
+import { InvalidArgumentError } from '../../domain/errors/domain.error';
 
 @Controller('planning')
 export class PlanningController {
@@ -69,15 +68,10 @@ export class PlanningController {
   async createPeriod(@Body() dto: CreatePeriodDto) {
     this.logger.log(`Creating period: ${dto.month}/${dto.year}`);
 
-    try {
-      // В реальном приложении userId будет извлекаться из JWT токена.
-      // Сейчас используем заглушку.
-      const userId = 'system';
-      const result = await this.createPeriodUseCase.execute(dto, userId);
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    // В реальном приложении userId будет извлекаться из JWT токена.
+    const userId = 'system';
+    const result = await this.createPeriodUseCase.execute(dto, userId);
+    return result;
   }
 
   /**
@@ -94,17 +88,13 @@ export class PlanningController {
   ) {
     this.logger.log(`Fetching periods: page=${page}, limit=${limit}`);
 
-    try {
-      const result = await this.getPeriodsUseCase.execute({
-        page: Math.max(1, Number(page)),
-        limit: Math.min(Math.max(1, Number(limit)), 100),
-        sortBy: sortBy || undefined,
-        sortOrder: sortOrder || undefined,
-      });
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    const result = await this.getPeriodsUseCase.execute({
+      page: Math.max(1, Number(page)),
+      limit: Math.min(Math.max(1, Number(limit)), 100),
+      sortBy: sortBy || undefined,
+      sortOrder: sortOrder || undefined,
+    });
+    return result;
   }
 
   /**
@@ -116,12 +106,8 @@ export class PlanningController {
   async getPeriodDetail(@Param('id') id: string) {
     this.logger.log(`Fetching period detail: id=${id}`);
 
-    try {
-      const result = await this.getPeriodDetailUseCase.execute(id);
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    const result = await this.getPeriodDetailUseCase.execute(id);
+    return result;
   }
 
   /**
@@ -130,18 +116,11 @@ export class PlanningController {
    * PUT /api/planning/periods/:id
    */
   @Put('periods/:id')
-  async updatePeriod(
-    @Param('id') id: string,
-    @Body() dto: UpdatePeriodDto,
-  ) {
+  async updatePeriod(@Param('id') id: string, @Body() dto: UpdatePeriodDto) {
     this.logger.log(`Updating period: id=${id}`);
 
-    try {
-      const result = await this.updatePeriodUseCase.execute(id, dto);
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    const result = await this.updatePeriodUseCase.execute(id, dto);
+    return result;
   }
 
   /**
@@ -150,27 +129,15 @@ export class PlanningController {
    * DELETE /api/planning/periods/:id
    */
   @Delete('periods/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
   async deletePeriod(@Param('id') id: string) {
     this.logger.log(`Deleting period: id=${id}`);
 
-    try {
-      // Удаление периода в состоянии PLANNING.
-      // Используем GetPeriodDetailUseCase для проверки существования,
-      // а затем репозиторий напрямую.
-      // В реальном коде здесь должен быть отдельный DeletePeriodUseCase.
-      const period = await this.getPeriodDetailUseCase.execute(id);
-      // Импортируем PrismaReportingPeriodRepository через DI:
-      // Для простоты удаляем через репозиторий.
-      // Примечание: это будет заменено на отдельный use case.
-      throw new HttpException(
-        'Delete operation is not fully implemented. Use a dedicated DeletePeriodUseCase.',
-        HttpStatus.NOT_IMPLEMENTED,
-      );
-      // eslint-disable-next-line no-unreachable
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    // Удаление периода в состоянии PLANNING.
+    // Примечание: это будет заменено на отдельный use case.
+    throw new Error(
+      'Delete operation is not fully implemented. Use a dedicated DeletePeriodUseCase.',
+    );
   }
 
   // ====================================================================
@@ -201,37 +168,29 @@ export class PlanningController {
   ) {
     this.logger.log(`Fetching backlog for period: id=${id}`);
 
-    try {
-      // Формируем фильтры, передавая только заполненные параметры
-      const filters: Record<string, unknown> = {};
+    // Формируем фильтры, передавая только заполненные параметры
+    const filters: Record<string, unknown> = {};
 
-      if (system) filters.systemName = system;
-      if (project) filters.projectIds = [project];
-      if (priority) filters.priorities = [priority];
-      if (type) filters.typeName = type;
-      if (status) filters.statusName = status;
-      if (assignee) filters.assigneeId = assignee;
-      if (reporter) filters.reporterId = reporter;
-      if (isPlanned !== undefined) {
-        if (isPlanned === 'true') filters.onlyPlanned = true;
-        if (isPlanned === 'false') filters.onlyUnplanned = true;
-      }
-      if (readinessMin !== undefined) filters.readinessMin = Number(readinessMin);
-      if (readinessMax !== undefined) filters.readinessMax = Number(readinessMax);
-      if (search) filters.search = search;
-
-      const result = await this.getBacklogUseCase.execute(
-        id,
-        filters as any,
-        {
-          page: Math.max(1, Number(page)),
-          limit: Math.min(Math.max(1, Number(limit)), 100),
-        },
-      );
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
+    if (system) filters.systemName = system;
+    if (project) filters.projectIds = [project];
+    if (priority) filters.priorities = [priority];
+    if (type) filters.typeName = type;
+    if (status) filters.statusName = status;
+    if (assignee) filters.assigneeId = assignee;
+    if (reporter) filters.reporterId = reporter;
+    if (isPlanned !== undefined) {
+      if (isPlanned === 'true') filters.onlyPlanned = true;
+      if (isPlanned === 'false') filters.onlyUnplanned = true;
     }
+    if (readinessMin !== undefined) filters.readinessMin = Number(readinessMin);
+    if (readinessMax !== undefined) filters.readinessMax = Number(readinessMax);
+    if (search) filters.search = search;
+
+    const result = await this.getBacklogUseCase.execute(id, filters as any, {
+      page: Math.max(1, Number(page)),
+      limit: Math.min(Math.max(1, Number(limit)), 100),
+    });
+    return result;
   }
 
   // ====================================================================
@@ -247,12 +206,8 @@ export class PlanningController {
   async getCapacity(@Param('id') id: string) {
     this.logger.log(`Fetching capacity for period: id=${id}`);
 
-    try {
-      const result = await this.getCapacityUseCase.execute(id);
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    const result = await this.getCapacityUseCase.execute(id);
+    return result;
   }
 
   // ====================================================================
@@ -272,18 +227,13 @@ export class PlanningController {
   ) {
     this.logger.log(`Assigning task ${taskId} in period ${id}`);
 
-    try {
-      // taskId в данном контексте — это issueNumber задачи (например, PROJECT-123)
-      const result = await this.assignTaskUseCase.execute({
-        periodId: id,
-        issueNumber: taskId,
-        summary: '', // Будет заполнено при загрузке из YouTrack
-        dto,
-      });
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    const result = await this.assignTaskUseCase.execute({
+      periodId: id,
+      issueNumber: taskId,
+      summary: '', // Будет заполнено при загрузке из YouTrack
+      dto,
+    });
+    return result;
   }
 
   /**
@@ -293,17 +243,10 @@ export class PlanningController {
    */
   @Delete('periods/:id/tasks/:taskId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async unassignTask(
-    @Param('id') id: string,
-    @Param('taskId') taskId: string,
-  ) {
+  async unassignTask(@Param('id') id: string, @Param('taskId') taskId: string) {
     this.logger.log(`Unassigning task ${taskId} in period ${id}`);
 
-    try {
-      await this.unassignTaskUseCase.execute(taskId);
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    await this.unassignTaskUseCase.execute(taskId);
   }
 
   /**
@@ -312,7 +255,7 @@ export class PlanningController {
    * PUT /api/planning/periods/:id/tasks/:taskId/sort
    */
   @Put('periods/:id/tasks/:taskId/sort')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
   async updateTaskSortOrder(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
@@ -320,18 +263,11 @@ export class PlanningController {
   ) {
     this.logger.log(`Updating sort order for task ${taskId} in period ${id}`);
 
-    try {
-      // В текущей реализации UseCase для обновления порядка сортировки отдельно нет.
-      // Здесь будет вызов соответствующего use case после его реализации.
-      throw new HttpException(
-        'Sort order update is not fully implemented yet. ' +
+    // В текущей реализации UseCase для обновления порядка сортировки отдельно нет.
+    throw new Error(
+      'Sort order update is not fully implemented yet. ' +
         'Use the dedicated UpdateTaskSortOrderUseCase when available.',
-        HttpStatus.NOT_IMPLEMENTED,
-      );
-      // eslint-disable-next-line no-unreachable
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    );
   }
 
   /**
@@ -340,28 +276,19 @@ export class PlanningController {
    * PUT /api/planning/periods/:id/tasks/:taskId/readiness
    */
   @Put('periods/:id/tasks/:taskId/readiness')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
   async updateTaskReadiness(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
     @Body('readinessPercent') readinessPercent: number,
   ) {
-    this.logger.log(
-      `Updating readiness for task ${taskId} in period ${id}: ${readinessPercent}%`,
-    );
+    this.logger.log(`Updating readiness for task ${taskId} in period ${id}: ${readinessPercent}%`);
 
-    try {
-      // В текущей реализации UseCase для обновления готовности отдельно нет.
-      // Здесь будет вызов соответствующего use case после его реализации.
-      throw new HttpException(
-        'Readiness update is not fully implemented yet. ' +
+    // В текущей реализации UseCase для обновления готовности отдельно нет.
+    throw new Error(
+      'Readiness update is not fully implemented yet. ' +
         'Use the dedicated UpdateTaskReadinessUseCase when available.',
-        HttpStatus.NOT_IMPLEMENTED,
-      );
-      // eslint-disable-next-line no-unreachable
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    );
   }
 
   // ====================================================================
@@ -375,20 +302,12 @@ export class PlanningController {
    */
   @Post('periods/:id/fix-plan')
   @HttpCode(HttpStatus.CREATED)
-  async fixPlan(
-    @Param('id') id: string,
-    @Body() dto?: FixPlanDto,
-  ) {
+  async fixPlan(@Param('id') id: string, @Body() dto?: FixPlanDto) {
     this.logger.log(`Fixing plan for period: id=${id}`);
 
-    try {
-      // В реальном приложении userId будет извлекаться из JWT токена.
-      const userId = 'system';
-      const result = await this.fixPlanUseCase.execute(id, userId, dto);
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    const userId = 'system';
+    const result = await this.fixPlanUseCase.execute(id, userId, dto);
+    return result;
   }
 
   /**
@@ -397,20 +316,15 @@ export class PlanningController {
    * GET /api/planning/periods/:id/plan-versions
    */
   @Get('periods/:id/plan-versions')
+  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
   async getPlanVersions(@Param('id') id: string) {
     this.logger.log(`Fetching plan versions for period: id=${id}`);
 
-    try {
-      // В текущей реализации нет отдельного UseCase для получения версий плана.
-      throw new HttpException(
-        'Plan versions listing is not fully implemented yet. ' +
+    // В текущей реализации нет отдельного UseCase для получения версий плана.
+    throw new Error(
+      'Plan versions listing is not fully implemented yet. ' +
         'Use the dedicated GetPlanVersionsUseCase when available.',
-        HttpStatus.NOT_IMPLEMENTED,
-      );
-      // eslint-disable-next-line no-unreachable
-    } catch (error) {
-      this.handleDomainError(error);
-    }
+    );
   }
 
   // ====================================================================
@@ -429,100 +343,32 @@ export class PlanningController {
     @Body('transition') transition: string,
     @Body('reason') reason?: string,
   ) {
-    this.logger.log(
-      `Transitioning period ${id}: ${transition}`,
-    );
+    this.logger.log(`Transitioning period ${id}: ${transition}`);
 
-    try {
-      // Маппинг названий переходов на целевые состояния стейт-машины
-      const transitionToState: Record<string, string> = {
-        FIX_PLAN: 'PLAN_FIXED',
-        LOAD_FACT: 'FACT_LOADING',
-        SUBMIT_EVALUATIONS: 'EVALUATION',
-        CLOSE_PERIOD: 'CLOSED',
-      };
+    // Маппинг названий переходов на целевые состояния стейт-машины
+    const transitionToState: Record<string, string> = {
+      FIX_PLAN: 'PLAN_FIXED',
+      LOAD_FACT: 'FACT_LOADING',
+      SUBMIT_EVALUATIONS: 'EVALUATION',
+      CLOSE_PERIOD: 'CLOSED',
+    };
 
-      const targetState = transitionToState[transition];
-      if (!targetState) {
-        throw new HttpException(
-          `Invalid transition "${transition}". Allowed transitions: ${Object.keys(transitionToState).join(', ')}`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      // В реальном приложении userId будет извлекаться из JWT токена.
-      const userId = 'system';
-
-      const result = await this.transitionPeriodUseCase.execute({
-        periodId: id,
-        targetState,
-        userId,
-        reason: reason ?? null,
-      });
-      return result;
-    } catch (error) {
-      this.handleDomainError(error);
-    }
-  }
-
-  // ====================================================================
-  // Error Handling
-  // ====================================================================
-
-  /**
-   * Преобразует доменные ошибки в HTTP-ответы.
-   */
-  private handleDomainError(error: unknown): never {
-    if (error instanceof DomainError) {
-      this.logger.warn(`Domain error: ${error.message} (code=${error.code})`);
-
-      switch (error.code) {
-        case 'NOT_FOUND':
-          throw new HttpException(
-            { message: error.message, code: error.code },
-            HttpStatus.NOT_FOUND,
-          );
-        case 'CONFLICT':
-          throw new HttpException(
-            { message: error.message, code: error.code },
-            HttpStatus.CONFLICT,
-          );
-        case 'INVALID_STATE':
-          throw new HttpException(
-            { message: error.message, code: error.code },
-            HttpStatus.CONFLICT,
-          );
-        case 'BUSINESS_RULE_VIOLATION':
-          throw new HttpException(
-            { message: error.message, code: error.code },
-            HttpStatus.UNPROCESSABLE_ENTITY,
-          );
-        case 'INVALID_ARGUMENT':
-          throw new HttpException(
-            { message: error.message, code: error.code },
-            HttpStatus.BAD_REQUEST,
-          );
-        case 'UNAUTHORIZED':
-          throw new HttpException(
-            { message: error.message, code: error.code },
-            HttpStatus.FORBIDDEN,
-          );
-        default:
-          throw new HttpException(
-            { message: error.message, code: error.code },
-            HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-      }
+    const targetState = transitionToState[transition];
+    if (!targetState) {
+      throw new InvalidArgumentError(
+        'transition',
+        `Invalid transition "${transition}". Allowed transitions: ${Object.keys(transitionToState).join(', ')}`,
+      );
     }
 
-    if (error instanceof HttpException) {
-      throw error;
-    }
+    const userId = 'system';
 
-    this.logger.error(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    throw new HttpException(
-      { message: 'Internal server error' },
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
+    const result = await this.transitionPeriodUseCase.execute({
+      periodId: id,
+      targetState,
+      userId,
+      reason: reason ?? null,
+    });
+    return result;
   }
 }

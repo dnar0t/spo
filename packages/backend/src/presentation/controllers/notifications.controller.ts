@@ -30,12 +30,7 @@ import { CreateNotificationTemplateUseCase } from '../../application/notificatio
 import { UpdateNotificationTemplateUseCase } from '../../application/notifications/use-cases/update-notification-template.use-case';
 import { GetNotificationTemplatesUseCase } from '../../application/notifications/use-cases/get-notification-templates.use-case';
 import { GetNotificationHistoryUseCase } from '../../application/notifications/use-cases/get-notification-history.use-case';
-import {
-  NotFoundError,
-  ConflictError,
-  DomainStateError,
-  InvalidArgumentError,
-} from '../../domain/errors/domain.error';
+import { NotFoundError, UnauthorizedError } from '../../domain/errors/domain.error';
 
 interface RequestWithUser {
   user: {
@@ -70,11 +65,7 @@ export class NotificationsController {
   @Get('templates')
   @Roles('Администратор')
   async getTemplates() {
-    try {
-      return await this.getNotificationTemplatesUseCase.execute();
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.getNotificationTemplatesUseCase.execute();
   }
 
   /**
@@ -88,21 +79,17 @@ export class NotificationsController {
     @Body() body: { eventName: string; subject: string; body: string; isActive?: boolean },
     @Req() req: RequestWithUser,
   ) {
-    try {
-      return await this.createNotificationTemplateUseCase.execute(
-        {
-          eventName: body.eventName,
-          subject: body.subject,
-          body: body.body,
-          isActive: body.isActive,
-        },
-        req.user.id,
-        req.ip,
-        req.headers['user-agent'] as string | undefined,
-      );
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.createNotificationTemplateUseCase.execute(
+      {
+        eventName: body.eventName,
+        subject: body.subject,
+        body: body.body,
+        isActive: body.isActive,
+      },
+      req.user.id,
+      req.ip,
+      req.headers['user-agent'] as string | undefined,
+    );
   }
 
   /**
@@ -116,22 +103,18 @@ export class NotificationsController {
     @Body() body: { eventName?: string; subject?: string; body?: string; isActive?: boolean },
     @Req() req: RequestWithUser,
   ) {
-    try {
-      return await this.updateNotificationTemplateUseCase.execute(
-        id,
-        {
-          eventName: body.eventName,
-          subject: body.subject,
-          body: body.body,
-          isActive: body.isActive,
-        },
-        req.user.id,
-        req.ip,
-        req.headers['user-agent'] as string | undefined,
-      );
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.updateNotificationTemplateUseCase.execute(
+      id,
+      {
+        eventName: body.eventName,
+        subject: body.subject,
+        body: body.body,
+        isActive: body.isActive,
+      },
+      req.user.id,
+      req.ip,
+      req.headers['user-agent'] as string | undefined,
+    );
   }
 
   // ====================================================================
@@ -146,15 +129,11 @@ export class NotificationsController {
   @Get('smtp')
   @Roles('Администратор')
   async getSmtpConfig() {
-    try {
-      const config = await this.getSmtpConfigUseCase.execute();
-      if (!config) {
-        return { statusCode: HttpStatus.NOT_FOUND, message: 'SMTP configuration not found' };
-      }
-      return config;
-    } catch (error) {
-      this.handleError(error);
+    const config = await this.getSmtpConfigUseCase.execute();
+    if (!config) {
+      throw new NotFoundError('SmtpConfig', 'default');
     }
+    return config;
   }
 
   /**
@@ -176,24 +155,20 @@ export class NotificationsController {
     },
     @Req() req: RequestWithUser,
   ) {
-    try {
-      return await this.updateSmtpConfigUseCase.execute(
-        {
-          host: body.host,
-          port: body.port,
-          username: body.username,
-          password: body.password,
-          senderName: body.senderName,
-          senderEmail: body.senderEmail,
-          isActive: body.isActive,
-        },
-        req.user.id,
-        req.ip,
-        req.headers['user-agent'] as string | undefined,
-      );
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.updateSmtpConfigUseCase.execute(
+      {
+        host: body.host,
+        port: body.port,
+        username: body.username,
+        password: body.password,
+        senderName: body.senderName,
+        senderEmail: body.senderEmail,
+        isActive: body.isActive,
+      },
+      req.user.id,
+      req.ip,
+      req.headers['user-agent'] as string | undefined,
+    );
   }
 
   /**
@@ -203,33 +178,24 @@ export class NotificationsController {
   @Post('smtp/test')
   @Roles('Администратор')
   async testSmtpConnection(@Req() req: RequestWithUser) {
-    try {
-      // Получаем текущую конфигурацию
-      const config = await this.getSmtpConfigUseCase.execute();
+    const config = await this.getSmtpConfigUseCase.execute();
 
-      if (!config) {
-        return {
-          statusCode: HttpStatus.NOT_FOUND,
-          message: 'SMTP configuration not found. Please configure SMTP first.',
-        };
-      }
-
-      // В будущем здесь будет реальная отправка тестового письма
-      return {
-        status: 'OK',
-        message: `SMTP configuration is valid. Test email would be sent to "${config.senderEmail}".`,
-        config: {
-          host: config.host,
-          port: config.port,
-          username: config.username,
-          senderName: config.senderName,
-          senderEmail: config.senderEmail,
-          isActive: config.isActive,
-        },
-      };
-    } catch (error) {
-      this.handleError(error);
+    if (!config) {
+      throw new NotFoundError('SmtpConfig', 'default');
     }
+
+    return {
+      status: 'OK',
+      message: `SMTP configuration is valid. Test email would be sent to "${config.senderEmail}".`,
+      config: {
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        senderName: config.senderName,
+        senderEmail: config.senderEmail,
+        isActive: config.isActive,
+      },
+    };
   }
 
   // ====================================================================
@@ -251,19 +217,15 @@ export class NotificationsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    try {
-      return await this.getNotificationHistoryUseCase.execute({
-        recipientId,
-        eventName,
-        status,
-        fromDate: fromDate ? new Date(fromDate) : undefined,
-        toDate: toDate ? new Date(toDate) : undefined,
-        limit: limit ? parseInt(limit, 10) : undefined,
-        offset: offset ? parseInt(offset, 10) : undefined,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.getNotificationHistoryUseCase.execute({
+      recipientId,
+      eventName,
+      status,
+      fromDate: fromDate ? new Date(fromDate) : undefined,
+      toDate: toDate ? new Date(toDate) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+    });
   }
 
   /**
@@ -277,19 +239,12 @@ export class NotificationsController {
   ) {
     // Проверяем, что пользователь запрашивает свою историю или имеет роль ADMIN
     if (req.user.id !== recipientId && !req.user.roles?.includes('Администратор')) {
-      return {
-        statusCode: HttpStatus.FORBIDDEN,
-        message: 'You can only view your own notification history',
-      };
+      throw new UnauthorizedError('You can only view your own notification history');
     }
 
-    try {
-      return await this.getNotificationHistoryUseCase.execute({
-        recipientId,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.getNotificationHistoryUseCase.execute({
+      recipientId,
+    });
   }
 
   // ====================================================================
@@ -304,57 +259,11 @@ export class NotificationsController {
   @Roles('Администратор')
   @HttpCode(HttpStatus.ACCEPTED)
   async processPending() {
-    // Use case внедряется напрямую, но для чистоты вызовем через DI.
-    // В реальном приложении здесь будет вызов ProcessPendingNotificationsUseCase.
     return {
       status: 'ACCEPTED',
       message:
         'Pending notifications processing initiated. ' +
         'This endpoint requires ProcessPendingNotificationsUseCase to be injected.',
-    };
-  }
-
-  // ====================================================================
-  // Error Handling
-  // ====================================================================
-
-  private handleError(error: unknown): never {
-    if (error instanceof NotFoundError) {
-      throw {
-        statusCode: HttpStatus.NOT_FOUND,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-      };
-    }
-    if (error instanceof ConflictError) {
-      throw {
-        statusCode: HttpStatus.CONFLICT,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-      };
-    }
-    if (error instanceof InvalidArgumentError) {
-      throw {
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-      };
-    }
-    if (error instanceof DomainStateError) {
-      throw {
-        statusCode: HttpStatus.CONFLICT,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-      };
-    }
-    this.logger.error(`Unexpected error: ${(error as Error).message}`, (error as Error).stack);
-    throw {
-      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: 'Internal server error',
     };
   }
 }

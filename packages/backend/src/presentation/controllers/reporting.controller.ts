@@ -16,7 +16,6 @@ import {
   UseGuards,
   Req,
   Logger,
-  HttpStatus,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
@@ -35,14 +34,8 @@ import {
 } from '../../application/reporting/dto/evaluation.dto';
 import { ManagerEvaluationRepository } from '../../domain/repositories/manager-evaluation.repository';
 import { BusinessEvaluationRepository } from '../../domain/repositories/business-evaluation.repository';
-import { ManagerEvaluation } from '../../domain/entities/manager-evaluation.entity';
-import { BusinessEvaluation } from '../../domain/entities/business-evaluation.entity';
 import { Percentage } from '../../domain/value-objects/percentage.vo';
-import {
-  NotFoundError,
-  DomainStateError,
-  UnauthorizedError,
-} from '../../domain/errors/domain.error';
+import { NotFoundError } from '../../domain/errors/domain.error';
 
 interface RequestWithUser {
   user: {
@@ -87,30 +80,26 @@ export class ReportingController {
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
   ) {
-    try {
-      const result = await this.getSummaryReportUseCase.execute({
-        periodId: id,
-        system,
-        groupBy,
-        isPlanned: isPlanned !== undefined ? isPlanned === 'true' : undefined,
-        search,
-        sortField,
-        sortOrder,
-        page: page ? Number(page) : 1,
-        pageSize: pageSize ? Number(pageSize) : 50,
-      });
+    const result = await this.getSummaryReportUseCase.execute({
+      periodId: id,
+      system,
+      groupBy,
+      isPlanned: isPlanned !== undefined ? isPlanned === 'true' : undefined,
+      search,
+      sortField,
+      sortOrder,
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 50,
+    });
 
-      return {
-        period: result.summary['period'],
-        statistics: result.statistics,
-        groups: result.summary['groups'],
-        page: result.summary['page'],
-        pageSize: result.summary['pageSize'],
-        total: result.summary['total'],
-      };
-    } catch (error) {
-      this.handleError(error);
-    }
+    return {
+      period: result.summary['period'],
+      statistics: result.statistics,
+      groups: result.summary['groups'],
+      page: result.summary['page'],
+      pageSize: result.summary['pageSize'],
+      total: result.summary['total'],
+    };
   }
 
   // ─── Статистика периода ───
@@ -121,11 +110,7 @@ export class ReportingController {
    */
   @Get('periods/:id/statistics')
   async getStatistics(@Param('id') id: string) {
-    try {
-      return await this.getPeriodStatisticsUseCase.execute({ periodId: id });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.getPeriodStatisticsUseCase.execute({ periodId: id });
   }
 
   // ─── Личные отчёты ───
@@ -136,16 +121,12 @@ export class ReportingController {
    */
   @Get('periods/:id/personal/me')
   async getMyPersonalReport(@Param('id') id: string, @Req() req: RequestWithUser) {
-    try {
-      return await this.getPersonalReportUseCase.execute({
-        periodId: id,
-        targetUserId: req.user.id,
-        viewerId: req.user.id,
-        viewerRoles: req.user.roles ?? [],
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.getPersonalReportUseCase.execute({
+      periodId: id,
+      targetUserId: req.user.id,
+      viewerId: req.user.id,
+      viewerRoles: req.user.roles ?? [],
+    });
   }
 
   /**
@@ -158,16 +139,12 @@ export class ReportingController {
     @Param('userId') userId: string,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      return await this.getPersonalReportUseCase.execute({
-        periodId: id,
-        targetUserId: userId,
-        viewerId: req.user.id,
-        viewerRoles: req.user.roles ?? [],
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.getPersonalReportUseCase.execute({
+      periodId: id,
+      targetUserId: userId,
+      viewerId: req.user.id,
+      viewerRoles: req.user.roles ?? [],
+    });
   }
 
   // ─── Оценка руководителя ───
@@ -182,20 +159,16 @@ export class ReportingController {
     @Body() body: CreateManagerEvaluationRequestDto,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      return await this.submitManagerEvaluationUseCase.execute({
-        periodId: body.periodId,
-        youtrackIssueId: body.youtrackIssueId,
-        userId: body.userId,
-        evaluationType: body.evaluationType,
-        percent: body.percent,
-        comment: body.comment,
-        evaluatedById: req.user.id,
-        evaluatorRoles: req.user.roles ?? [],
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.submitManagerEvaluationUseCase.execute({
+      periodId: body.periodId,
+      youtrackIssueId: body.youtrackIssueId,
+      userId: body.userId,
+      evaluationType: body.evaluationType,
+      percent: body.percent,
+      comment: body.comment,
+      evaluatedById: req.user.id,
+      evaluatorRoles: req.user.roles ?? [],
+    });
   }
 
   /**
@@ -209,32 +182,28 @@ export class ReportingController {
     @Body() body: UpdateManagerEvaluationRequestDto,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      const existing = await this.managerEvaluationRepository.findById(id);
-      if (!existing) {
-        throw new NotFoundError('ManagerEvaluation', id);
-      }
-
-      existing.update({
-        evaluationType: body.evaluationType ?? existing.evaluationType,
-        percent:
-          body.percent !== null && body.percent !== undefined
-            ? Percentage.fromPercent(body.percent)
-            : existing.percent,
-        comment: body.comment !== undefined ? body.comment : existing.comment,
-        evaluatedById: req.user.id,
-      });
-
-      const saved = await this.managerEvaluationRepository.update(existing);
-      return {
-        id: saved.id,
-        evaluationType: saved.evaluationType,
-        percent: saved.percent?.basisPoints ?? null,
-        comment: saved.comment,
-      };
-    } catch (error) {
-      this.handleError(error);
+    const existing = await this.managerEvaluationRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundError('ManagerEvaluation', id);
     }
+
+    existing.update({
+      evaluationType: body.evaluationType ?? existing.evaluationType,
+      percent:
+        body.percent !== null && body.percent !== undefined
+          ? Percentage.fromPercent(body.percent)
+          : existing.percent,
+      comment: body.comment !== undefined ? body.comment : existing.comment,
+      evaluatedById: req.user.id,
+    });
+
+    const saved = await this.managerEvaluationRepository.update(existing);
+    return {
+      id: saved.id,
+      evaluationType: saved.evaluationType,
+      percent: saved.percent?.basisPoints ?? null,
+      comment: saved.comment,
+    };
   }
 
   // ─── Оценка бизнеса ───
@@ -249,19 +218,15 @@ export class ReportingController {
     @Body() body: CreateBusinessEvaluationRequestDto,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      return await this.submitBusinessEvaluationUseCase.execute({
-        periodId: body.periodId,
-        youtrackIssueId: body.youtrackIssueId,
-        evaluationType: body.evaluationType,
-        percent: body.percent,
-        comment: body.comment,
-        evaluatedById: req.user.id,
-        evaluatorRoles: req.user.roles ?? [],
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.submitBusinessEvaluationUseCase.execute({
+      periodId: body.periodId,
+      youtrackIssueId: body.youtrackIssueId,
+      evaluationType: body.evaluationType,
+      percent: body.percent,
+      comment: body.comment,
+      evaluatedById: req.user.id,
+      evaluatorRoles: req.user.roles ?? [],
+    });
   }
 
   /**
@@ -275,32 +240,28 @@ export class ReportingController {
     @Body() body: UpdateBusinessEvaluationRequestDto,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      const existing = await this.businessEvaluationRepository.findById(id);
-      if (!existing) {
-        throw new NotFoundError('BusinessEvaluation', id);
-      }
-
-      existing.update({
-        evaluationType: body.evaluationType ?? existing.evaluationType,
-        percent:
-          body.percent !== null && body.percent !== undefined
-            ? Percentage.fromPercent(body.percent)
-            : existing.percent,
-        comment: body.comment !== undefined ? body.comment : existing.comment,
-        evaluatedById: req.user.id,
-      });
-
-      const saved = await this.businessEvaluationRepository.update(existing);
-      return {
-        id: saved.id,
-        evaluationType: saved.evaluationType,
-        percent: saved.percent?.basisPoints ?? null,
-        comment: saved.comment,
-      };
-    } catch (error) {
-      this.handleError(error);
+    const existing = await this.businessEvaluationRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundError('BusinessEvaluation', id);
     }
+
+    existing.update({
+      evaluationType: body.evaluationType ?? existing.evaluationType,
+      percent:
+        body.percent !== null && body.percent !== undefined
+          ? Percentage.fromPercent(body.percent)
+          : existing.percent,
+      comment: body.comment !== undefined ? body.comment : existing.comment,
+      evaluatedById: req.user.id,
+    });
+
+    const saved = await this.businessEvaluationRepository.update(existing);
+    return {
+      id: saved.id,
+      evaluationType: saved.evaluationType,
+      percent: saved.percent?.basisPoints ?? null,
+      comment: saved.comment,
+    };
   }
 
   // ─── Пересчёт отчётов ───
@@ -312,37 +273,17 @@ export class ReportingController {
   @Post('periods/:id/recalculate')
   @Roles('Администратор', 'Директор')
   async recalculateReports(@Param('id') id: string) {
-    try {
-      const personalResult = await this.generatePersonalReportsUseCase.execute({
-        periodId: id,
-      });
+    const personalResult = await this.generatePersonalReportsUseCase.execute({
+      periodId: id,
+    });
 
-      const summaryResult = await this.generateSummaryReportUseCase.execute({
-        periodId: id,
-      });
+    const summaryResult = await this.generateSummaryReportUseCase.execute({
+      periodId: id,
+    });
 
-      return {
-        personalReportsGenerated: personalResult.generatedCount,
-        summaryReportsGenerated: summaryResult.generatedCount,
-      };
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  // ─── Обработка ошибок ───
-
-  private handleError(error: unknown): never {
-    if (error instanceof NotFoundError) {
-      throw { statusCode: HttpStatus.NOT_FOUND, message: error.message, code: error.code };
-    }
-    if (error instanceof DomainStateError) {
-      throw { statusCode: HttpStatus.CONFLICT, message: error.message, code: error.code };
-    }
-    if (error instanceof UnauthorizedError) {
-      throw { statusCode: HttpStatus.FORBIDDEN, message: error.message, code: error.code };
-    }
-    this.logger.error(`Unexpected error: ${(error as Error).message}`, (error as Error).stack);
-    throw { statusCode: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Internal server error' };
+    return {
+      personalReportsGenerated: personalResult.generatedCount,
+      summaryReportsGenerated: summaryResult.generatedCount,
+    };
   }
 }

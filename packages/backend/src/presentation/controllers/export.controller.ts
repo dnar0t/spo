@@ -13,17 +13,7 @@
  * - GET /api/export/jobs — список задач на экспорт текущего пользователя
  * - GET /api/export/download/:jobId — скачивание файла экспорта
  */
-import {
-  Controller,
-  Get,
-  Post,
-  Param,
-  Query,
-  Req,
-  Logger,
-  HttpStatus,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Req, Logger, HttpStatus, Res } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -37,11 +27,8 @@ import { GetExportJobsUseCase } from '../../application/export/use-cases/get-exp
 import { CleanupExpiredExportsUseCase } from '../../application/export/use-cases/cleanup-expired-exports.use-case';
 import { ExportJobRepository } from '../../domain/repositories/export-job.repository';
 import { IFileStorage } from '../../application/export/ports/file-storage';
-import { ExportJob } from '../../domain/entities/export-job.entity';
-import {
-  NotFoundError,
-  DomainStateError,
-} from '../../domain/errors/domain.error';
+
+import { NotFoundError, DomainStateError } from '../../domain/errors/domain.error';
 
 interface RequestWithUser {
   user: {
@@ -83,16 +70,12 @@ export class ExportController {
     @Query('format') format: string,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      const normalizedFormat = this.normalizeFormat(format, 'XLSX');
-      return await this.exportPlanUseCase.execute({
-        periodId,
-        format: normalizedFormat as 'XLSX' | 'PDF',
-        userId: req.user.id,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    const normalizedFormat = this.normalizeFormat(format, 'XLSX');
+    return await this.exportPlanUseCase.execute({
+      periodId,
+      format: normalizedFormat as 'XLSX' | 'PDF',
+      userId: req.user.id,
+    });
   }
 
   // ─── Экспорт сводного отчёта ───
@@ -109,16 +92,12 @@ export class ExportController {
     @Query('format') format: string,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      const normalizedFormat = this.normalizeFormat(format, 'XLSX');
-      return await this.exportSummaryReportUseCase.execute({
-        periodId,
-        format: normalizedFormat as 'XLSX' | 'PDF',
-        userId: req.user.id,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    const normalizedFormat = this.normalizeFormat(format, 'XLSX');
+    return await this.exportSummaryReportUseCase.execute({
+      periodId,
+      format: normalizedFormat as 'XLSX' | 'PDF',
+      userId: req.user.id,
+    });
   }
 
   // ─── Экспорт личного отчёта ───
@@ -137,17 +116,13 @@ export class ExportController {
     @Query('format') format: string,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      const normalizedFormat = this.normalizeFormat(format, 'XLSX');
-      return await this.exportPersonalReportUseCase.execute({
-        periodId,
-        userId,
-        format: normalizedFormat as 'XLSX' | 'PDF',
-        currentUserId: req.user.id,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    const normalizedFormat = this.normalizeFormat(format, 'XLSX');
+    return await this.exportPersonalReportUseCase.execute({
+      periodId,
+      userId,
+      format: normalizedFormat as 'XLSX' | 'PDF',
+      currentUserId: req.user.id,
+    });
   }
 
   // ─── Экспорт аудит-лога ───
@@ -168,17 +143,13 @@ export class ExportController {
     @Query('toDate') toDate: string | undefined,
     @Req() req: RequestWithUser,
   ) {
-    try {
-      return await this.exportAuditLogUseCase.execute({
-        periodId,
-        userId,
-        fromDate: fromDate ? new Date(fromDate) : undefined,
-        toDate: toDate ? new Date(toDate) : undefined,
-        requesterUserId: req.user.id,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.exportAuditLogUseCase.execute({
+      periodId,
+      userId,
+      fromDate: fromDate ? new Date(fromDate) : undefined,
+      toDate: toDate ? new Date(toDate) : undefined,
+      requesterUserId: req.user.id,
+    });
   }
 
   // ─── Экспорт JSON для бухгалтерии ───
@@ -189,18 +160,11 @@ export class ExportController {
    * @param periodId ID периода
    */
   @Post('accounting/:periodId')
-  async exportJsonAccounting(
-    @Param('periodId') periodId: string,
-    @Req() req: RequestWithUser,
-  ) {
-    try {
-      return await this.exportJsonAccountingUseCase.execute({
-        periodId,
-        userId: req.user.id,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+  async exportJsonAccounting(@Param('periodId') periodId: string, @Req() req: RequestWithUser) {
+    return await this.exportJsonAccountingUseCase.execute({
+      periodId,
+      userId: req.user.id,
+    });
   }
 
   // ─── Список задач на экспорт ───
@@ -211,13 +175,9 @@ export class ExportController {
    */
   @Get('jobs')
   async getJobs(@Req() req: RequestWithUser) {
-    try {
-      return await this.getExportJobsUseCase.execute({
-        userId: req.user.id,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
+    return await this.getExportJobsUseCase.execute({
+      userId: req.user.id,
+    });
   }
 
   // ─── Скачивание файла экспорта ───
@@ -234,48 +194,44 @@ export class ExportController {
     @Query('path') filePath: string | undefined,
     @Res() response: Response,
   ) {
-    try {
-      const job = await this.exportJobRepository.findById(jobId);
-      if (!job) {
-        throw new NotFoundError('ExportJob', jobId);
-      }
-
-      if (job.status !== 'COMPLETED') {
-        const errorMsg =
-          job.status === 'FAILED'
-            ? `Export job failed: ${job.error ?? 'Unknown error'}`
-            : `Export job is in status "${job.status}". Wait for completion.`;
-        throw new DomainStateError(errorMsg, { jobId, status: job.status });
-      }
-
-      if (job.isExpired()) {
-        throw new DomainStateError('Export file has expired and is no longer available.', {
-          jobId,
-          expiresAt: job.expiresAt.toISOString(),
-        });
-      }
-
-      // Путь может быть из query или из сущности задачи
-      const targetPath = filePath || job.filePath;
-      if (!targetPath) {
-        throw new NotFoundError('ExportFile', jobId);
-      }
-
-      const buffer = await this.fileStorage.get(targetPath);
-
-      const contentType = this.getContentType(job.fileName ?? '');
-      const fileName = job.fileName ?? `export-${jobId}.bin`;
-
-      response.setHeader('Content-Type', contentType);
-      response.setHeader(
-        'Content-Disposition',
-        `attachment; filename="${encodeURIComponent(fileName)}"`,
-      );
-      response.setHeader('Content-Length', buffer.length);
-      response.status(HttpStatus.OK).send(buffer);
-    } catch (error) {
-      this.handleError(error);
+    const job = await this.exportJobRepository.findById(jobId);
+    if (!job) {
+      throw new NotFoundError('ExportJob', jobId);
     }
+
+    if (job.status !== 'COMPLETED') {
+      const errorMsg =
+        job.status === 'FAILED'
+          ? `Export job failed: ${job.error ?? 'Unknown error'}`
+          : `Export job is in status "${job.status}". Wait for completion.`;
+      throw new DomainStateError(errorMsg, { jobId, status: job.status });
+    }
+
+    if (job.isExpired()) {
+      throw new DomainStateError('Export file has expired and is no longer available.', {
+        jobId,
+        expiresAt: job.expiresAt.toISOString(),
+      });
+    }
+
+    // Путь может быть из query или из сущности задачи
+    const targetPath = filePath || job.filePath;
+    if (!targetPath) {
+      throw new NotFoundError('ExportFile', jobId);
+    }
+
+    const buffer = await this.fileStorage.get(targetPath);
+
+    const contentType = this.getContentType(job.fileName ?? '');
+    const fileName = job.fileName ?? `export-${jobId}.bin`;
+
+    response.setHeader('Content-Type', contentType);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(fileName)}"`,
+    );
+    response.setHeader('Content-Length', buffer.length);
+    response.status(HttpStatus.OK).send(buffer);
   }
 
   // ─── Утилиты ───
@@ -308,18 +264,5 @@ export class ExportController {
       default:
         return 'application/octet-stream';
     }
-  }
-
-  // ─── Обработка ошибок ───
-
-  private handleError(error: unknown): never {
-    if (error instanceof NotFoundError) {
-      throw { statusCode: HttpStatus.NOT_FOUND, message: error.message, code: error.code };
-    }
-    if (error instanceof DomainStateError) {
-      throw { statusCode: HttpStatus.CONFLICT, message: error.message, code: error.code };
-    }
-    this.logger.error(`Unexpected error: ${(error as Error).message}`, (error as Error).stack);
-    throw { statusCode: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Internal server error' };
   }
 }

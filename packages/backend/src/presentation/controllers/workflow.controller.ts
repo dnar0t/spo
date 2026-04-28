@@ -5,16 +5,12 @@
  * Обеспечивает: получение текущего состояния, выполнение переходов,
  * переоткрытие периода, историю переходов.
  */
-import { Controller, Get, Post, Param, UseGuards, Req, Logger, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, UseGuards, Req, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
 import { TransitionPeriodUseCase } from '../../application/reporting/use-cases/transition-period.use-case';
 import { GetPeriodHistoryUseCase } from '../../application/reporting/use-cases/get-period-history.use-case';
-import {
-  NotFoundError,
-  DomainStateError,
-  UnauthorizedError,
-} from '../../domain/errors/domain.error';
+import { NotFoundError } from '../../domain/errors/domain.error';
 
 interface RequestWithUser {
   user: {
@@ -42,20 +38,11 @@ export class WorkflowController {
    */
   @Get('periods/:id/state')
   async getCurrentState(@Param('id') id: string) {
-    try {
-      // Используем существующий use case или прямой вызов репозитория
-      // Пока возвращаем заглушку через переход
-      return await this.transitionPeriodUseCase.execute({
-        periodId: id,
-        targetState: '', // не делаем переход, только проверяем существование
-        userId: '',
-      });
-    } catch (error) {
-      if (error instanceof NotFoundError) {
-        throw { statusCode: HttpStatus.NOT_FOUND, message: error.message };
-      }
-      this.handleError(error);
-    }
+    return await this.transitionPeriodUseCase.execute({
+      periodId: id,
+      targetState: '', // не делаем переход, только проверяем существование
+      userId: '',
+    });
   }
 
   // ─── Выполнить переход ───
@@ -68,8 +55,6 @@ export class WorkflowController {
   @Post('periods/:id/transition')
   @Roles('Менеджер', 'Администратор', 'Директор')
   async transition(@Param('id') id: string, @Req() req: RequestWithUser) {
-    // Для простоты targetState передаётся в query или заголовках
-    // В реальном приложении - через body
     return {
       message: 'Use POST /api/workflow/periods/:id/transition with body: { targetState, reason }',
       example: {
@@ -105,26 +90,6 @@ export class WorkflowController {
    */
   @Get('periods/:id/history')
   async getHistory(@Param('id') id: string) {
-    try {
-      return await this.getPeriodHistoryUseCase.execute({ periodId: id });
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  // ─── Обработка ошибок ───
-
-  private handleError(error: unknown): never {
-    if (error instanceof NotFoundError) {
-      throw { statusCode: HttpStatus.NOT_FOUND, message: error.message, code: error.code };
-    }
-    if (error instanceof DomainStateError) {
-      throw { statusCode: HttpStatus.CONFLICT, message: error.message, code: error.code };
-    }
-    if (error instanceof UnauthorizedError) {
-      throw { statusCode: HttpStatus.FORBIDDEN, message: error.message, code: error.code };
-    }
-    this.logger.error(`Unexpected error: ${(error as Error).message}`, (error as Error).stack);
-    throw { statusCode: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Internal server error' };
+    return await this.getPeriodHistoryUseCase.execute({ periodId: id });
   }
 }

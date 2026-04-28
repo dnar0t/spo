@@ -6,15 +6,7 @@
  *
  * Все endpoints защищены JwtAuthGuard + RolesGuard с ролью ADMIN.
  */
-import {
-  Controller,
-  Post,
-  Get,
-  HttpCode,
-  HttpStatus,
-  UseGuards,
-  Logger,
-} from '@nestjs/common';
+import { Controller, Post, Get, HttpCode, HttpStatus, UseGuards, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
 import { RetentionCronService } from '../../infrastructure/retention/retention-cron.service';
@@ -41,17 +33,11 @@ export class RetentionController {
   async runRetention() {
     this.logger.log('Manual retention run requested');
 
-    try {
-      const result = await this.retentionCronService.runRetentionNow();
-      return {
-        success: true,
-        message: 'Retention cleanup completed',
-        data: result,
-      };
-    } catch (error) {
-      this.logger.error(`Retention run failed: ${(error as Error).message}`);
-      throw error;
-    }
+    const result = await this.retentionCronService.runRetentionNow();
+    return {
+      message: 'Retention cleanup completed',
+      data: result,
+    };
   }
 
   /**
@@ -65,22 +51,16 @@ export class RetentionController {
   async getStats() {
     this.logger.log('Retention stats requested');
 
-    try {
-      const stats = await this.retentionService.getCleanupStats();
-      return {
-        success: true,
-        data: stats,
-        retentionConfig: {
-          exportFilesDays: Number(process.env.RETENTION_EXPORT_DAYS ?? 1),
-          notificationRunsDays: Number(process.env.RETENTION_NOTIFICATION_DAYS ?? 90),
-          auditLogsDays: Number(process.env.RETENTION_AUDIT_DAYS ?? 365),
-          syncLogEntriesDays: Number(process.env.RETENTION_SYNC_LOG_DAYS ?? 90),
-          loginAttemptsDays: Number(process.env.RETENTION_LOGIN_ATTEMPT_DAYS ?? 90),
-        },
-      };
-    } catch (error) {
-      this.logger.error(`Failed to get retention stats: ${(error as Error).message}`);
-      throw error;
-    }
+    const stats = await this.retentionService.getCleanupStats();
+    return {
+      data: stats,
+      retentionConfig: {
+        exportFilesDays: Number(process.env.RETENTION_EXPORT_DAYS ?? 1),
+        notificationRunsDays: Number(process.env.RETENTION_NOTIFICATION_DAYS ?? 90),
+        auditLogsDays: Number(process.env.RETENTION_AUDIT_DAYS ?? 365),
+        syncLogEntriesDays: Number(process.env.RETENTION_SYNC_LOG_DAYS ?? 90),
+        loginAttemptsDays: Number(process.env.RETENTION_LOGIN_ATTEMPT_DAYS ?? 90),
+      },
+    };
   }
 }
