@@ -18,6 +18,9 @@ import { PrismaPersonalReportRepository } from './repositories/prisma-personal-r
 import { PrismaSummaryReportRepository } from './repositories/prisma-summary-report.repository';
 import { PrismaManagerEvaluationRepository } from './repositories/prisma-manager-evaluation.repository';
 import { PrismaBusinessEvaluationRepository } from './repositories/prisma-business-evaluation.repository';
+import { PrismaNotificationTemplateRepository } from './repositories/prisma-notification-template.repository';
+import { PrismaNotificationRunRepository } from './repositories/prisma-notification-run.repository';
+import { PrismaSmtpConfigRepository } from './repositories/prisma-smtp-config.repository';
 
 @Global()
 @Module({
@@ -41,6 +44,9 @@ import { PrismaBusinessEvaluationRepository } from './repositories/prisma-busine
     PrismaSummaryReportRepository,
     PrismaManagerEvaluationRepository,
     PrismaBusinessEvaluationRepository,
+    PrismaNotificationTemplateRepository,
+    PrismaNotificationRunRepository,
+    PrismaSmtpConfigRepository,
   ],
   exports: [
     PrismaService,
@@ -62,6 +68,9 @@ import { PrismaBusinessEvaluationRepository } from './repositories/prisma-busine
     PrismaSummaryReportRepository,
     PrismaManagerEvaluationRepository,
     PrismaBusinessEvaluationRepository,
+    PrismaNotificationTemplateRepository,
+    PrismaNotificationRunRepository,
+    PrismaSmtpConfigRepository,
   ],
 })
 export class PrismaModule {}
