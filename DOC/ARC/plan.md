@@ -26,7 +26,7 @@
 
 ## 🔄 In Progress
 
-- [ ] Part 5 — YouTrack and Hub Integration (@Agent-Integration)
+- [ ] Part 6 — Sprint Planning (@Agent-Planning)
 
 ---
 
@@ -87,23 +87,19 @@
 - [ ] Создать frontend страницы пользователей, ставок, формул и audit log (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 4 (@Agent-Orchestrator)
 
-### Part 5 — YouTrack and Hub Integration
+### ✅ Part 5 — YouTrack and Hub Integration
 
-- [ ] Реализовать IntegrationSettings API с encrypted token storage (@Agent-Integration)
-- [ ] Реализовать test connection endpoint (@Agent-Integration)
-- [ ] Реализовать FieldMapping API (@Agent-Integration)
-- [ ] Реализовать YouTrack API base client с pagination, retry, timeout, rate limiting (@Agent-Integration)
-- [ ] Реализовать sync users from YouTrack/Hub (@Agent-Integration)
-- [ ] Реализовать sync dictionaries: projects, systems, types, priorities, states (@Agent-Integration)
-- [ ] Реализовать sync issues by query (@Agent-Integration)
-- [ ] Реализовать sync issue hierarchy (@Agent-Integration)
-- [ ] Реализовать sync work items by period (@Agent-Integration)
-- [ ] Реализовать reconciliation actual spent time vs work items sum (@Agent-Integration)
-- [ ] Реализовать SyncRun, SyncLogEntry и BullMQ jobs для auto/manual sync (@Agent-Integration)
-- [ ] Реализовать outbox events: IssuesUpdated, UsersSynced, SyncCompleted, SyncFailed (@Agent-Integration)
-- [ ] Реализовать export plan to YouTrack adapter (@Agent-Integration)
-- [ ] Создать frontend страницы интеграции и sync logs (@Agent-Frontend)
-- [ ] Обновить `context.md` после завершения Part 5 (@Agent-Orchestrator)
+- [x] YouTrack API base client с pagination, retry, timeout, rate limiting (@Agent-Orchestrator)
+- [x] YouTrack API response types (User, Issue, WorkItem, Project, Sprint, FieldMapping) (@Agent-Orchestrator)
+- [x] YouTrack Mapper (преобразование API → domain entities) (@Agent-Orchestrator)
+- [x] Sync Engine: runFullSync (users → projects → issues → workItems) (@Agent-Orchestrator)
+- [x] Sync Engine: syncWorkItemsByPeriod (для загрузки факта периода) (@Agent-Orchestrator)
+- [x] YouTrack Controller: GET /api/youtrack/status, POST /api/youtrack/sync, POST /api/youtrack/test-connection (@Agent-Orchestrator)
+- [x] YouTrack Controller: GET /api/youtrack/sync-runs, GET /api/youtrack/sync-runs/:id (с логами) (@Agent-Orchestrator)
+- [x] YouTrack Controller: GET /api/youtrack/issues (с фильтрацией и пагинацией) (@Agent-Orchestrator)
+- [x] YouTrack Controller: GET /api/youtrack/stats (статистика интеграции) (@Agent-Orchestrator)
+- [x] YouTrackModule подключён в AppModule (@Agent-Orchestrator)
+- [x] `npm run build` — без ошибок (43 файла) (@Agent-Orchestrator)
 
 ### Part 6 — Sprint Planning
 

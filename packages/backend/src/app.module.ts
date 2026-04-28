@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
+import { YouTrackModule } from './infrastructure/youtrack/youtrack.module';
 import { HealthController } from './presentation/controllers/health.controller';
 
 @Module({
@@ -10,6 +11,7 @@ import { HealthController } from './presentation/controllers/health.controller';
       envFilePath: ['.env', '../../.env'],
     }),
     PrismaModule,
+    YouTrackModule,
   ],
   controllers: [HealthController],
   providers: [],
