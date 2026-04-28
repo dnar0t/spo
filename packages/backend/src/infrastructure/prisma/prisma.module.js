@@ -41,10 +41,35 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaModule = void 0;
 var common_1 = require("@nestjs/common");
 var prisma_service_1 = require("./prisma.service");
+var prisma_user_repository_1 = require("./repositories/prisma-user.repository");
+var prisma_reporting_period_repository_1 = require("./repositories/prisma-reporting-period.repository");
+var prisma_planned_task_repository_1 = require("./repositories/prisma-planned-task.repository");
+var prisma_sprint_plan_repository_1 = require("./repositories/prisma-sprint-plan.repository");
+var prisma_period_transition_repository_1 = require("./repositories/prisma-period-transition.repository");
+var prisma_refresh_session_repository_1 = require("./repositories/prisma-refresh-session.repository");
+var prisma_login_attempt_repository_1 = require("./repositories/prisma-login-attempt.repository");
 var PrismaModule = function () {
     var _classDecorators = [(0, common_1.Global)(), (0, common_1.Module)({
-            providers: [prisma_service_1.PrismaService],
-            exports: [prisma_service_1.PrismaService],
+            providers: [
+                prisma_service_1.PrismaService,
+                prisma_user_repository_1.PrismaUserRepository,
+                prisma_reporting_period_repository_1.PrismaReportingPeriodRepository,
+                prisma_planned_task_repository_1.PrismaPlannedTaskRepository,
+                prisma_sprint_plan_repository_1.PrismaSprintPlanRepository,
+                prisma_period_transition_repository_1.PrismaPeriodTransitionRepository,
+                prisma_refresh_session_repository_1.PrismaRefreshSessionRepository,
+                prisma_login_attempt_repository_1.PrismaLoginAttemptRepository,
+            ],
+            exports: [
+                prisma_service_1.PrismaService,
+                prisma_user_repository_1.PrismaUserRepository,
+                prisma_reporting_period_repository_1.PrismaReportingPeriodRepository,
+                prisma_planned_task_repository_1.PrismaPlannedTaskRepository,
+                prisma_sprint_plan_repository_1.PrismaSprintPlanRepository,
+                prisma_period_transition_repository_1.PrismaPeriodTransitionRepository,
+                prisma_refresh_session_repository_1.PrismaRefreshSessionRepository,
+                prisma_login_attempt_repository_1.PrismaLoginAttemptRepository,
+            ],
         })];
     var _classDescriptor;
     var _classExtraInitializers = [];

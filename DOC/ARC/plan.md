@@ -21,12 +21,17 @@
 - [x] Зафиксирован запрет `Float` для денег, ставок, процентов и часов
 - [x] Создан первичный план реализации СПО для команды ИИ-агентов
 - [x] План приведён к чекбокс-формату: Completed / In Progress / TODO / Blocked / Testing Needed
+- [x] Part 6 — Sprint Planning (@Agent-Planning)
+- [x] Part 7 — Period Workflow, Fact Loading, Report Recalculation (@Agent-Reporting)
 
 ---
 
 ## 🔄 In Progress
 
-- [ ] Part 6 — Sprint Planning (@Agent-Planning)
+- [ ] Part 8 — Finance, Evaluations, Cost Calculation (@Agent-Finance)
+
+
+
 
 ---
 
@@ -61,28 +66,28 @@
 
 ### Part 3 — Security, Auth, RBAC/ABAC, Audit
 
-- [ ] Реализовать LDAP/LDAPS adapter interface и mock для тестов (@Agent-Security)
-- [ ] Реализовать login flow: AD bind → user lookup → JWT (@Agent-Security)
-- [ ] Реализовать refresh token rotation и хранение refresh token hash (@Agent-Security)
-- [ ] Реализовать logout и revoke sessions (@Agent-Security)
-- [ ] Добавить rate limit и brute-force protection на `/api/auth/login` (@Agent-Security)
-- [ ] Реализовать RBAC guards (@Agent-Security)
-- [ ] Реализовать ABAC `PermissionService` (@Agent-Security)
-- [ ] Реализовать `AuditLogger` (@Agent-Security)
-- [ ] Реализовать encrypted secrets storage и masking secrets в API responses (@Agent-Security)
+- [x] Реализовать LDAP/LDAPS adapter interface (`ILdapAuthAdapter`) и mock для тестов (@Agent-Security)
+- [x] Реализовать login flow: AD bind → user lookup → JWT (@Agent-Security)
+- [x] Реализовать refresh token rotation и хранение refresh token hash (@Agent-Security)
+- [x] Реализовать logout и revoke sessions (@Agent-Security)
+- [x] Добавить rate limit и brute-force protection на `/api/auth/login` (@Agent-Security)
+- [x] Реализовать RBAC guards (`JwtAuthGuard`, `RolesGuard` + `@Roles()` декоратор) (@Agent-Security)
+- [x] Реализовать ABAC `AccessControlService` (canViewPersonalReport, canEditManagerEvaluation, canEditBusinessEvaluation, canViewFinance, canManageRates, canReopenPeriod, canModifyFixedPlan) (@Agent-Security)
+- [x] Реализовать `AuditLogger` (через Prisma в таблицу AuditLog) (@Agent-Security)
+- [x] Реализовать encrypted secrets storage (`EncryptionService` AES-256-GCM) и маскинг секретов в API (@Agent-Security)
 - [ ] Создать frontend login page и route protection (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 3 (@Agent-Orchestrator)
 
 ### Part 4 — Administration and Dictionaries
 
-- [ ] Реализовать CRUD пользователей (@Agent-Backend-Core)
-- [ ] Реализовать назначение ролей пользователю (@Agent-Security)
-- [ ] Реализовать привязку сотрудник → руководитель (@Agent-Backend-Core)
-- [ ] Реализовать рабочие роли: разработка, тестирование, управление, другое (@Agent-Backend-Core)
-- [ ] Реализовать ставки сотрудников и историю ставок (@Agent-Finance)
-- [ ] Реализовать формулы и версии формул (@Agent-Finance)
-- [ ] Реализовать шкалы оценок бизнеса и руководителя (@Agent-Finance)
-- [ ] Реализовать planning settings (@Agent-Planning)
+- [x] Реализовать CRUD пользователей (@Agent-Backend-Core)
+- [x] Реализовать назначение ролей пользователю (@Agent-Security)
+- [x] Реализовать привязку сотрудник → руководитель (@Agent-Backend-Core)
+- [x] Реализовать рабочие роли: разработка, тестирование, управление, другое (@Agent-Backend-Core)
+- [x] Реализовать ставки сотрудников и историю ставок (@Agent-Finance)
+- [x] Реализовать формулы и версии формул (@Agent-Finance)
+- [x] Реализовать шкалы оценок бизнеса и руководителя (@Agent-Finance)
+- [x] Реализовать planning settings (@Agent-Planning)
 - [ ] Реализовать notification settings skeleton (@Agent-Notifications)
 - [ ] Создать frontend страницы пользователей, ставок, формул и audit log (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 4 (@Agent-Orchestrator)
@@ -103,51 +108,50 @@
 
 ### Part 6 — Sprint Planning
 
-- [ ] Реализовать Period create/update/list/detail (@Agent-Planning)
-- [ ] Реализовать workflow state `PLANNING` (@Agent-Planning)
-- [ ] Реализовать backlog query API с фильтрами (@Agent-Planning)
+- [x] Реализовать Period create/update/list/detail (@Agent-Planning)
+- [x] Реализовать workflow state `PLANNING` + PeriodState value object со стейт-машиной (@Agent-Planning)
+- [x] Реализовать backlog query API с фильтрами (@Agent-Planning)
 - [ ] Реализовать перенос readiness из предыдущего месяца (@Agent-Planning)
-- [ ] Реализовать построение дерева задач (@Agent-Planning)
-- [ ] Реализовать сортировку backlog по readiness и приоритету (@Agent-Planning)
-- [ ] Реализовать capacity calculator с резервом (@Agent-Planning)
-- [ ] Реализовать planned task assignment API (@Agent-Planning)
-- [ ] Реализовать расчёт debug/test/mgmt hours (@Agent-Planning)
-- [ ] Реализовать load zones: green/yellow/red (@Agent-Planning)
-- [ ] Реализовать фиксацию плана и версию плана (@Agent-Planning)
+- [x] Реализовать построение дерева задач (@Agent-Planning)
+- [x] Реализовать сортировку backlog по readiness и приоритету (@Agent-Planning)
+- [x] Реализовать capacity calculator с резервом и load zones: green/yellow/red (@Agent-Planning)
+- [x] Реализовать planned task assignment API с расчётом debug/test/mgmt hours (@Agent-Planning)
+- [x] Реализовать фиксацию плана, версию плана и outbox event `PlanFixed` (@Agent-Planning)
 - [ ] Реализовать изменение фиксированного плана только директором с audit log (@Agent-Planning)
-- [ ] Реализовать outbox event `PlanFixed` (@Agent-Planning)
 - [ ] Подключить handler выгрузки плана в YouTrack (@Agent-Integration)
 - [ ] Создать frontend экран планирования с таблицей, drag-and-drop и индикацией загрузки (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 6 (@Agent-Orchestrator)
 
 ### Part 7 — Period Workflow, Fact Loading, Report Recalculation
 
-- [ ] Реализовать Period state machine (@Agent-Planning)
-- [ ] Реализовать endpoint загрузки факта периода (@Agent-Integration)
-- [ ] Реализовать event `FactLoaded` (@Agent-Integration)
-- [ ] Реализовать `ReportRecalculationJob` (@Agent-Reporting)
-- [ ] Реализовать генерацию personal report lines (@Agent-Reporting)
-- [ ] Реализовать генерацию summary report lines (@Agent-Reporting)
-- [ ] Реализовать признак planned/unplanned (@Agent-Reporting)
-- [ ] Реализовать remaining hours и подсветку отрицательного остатка (@Agent-Reporting)
-- [ ] Реализовать статистику выполнения плана (@Agent-Reporting)
-- [ ] Реализовать grouping by system/project/business level (@Agent-Reporting)
-- [ ] Реализовать server-side filtering/sorting/pagination (@Agent-Reporting)
-- [ ] Реализовать frontend итогового и личного отчёта (@Agent-Frontend)
+- [x] Реализовать Period state machine (PeriodState + стейт-машина, @Agent-Planning)
+- [x] Реализовать endpoint загрузки факта периода (LoadFactUseCase + SyncEngine, @Agent-Integration)
+- [x] Реализовать event `FactLoaded` (@Agent-Integration)
+- [x] Реализовать генерацию personal report lines (ReportCalculator + GeneratePersonalReportsUseCase, @Agent-Reporting)
+- [x] Реализовать генерацию summary report lines (ReportCalculator + GenerateSummaryReportUseCase, @Agent-Reporting)
+- [x] Реализовать признак planned/unplanned (@Agent-Reporting)
+- [x] Реализовать remaining hours и подсветку отрицательного остатка (@Agent-Reporting)
+- [x] Реализовать статистику выполнения плана (GetPeriodStatisticsUseCase, @Agent-Reporting)
+- [x] Реализовать grouping by system/project/business level (ReportCalculator.groupReport, @Agent-Reporting)
+- [x] Реализовать server-side filtering/sorting/pagination (GetSummaryReportUseCase, @Agent-Reporting)
+- [x] Реализовать workflow controller: state, transition, reopen, history (@Agent-Reporting)
+- [x] Реализовать reporting controller: summary, personal, evaluations, recalculate (@Agent-Reporting)
+- [x] Реализовать Evaluation entities (ManagerEvaluation, BusinessEvaluation) и use cases (submit, update) (@Agent-Reporting)
+- [ ] Создать frontend итогового и личного отчёта (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 7 (@Agent-Orchestrator)
 
 ### Part 8 — Finance, Evaluations, Cost Calculation
 
-- [ ] Реализовать SalaryCalculator domain service (@Agent-Finance)
-- [ ] Реализовать EffectiveRateCalculator (@Agent-Finance)
-- [ ] Реализовать TaxCalculator по формулам (@Agent-Finance)
-- [ ] Реализовать ManagerEvaluation API с ABAC (@Agent-Reporting)
-- [ ] Реализовать BusinessEvaluation API с business evaluation key (@Agent-Reporting)
-- [ ] Реализовать пересчёт personal reports при изменении оценок (@Agent-Reporting)
-- [ ] Реализовать CostCalculator (@Agent-Finance)
-- [ ] Реализовать planned cost для разработки, тестирования и управления (@Agent-Finance)
-- [ ] Реализовать remaining cost calculator (@Agent-Finance)
-- [ ] Реализовать freeze financial inputs for report lines (@Agent-Finance)
+- [x] Реализовать SalaryCalculator domain service (@Agent-Finance)
+- [x] Реализовать EffectiveRateCalculator (@Agent-Finance)
+- [x] Реализовать TaxCalculator по формулам (@Agent-Finance)
+- [x] Реализовать ManagerEvaluation API с ABAC (@Agent-Reporting)
+- [x] Реализовать BusinessEvaluation API с business evaluation key (@Agent-Reporting)
+- [x] Реализовать пересчёт personal reports при изменении оценок (@Agent-Reporting)
+- [x] Реализовать CostCalculator (@Agent-Finance)
+- [x] Реализовать planned cost для разработки, тестирования и управления (@Agent-Finance)
+- [x] Реализовать remaining cost calculator (@Agent-Finance)
+- [x] Реализовать freeze financial inputs for report lines (@Agent-Finance)
 - [ ] Реализовать frontend оценок руководителя и бизнеса (@Agent-Frontend)
 - [ ] Реализовать frontend финансовых колонок личного отчёта (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 8 (@Agent-Orchestrator)

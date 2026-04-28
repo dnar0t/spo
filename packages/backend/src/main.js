@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var core_1 = require("@nestjs/core");
 var common_1 = require("@nestjs/common");
 var config_1 = require("@nestjs/config");
+var helmet_1 = require("helmet");
 var app_module_1 = require("./app.module");
 function bootstrap() {
     return __awaiter(this, void 0, void 0, function () {
@@ -50,7 +51,11 @@ function bootstrap() {
                     return [4 /*yield*/, core_1.NestFactory.create(app_module_1.AppModule)];
                 case 1:
                     app = _a.sent();
+                    // ---- Security Headers (Helmet) ----
+                    app.use((0, helmet_1.default)());
+                    // ---- Global API Prefix ----
                     app.setGlobalPrefix('api');
+                    // ---- Global Validation Pipe ----
                     app.useGlobalPipes(new common_1.ValidationPipe({
                         whitelist: true,
                         forbidNonWhitelisted: true,
@@ -59,6 +64,7 @@ function bootstrap() {
                             enableImplicitConversion: true,
                         },
                     }));
+                    // ---- CORS ----
                     app.enableCors({
                         origin: true,
                         credentials: true,

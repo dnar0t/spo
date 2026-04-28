@@ -42,7 +42,10 @@ exports.AppModule = void 0;
 var common_1 = require("@nestjs/common");
 var config_1 = require("@nestjs/config");
 var prisma_module_1 = require("./infrastructure/prisma/prisma.module");
+var youtrack_module_1 = require("./infrastructure/youtrack/youtrack.module");
 var health_controller_1 = require("./presentation/controllers/health.controller");
+var planning_app_module_1 = require("./presentation/controllers/planning-app.module");
+var auth_app_module_1 = require("./presentation/controllers/auth-app.module");
 var AppModule = function () {
     var _classDecorators = [(0, common_1.Module)({
             imports: [
@@ -51,6 +54,9 @@ var AppModule = function () {
                     envFilePath: ['.env', '../../.env'],
                 }),
                 prisma_module_1.PrismaModule,
+                youtrack_module_1.YouTrackModule,
+                planning_app_module_1.PlanningAppModule,
+                auth_app_module_1.AuthAppModule,
             ],
             controllers: [health_controller_1.HealthController],
             providers: [],

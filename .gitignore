@@ -9,6 +9,11 @@ build/
 .next/
 out/
 
+# Compiled JS files (source is TS)
+packages/backend/src/**/*.js
+packages/backend/src/**/*.js.map
+packages/backend/src/**/*.d.ts
+
 # Environment files
 .env
 .env.local
@@ -55,3 +60,7 @@ temp/
 # TypeScript
 *.tsbuildinfo
 tsconfig.tsbuildinfo
+
+# Windows kernel object
+nul
+nul/

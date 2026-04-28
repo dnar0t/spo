@@ -47,6 +47,8 @@ model User {
   userEvaluations  ManagerEvaluation[]         @relation("ManagerEvaluatedUser")
   evaluatorEvaluations ManagerEvaluation[]     @relation("ManagerEvaluatorUser")
   businessEvaluations BusinessEvaluation[]     @relation("BusinessEvaluatorUser")
+  refreshSessions RefreshSession[]
+  loginAttempts   LoginAttempt[]
   personalReports  PersonalReport[]
 
   @@index([isActive])
@@ -537,6 +539,47 @@ model FormulaConfigurationVersion {
 }
 
 // ──────────────────────────────
+// Evaluation Scales (Шкалы оценок)
+// ──────────────────────────────
+
+model EvaluationScale {
+  id        String   @id @default(uuid()) @map("id")
+  scaleType String   @map("scale_type")
+  name      String   @map("name")
+  percent   Int      @map("percent") // basis points (1% = 100)
+  isDefault Boolean  @default(false) @map("is_default")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  extensions Json?   @map("extensions")
+
+  @@index([scaleType])
+  @@map("evaluation_scales")
+}
+
+// ──────────────────────────────
+// Planning Settings (Настройки планирования)
+// ──────────────────────────────
+
+model PlanningSettings {
+  id                    String   @id @default(uuid()) @map("id")
+  workHoursPerMonth     Int?     @map("work_hours_per_month") // в минутах
+  reservePercent        Int?     @default(30) @map("reserve_percent") // basis points (30 = 0.3%)
+  testPercent           Int?     @default(2000) @map("test_percent") // basis points (2000 = 20%)
+  debugPercent          Int?     @default(3000) @map("debug_percent") // basis points (3000 = 30%)
+  mgmtPercent           Int?     @default(1000) @map("mgmt_percent") // basis points (1000 = 10%)
+  yellowThreshold       Int?     @default(8000) @map("yellow_threshold") // basis points (8000 = 80%)
+  redThreshold          Int?     @default(10000) @map("red_threshold") // basis points (10000 = 100%)
+  businessGroupingLevel String?  @default("STORY") @map("business_grouping_level")
+  updatedBy             String   @map("updated_by")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  extensions            Json?    @map("extensions")
+
+  @@map("planning_settings")
+}
+
+// ──────────────────────────────
 // Notifications (Уведомления)
 // ──────────────────────────────
 
@@ -640,4 +683,44 @@ model PeriodSnapshot {
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@map("period_snapshots")
+}
+
+// ──────────────────────────────
+// Auth (Аутентификация)
+// ──────────────────────────────
+
+model RefreshSession {
+  id               String    @id @default(uuid()) @map("id")
+  userId           String    @map("user_id")
+  refreshTokenHash String    @map("refresh_token_hash")
+  userAgent        String?   @map("user_agent")
+  ipAddress        String?   @map("ip_address")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  lastUsedAt       DateTime? @map("last_used_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
+}
+
+model LoginAttempt {
+  id           String    @id @default(uuid()) @map("id")
+  login        String    @map("login")
+  userId       String?   @map("user_id")
+  ipAddress    String    @map("ip_address")
+  isSuccess    Boolean   @map("is_success")
+  attemptedAt  DateTime  @default(now()) @map("attempted_at")
+  blockedUntil DateTime? @map("blocked_until")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([login, attemptedAt])
+  @@index([ipAddress, attemptedAt])
+  @@index([attemptedAt])
+  @@map("login_attempts")
 }
