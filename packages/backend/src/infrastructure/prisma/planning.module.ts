@@ -4,6 +4,7 @@ import { PrismaReportingPeriodRepository } from './repositories/prisma-reporting
 import { PrismaPlannedTaskRepository } from './repositories/prisma-planned-task.repository';
 import { PrismaSprintPlanRepository } from './repositories/prisma-sprint-plan.repository';
 import { PrismaPeriodTransitionRepository } from './repositories/prisma-period-transition.repository';
+import { PrismaPeriodSnapshotRepository } from './repositories/prisma-period-snapshot.repository';
 
 /**
  * Planning Module
@@ -18,12 +19,14 @@ import { PrismaPeriodTransitionRepository } from './repositories/prisma-period-t
     PrismaPlannedTaskRepository,
     PrismaSprintPlanRepository,
     PrismaPeriodTransitionRepository,
+    PrismaPeriodSnapshotRepository,
   ],
   exports: [
     PrismaReportingPeriodRepository,
     PrismaPlannedTaskRepository,
     PrismaSprintPlanRepository,
     PrismaPeriodTransitionRepository,
+    PrismaPeriodSnapshotRepository,
   ],
 })
 export class PlanningModule {}

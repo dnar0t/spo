@@ -12,11 +12,18 @@ import { ManagerEvaluationRepository } from '../../../domain/repositories/manage
 import { EmployeeRateRepository } from '../../../domain/repositories/employee-rate.repository';
 import { FormulaConfigRepository } from '../../../domain/repositories/formula-config.repository';
 import { PlannerTaskRepository } from '../../../domain/repositories/planned-task.repository';
-import { AccessControlService, AccessContext } from '../../../domain/services/access-control.service';
+import {
+  AccessControlService,
+  AccessContext,
+} from '../../../domain/services/access-control.service';
 import { ReportCalculator } from '../../../domain/services/report-calculator.service';
 import { BusinessEvaluation } from '../../../domain/entities/business-evaluation.entity';
 import { Percentage } from '../../../domain/value-objects/percentage.vo';
-import { NotFoundError, DomainStateError, UnauthorizedError } from '../../../domain/errors/domain.error';
+import {
+  NotFoundError,
+  DomainStateError,
+  UnauthorizedError,
+} from '../../../domain/errors/domain.error';
 import { EvaluationResponseDto } from '../dto/evaluation.dto';
 
 export interface SubmitBusinessEvaluationParams {
@@ -44,7 +51,16 @@ export class SubmitBusinessEvaluationUseCase {
   ) {}
 
   async execute(params: SubmitBusinessEvaluationParams): Promise<EvaluationResponseDto> {
-    const { periodId, youtrackIssueId, evaluationType, percent, comment, evaluatedById, evaluatorRoles, isBusinessEvaluator } = params;
+    const {
+      periodId,
+      youtrackIssueId,
+      evaluationType,
+      percent,
+      comment,
+      evaluatedById,
+      evaluatorRoles,
+      isBusinessEvaluator,
+    } = params;
 
     // 1. Проверяем, что период существует
     const period = await this.reportingPeriodRepository.findById(periodId);
@@ -52,8 +68,21 @@ export class SubmitBusinessEvaluationUseCase {
       throw new NotFoundError('ReportingPeriod', periodId);
     }
 
-    // 2. Проверяем, что период в допустимом состоянии для оценок
-    if (period.state.value !== 'FACT_LOADED' && period.state.value !== 'EVALUATIONS_DONE' && period.state.value !== 'PLAN_FIXED' && period.state.value !== 'PERIOD_REOPENED') {
+    // 2. Проверяем, что период не закрыт
+    if (period.isClosed()) {
+      throw new DomainStateError(
+        `Cannot submit business evaluation for closed period ${periodId}. Period is in PERIOD_CLOSED state.`,
+        { periodId, currentState: period.state.value },
+      );
+    }
+
+    // 3. Проверяем, что период в допустимом состоянии для оценок
+    if (
+      period.state.value !== 'FACT_LOADED' &&
+      period.state.value !== 'EVALUATIONS_DONE' &&
+      period.state.value !== 'PLAN_FIXED' &&
+      period.state.value !== 'PERIOD_REOPENED'
+    ) {
       throw new DomainStateError(
         `Cannot submit business evaluation in period state "${period.state.value}". Period must be in FACT_LOADED, EVALUATIONS_DONE, PLAN_FIXED, or PERIOD_REOPENED.`,
         { periodId, currentState: period.state.value },
@@ -70,14 +99,13 @@ export class SubmitBusinessEvaluationUseCase {
     const canEdit = this.accessControlService.canEditBusinessEvaluation(context);
 
     if (!canEdit) {
-      throw new UnauthorizedError(
-        'You do not have permission to edit business evaluation',
-      );
+      throw new UnauthorizedError('You do not have permission to edit business evaluation');
     }
 
     // 4. Ищем существующую оценку по evaluationKey (periodId + issueId)
     const evaluationKey = `${periodId}_${youtrackIssueId}`;
-    const existingEvaluation = await this.businessEvaluationRepository.findByEvaluationKey(evaluationKey);
+    const existingEvaluation =
+      await this.businessEvaluationRepository.findByEvaluationKey(evaluationKey);
 
     let savedEvaluation: BusinessEvaluation;
 
@@ -125,14 +153,20 @@ export class SubmitBusinessEvaluationUseCase {
   /**
    * Пересчёт личных отчётов для всех сотрудников, работавших над задачей.
    */
-  private async recalculatePersonalReportsForIssue(periodId: string, youtrackIssueId: string): Promise<void> {
+  private async recalculatePersonalReportsForIssue(
+    periodId: string,
+    youtrackIssueId: string,
+  ): Promise<void> {
     const period = await this.reportingPeriodRepository.findById(periodId);
     if (!period) return;
 
     // Находим задачи, связанные с этим issue
     const task = await this.plannedTaskRepository.findByIssueNumber(youtrackIssueId, periodId);
     // Находим все personal report строки для этого issue
-    const reportLines = await this.personalReportRepository.findByPeriodAndIssue(periodId, youtrackIssueId);
+    const reportLines = await this.personalReportRepository.findByPeriodAndIssue(
+      periodId,
+      youtrackIssueId,
+    );
 
     // Собираем уникальных userId из reportLines
     const userIds = new Set<string>();
@@ -153,11 +187,20 @@ export class SubmitBusinessEvaluationUseCase {
       const userTasks = await this.plannedTaskRepository.findAssignedToUser(userId, periodId);
       if (userTasks.length === 0) continue;
 
-      const managerEvaluations = await this.managerEvaluationRepository.findByUserAndPeriod(userId, periodId);
-      const employeeRate = await this.employeeRateRepository.findEffectiveByUserId(userId, new Date());
+      const managerEvaluations = await this.managerEvaluationRepository.findByUserAndPeriod(
+        userId,
+        periodId,
+      );
+      const employeeRate = await this.employeeRateRepository.findEffectiveByUserId(
+        userId,
+        new Date(),
+      );
 
       // Удаляем старые строки
-      const existingReports = await this.personalReportRepository.findByPeriodAndUserId(periodId, userId);
+      const existingReports = await this.personalReportRepository.findByPeriodAndUserId(
+        periodId,
+        userId,
+      );
       for (const report of existingReports) {
         await this.personalReportRepository.delete(report.id);
       }

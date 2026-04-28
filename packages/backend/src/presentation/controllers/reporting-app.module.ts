@@ -12,7 +12,6 @@ import { GenerateSummaryReportUseCase } from '../../application/reporting/use-ca
 import { LoadFactUseCase } from '../../application/reporting/use-cases/load-fact.use-case';
 import { TransitionPeriodUseCase } from '../../application/reporting/use-cases/transition-period.use-case';
 import { GetPeriodHistoryUseCase } from '../../application/reporting/use-cases/get-period-history.use-case';
-import { ReopenPeriodUseCase } from '../../application/reporting/use-cases/reopen-period.use-case';
 import { ReportCalculator } from '../../domain/services/report-calculator.service';
 import { AccessControlService } from '../../domain/services/access-control.service';
 import { PrismaPersonalReportRepository } from '../../infrastructure/prisma/repositories/prisma-personal-report.repository';
@@ -259,19 +258,7 @@ import { SyncEngine } from '../../infrastructure/youtrack/sync-engine';
         new GetPeriodHistoryUseCase(transitionRepo),
       inject: [PrismaPeriodTransitionRepository],
     },
-    {
-      provide: ReopenPeriodUseCase,
-      useFactory: (
-        periodRepo: PrismaReportingPeriodRepository,
-        transitionRepo: PrismaPeriodTransitionRepository,
-        accessControlService: AccessControlService,
-      ) => new ReopenPeriodUseCase(periodRepo, transitionRepo, accessControlService),
-      inject: [
-        PrismaReportingPeriodRepository,
-        PrismaPeriodTransitionRepository,
-        AccessControlService,
-      ],
-    },
+
     // ─── Domain Services ───
     ReportCalculator,
     AccessControlService,

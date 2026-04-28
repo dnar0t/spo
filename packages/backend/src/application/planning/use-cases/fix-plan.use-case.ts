@@ -53,22 +53,26 @@ export class FixPlanUseCase {
     private readonly eventBus: EventBus,
   ) {}
 
-  async execute(
-    periodId: string,
-    userId: string,
-    dto?: FixPlanDto,
-  ): Promise<FixPlanResult> {
+  async execute(periodId: string, userId: string, dto?: FixPlanDto): Promise<FixPlanResult> {
     // 1. Проверяем, что период существует
     const period = await this.reportingPeriodRepository.findById(periodId);
     if (!period) {
       throw new NotFoundError('ReportingPeriod', periodId);
     }
 
-    // 2. Проверяем, что период в состоянии PLANNING
+    // 2. Проверяем, что период не закрыт
+    if (period.isClosed()) {
+      throw new DomainStateError(
+        `Cannot fix plan for closed period ${periodId}. Period is in PERIOD_CLOSED state.`,
+        { periodId, currentState: period.state.value },
+      );
+    }
+
+    // 3. Проверяем, что период в состоянии PLANNING
     if (!period.isPlanning()) {
       throw new DomainStateError(
         `Cannot fix plan for period ${periodId}: current state is "${period.state.value}". ` +
-        'Period must be in PLANNING state.',
+          'Period must be in PLANNING state.',
       );
     }
 

@@ -2,14 +2,23 @@
  * ReopenPeriodUseCase
  *
  * Переоткрытие закрытого периода (только ADMIN / DIRECTOR).
+ * При переоткрытии удаляет снэпшот данных периода.
  * Создаёт аудит-запись перехода и сохраняет причину переоткрытия.
  */
 import { ReportingPeriodRepository } from '../../../domain/repositories/reporting-period.repository';
 import { PeriodTransitionRepository } from '../../../domain/repositories/period-transition.repository';
+import { PeriodSnapshotRepository } from '../../../domain/repositories/period-snapshot.repository';
 import { PeriodTransition } from '../../../domain/entities/period-transition.entity';
 import { PeriodState } from '../../../domain/value-objects/period-state.vo';
-import { AccessControlService, AccessContext } from '../../../domain/services/access-control.service';
-import { NotFoundError, DomainStateError, UnauthorizedError } from '../../../domain/errors/domain.error';
+import {
+  AccessControlService,
+  AccessContext,
+} from '../../../domain/services/access-control.service';
+import {
+  NotFoundError,
+  DomainStateError,
+  UnauthorizedError,
+} from '../../../domain/errors/domain.error';
 
 export interface ReopenPeriodParams {
   periodId: string;
@@ -30,6 +39,7 @@ export class ReopenPeriodUseCase {
   constructor(
     private readonly reportingPeriodRepository: ReportingPeriodRepository,
     private readonly periodTransitionRepository: PeriodTransitionRepository,
+    private readonly periodSnapshotRepository: PeriodSnapshotRepository,
     private readonly accessControlService: AccessControlService,
   ) {}
 
@@ -49,9 +59,7 @@ export class ReopenPeriodUseCase {
     };
 
     if (!this.accessControlService.canReopenPeriod(context)) {
-      throw new UnauthorizedError(
-        'Only ADMIN or DIRECTOR can reopen a period',
-      );
+      throw new UnauthorizedError('Only ADMIN or DIRECTOR can reopen a period');
     }
 
     // 3. Проверяем, что период закрыт или может быть переоткрыт
@@ -59,7 +67,7 @@ export class ReopenPeriodUseCase {
     if (!period.state.canTransitionTo(targetState)) {
       throw new DomainStateError(
         `Cannot reopen period ${periodId} from state "${period.state.value}". ` +
-        `Only periods in CLOSED state can be reopened.`,
+          `Only periods in CLOSED state can be reopened.`,
         { periodId, currentState: period.state.value },
       );
     }
@@ -80,11 +88,17 @@ export class ReopenPeriodUseCase {
       reason: `Period reopened: ${reason}`,
     });
 
-    // 7. Сохраняем
+    // 7. Сохраняем переход и обновлённый период
     await this.periodTransitionRepository.save(transition);
     const savedPeriod = await this.reportingPeriodRepository.update(period);
 
-    // 8. Возвращаем результат
+    // 8. Удаляем снэпшот периода (данные больше не заморожены)
+    const existingSnapshot = await this.periodSnapshotRepository.findByPeriodId(periodId);
+    if (existingSnapshot) {
+      await this.periodSnapshotRepository.delete(existingSnapshot.id);
+    }
+
+    // 9. Возвращаем результат
     return {
       periodId: savedPeriod.id,
       previousState: previousState.value,

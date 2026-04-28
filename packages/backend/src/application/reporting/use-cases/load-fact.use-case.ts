@@ -47,7 +47,9 @@ export class LoadFactUseCase {
     private readonly eventBus?: { publish: (event: FactLoadedEvent) => Promise<void> },
   ) {}
 
-  async execute(params: LoadFactParams): Promise<{ personalReportsCount: number; summaryReportsCount: number; workItemCount: number }> {
+  async execute(
+    params: LoadFactParams,
+  ): Promise<{ personalReportsCount: number; summaryReportsCount: number; workItemCount: number }> {
     const { periodId, userId, source = 'MANUAL' } = params;
 
     // 1. Проверяем, что период существует
@@ -56,11 +58,19 @@ export class LoadFactUseCase {
       throw new NotFoundError('ReportingPeriod', periodId);
     }
 
-    // 2. Проверяем, что можно загрузить факт (период должен быть в PLAN_FIXED или PERIOD_REOPENED)
+    // 2. Проверяем, что период не закрыт
+    if (period.isClosed()) {
+      throw new DomainStateError(
+        `Cannot load fact for closed period ${periodId}. Period is in PERIOD_CLOSED state.`,
+        { periodId, currentState: period.state.value },
+      );
+    }
+
+    // 3. Проверяем, что можно загрузить факт (период должен быть в PLAN_FIXED или PERIOD_REOPENED)
     if (!period.state.canTransitionTo(PeriodState.factLoaded())) {
       throw new DomainStateError(
         `Cannot load fact for period ${periodId} in state "${period.state.value}". ` +
-        `Current state must allow transition to FACT_LOADED.`,
+          `Current state must allow transition to FACT_LOADED.`,
         { periodId, currentState: period.state.value },
       );
     }
@@ -110,7 +120,9 @@ export class LoadFactUseCase {
   /**
    * Пересчёт отчётов периода: удаляем старые и генерируем новые.
    */
-  private async recalculateReports(periodId: string): Promise<{ personal: number; summary: number }> {
+  private async recalculateReports(
+    periodId: string,
+  ): Promise<{ personal: number; summary: number }> {
     // Получаем период
     const period = await this.reportingPeriodRepository.findById(periodId);
     if (!period) throw new NotFoundError('ReportingPeriod', periodId);
@@ -136,16 +148,22 @@ export class LoadFactUseCase {
 
     // Генерируем персональные отчёты для каждого сотрудника
     for (const userId of assigneeIds) {
-      const userTasks = plannedTasks.filter(t => t.assigneeId === userId);
+      const userTasks = plannedTasks.filter((t) => t.assigneeId === userId);
 
       if (userTasks.length === 0) continue;
 
       // Получаем оценки
-      const managerEval = await this.managerEvaluationRepository.findByUserAndPeriod(userId, periodId);
+      const managerEval = await this.managerEvaluationRepository.findByUserAndPeriod(
+        userId,
+        periodId,
+      );
       const businessEval = await this.businessEvaluationRepository.findByPeriod(periodId);
 
       // Получаем ставку сотрудника
-      const employeeRate = await this.employeeRateRepository.findEffectiveByUserId(userId, new Date());
+      const employeeRate = await this.employeeRateRepository.findEffectiveByUserId(
+        userId,
+        new Date(),
+      );
 
       // Генерируем строки личного отчёта
       const personalLines = this.reportCalculator.generatePersonalLines({

@@ -8,6 +8,7 @@ import { PlanningAppModule } from './presentation/controllers/planning-app.modul
 import { AuthAppModule } from './presentation/controllers/auth-app.module';
 import { AdminAppModule } from './presentation/controllers/admin-app.module';
 import { FinanceAppModule } from './presentation/controllers/finance-app.module';
+import { PeriodClosingAppModule } from './presentation/controllers/period-closing-app.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { FinanceAppModule } from './presentation/controllers/finance-app.module'
     AdminAppModule,
     ReportingAppModule,
     FinanceAppModule,
+    PeriodClosingAppModule,
   ],
   controllers: [HealthController],
   providers: [],

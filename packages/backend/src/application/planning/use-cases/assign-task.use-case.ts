@@ -56,19 +56,24 @@ export class AssignTaskUseCase {
       throw new NotFoundError('ReportingPeriod', periodId);
     }
 
-    // 2. Проверяем, что период в editable состоянии
+    // 2. Проверяем, что период не закрыт
+    if (period.isClosed()) {
+      throw new DomainStateError(
+        `Cannot assign task for closed period ${periodId}. Period is in PERIOD_CLOSED state.`,
+        { periodId, currentState: period.state.value },
+      );
+    }
+
+    // 3. Проверяем, что период в editable состоянии
     if (!period.canEditPlan()) {
       throw new DomainStateError(
         `Cannot assign task in period ${periodId}: current state is "${period.state.value}". ` +
-        'Period must be in PLANNING or PERIOD_REOPENED state.',
+          'Period must be in PLANNING or PERIOD_REOPENED state.',
       );
     }
 
     // 3. Ищем существующую задачу или создаём новую
-    let task = await this.plannedTaskRepository.findByIssueNumber(
-      issueNumber,
-      periodId,
-    );
+    let task = await this.plannedTaskRepository.findByIssueNumber(issueNumber, periodId);
 
     if (!task) {
       // Получаем максимальный sortOrder для нового элемента

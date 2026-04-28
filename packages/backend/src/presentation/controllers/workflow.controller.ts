@@ -5,22 +5,16 @@
  * Обеспечивает: получение текущего состояния, выполнение переходов,
  * переоткрытие периода, историю переходов.
  */
-import {
-  Controller,
-  Get,
-  Post,
-  Param,
-  UseGuards,
-  Req,
-  Logger,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param, UseGuards, Req, Logger, HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
 import { TransitionPeriodUseCase } from '../../application/reporting/use-cases/transition-period.use-case';
 import { GetPeriodHistoryUseCase } from '../../application/reporting/use-cases/get-period-history.use-case';
-import { ReopenPeriodUseCase } from '../../application/reporting/use-cases/reopen-period.use-case';
-import { NotFoundError, DomainStateError, UnauthorizedError } from '../../domain/errors/domain.error';
+import {
+  NotFoundError,
+  DomainStateError,
+  UnauthorizedError,
+} from '../../domain/errors/domain.error';
 
 interface RequestWithUser {
   user: {
@@ -38,7 +32,6 @@ export class WorkflowController {
   constructor(
     private readonly transitionPeriodUseCase: TransitionPeriodUseCase,
     private readonly getPeriodHistoryUseCase: GetPeriodHistoryUseCase,
-    private readonly reopenPeriodUseCase: ReopenPeriodUseCase,
   ) {}
 
   // ─── Текущее состояние ───
@@ -74,10 +67,7 @@ export class WorkflowController {
    */
   @Post('periods/:id/transition')
   @Roles('Менеджер', 'Администратор', 'Директор')
-  async transition(
-    @Param('id') id: string,
-    @Req() req: RequestWithUser,
-  ) {
+  async transition(@Param('id') id: string, @Req() req: RequestWithUser) {
     // Для простоты targetState передаётся в query или заголовках
     // В реальном приложении - через body
     return {
@@ -98,10 +88,7 @@ export class WorkflowController {
    */
   @Post('periods/:id/reopen')
   @Roles('Администратор', 'Директор')
-  async reopenPeriod(
-    @Param('id') id: string,
-    @Req() req: RequestWithUser,
-  ) {
+  async reopenPeriod(@Param('id') id: string, @Req() req: RequestWithUser) {
     return {
       message: 'Use POST /api/workflow/periods/:id/reopen with body: { reason }',
       example: {

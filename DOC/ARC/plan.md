@@ -23,13 +23,12 @@
 - [x] План приведён к чекбокс-формату: Completed / In Progress / TODO / Blocked / Testing Needed
 - [x] Part 6 — Sprint Planning (@Agent-Planning)
 - [x] Part 7 — Period Workflow, Fact Loading, Report Recalculation (@Agent-Reporting)
+- [x] Part 8 — Finance, Evaluations, Cost Calculation (@Agent-Finance)
+- [x] Part 9 — Period Closing, Snapshots, Reopen (@Agent-Planning)
 
 ---
 
 ## 🔄 In Progress
-
-- [ ] Part 8 — Finance, Evaluations, Cost Calculation (@Agent-Finance)
-
 
 
 
@@ -158,13 +157,13 @@
 
 ### Part 9 — Period Closing, Snapshots, Reopen
 
-- [ ] Реализовать close period use case (@Agent-Planning)
-- [ ] Реализовать snapshot employee rates, formulas и evaluation scales (@Agent-Finance)
-- [ ] Реализовать snapshot work items, issues и hierarchy (@Agent-Reporting)
-- [ ] Реализовать snapshot report lines and aggregates (@Agent-Reporting)
-- [ ] Реализовать read-only guards for closed periods (@Agent-Security)
-- [ ] Реализовать reopen period by director (@Agent-Planning)
-- [ ] Реализовать audit для close/reopen (@Agent-Security)
+- [x] Реализовать close period use case (@Agent-Planning)
+- [x] Реализовать snapshot employee rates, formulas и evaluation scales (@Agent-Finance)
+- [x] Реализовать snapshot work items, issues и hierarchy (@Agent-Reporting)
+- [x] Реализовать snapshot report lines and aggregates (@Agent-Reporting)
+- [x] Реализовать read-only guards for closed periods (@Agent-Security)
+- [x] Реализовать reopen period by director (@Agent-Planning)
+- [x] Реализовать audit для close/reopen (@Agent-Security)
 - [ ] Реализовать frontend close/reopen flow (@Agent-Frontend)
 - [ ] Реализовать regression tests: closed report immutability (@Agent-QA)
 - [ ] Обновить `context.md` после завершения Part 9 (@Agent-Orchestrator)

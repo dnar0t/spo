@@ -33,16 +33,24 @@ export class UnassignTaskUseCase {
       throw new NotFoundError('PlannedTask', taskId);
     }
 
-    // 2. Проверяем, что период в editable состоянии
+    // 2. Проверяем, что период не закрыт
     const period = await this.reportingPeriodRepository.findById(task.periodId);
     if (!period) {
       throw new NotFoundError('ReportingPeriod', task.periodId);
     }
 
+    if (period.isClosed()) {
+      throw new DomainStateError(
+        `Cannot unassign task for closed period ${task.periodId}. Period is in PERIOD_CLOSED state.`,
+        { periodId: task.periodId, currentState: period.state.value },
+      );
+    }
+
+    // 3. Проверяем, что период в editable состоянии
     if (!period.canEditPlan()) {
       throw new DomainStateError(
         `Cannot unassign task in period ${task.periodId}: current state is "${period.state.value}". ` +
-        'Period must be in PLANNING or PERIOD_REOPENED state.',
+          'Period must be in PLANNING or PERIOD_REOPENED state.',
       );
     }
 
