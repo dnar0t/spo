@@ -16,9 +16,7 @@ import { PeriodResponseDto } from '../dto/period-response.dto';
 import { NotFoundError, DomainStateError } from '../../../domain/errors/domain.error';
 
 export class UpdatePeriodUseCase {
-  constructor(
-    private readonly reportingPeriodRepository: ReportingPeriodRepository,
-  ) {}
+  constructor(private readonly reportingPeriodRepository: ReportingPeriodRepository) {}
 
   async execute(periodId: string, dto: UpdatePeriodDto): Promise<PeriodResponseDto> {
     // 1. Находим период по ID
@@ -31,7 +29,7 @@ export class UpdatePeriodUseCase {
     if (!period.canEditPlan()) {
       throw new DomainStateError(
         `Cannot update period ${periodId}: current state is "${period.state.value}". ` +
-        'Period must be in PLANNING or PERIOD_REOPENED state.',
+          'Period must be in PLANNING or PERIOD_REOPENED state.',
       );
     }
 
@@ -49,31 +47,27 @@ export class UpdatePeriodUseCase {
       period.updatePercentages({
         reservePercent:
           dto.reservePercent !== undefined
-            ? Percentage.fromBasisPoints(dto.reservePercent)
+            ? Percentage.fromPercent(dto.reservePercent * 100)
             : undefined,
         testPercent:
-          dto.testPercent !== undefined
-            ? Percentage.fromBasisPoints(dto.testPercent)
-            : undefined,
+          dto.testPercent !== undefined ? Percentage.fromPercent(dto.testPercent * 100) : undefined,
         debugPercent:
           dto.debugPercent !== undefined
-            ? Percentage.fromBasisPoints(dto.debugPercent)
+            ? Percentage.fromPercent(dto.debugPercent * 100)
             : undefined,
         mgmtPercent:
-          dto.mgmtPercent !== undefined
-            ? Percentage.fromBasisPoints(dto.mgmtPercent)
-            : undefined,
+          dto.mgmtPercent !== undefined ? Percentage.fromPercent(dto.mgmtPercent * 100) : undefined,
       });
     }
 
     if (dto.yellowThreshold !== undefined || dto.redThreshold !== undefined) {
       const yellow =
         dto.yellowThreshold !== undefined
-          ? Percentage.fromBasisPoints(dto.yellowThreshold)
+          ? Percentage.fromPercent(dto.yellowThreshold * 100)
           : period.yellowThreshold;
       const red =
         dto.redThreshold !== undefined
-          ? Percentage.fromBasisPoints(dto.redThreshold)
+          ? Percentage.fromPercent(dto.redThreshold * 100)
           : period.redThreshold;
       period.updateThresholds(yellow, red);
     }
@@ -88,12 +82,9 @@ export class UpdatePeriodUseCase {
       dto.priorityFilter !== undefined
     ) {
       period.updateFilters({
-        employeeFilter:
-          dto.employeeFilter !== undefined ? dto.employeeFilter : undefined,
-        projectFilter:
-          dto.projectFilter !== undefined ? dto.projectFilter : undefined,
-        priorityFilter:
-          dto.priorityFilter !== undefined ? dto.priorityFilter : undefined,
+        employeeFilter: dto.employeeFilter !== undefined ? dto.employeeFilter : undefined,
+        projectFilter: dto.projectFilter !== undefined ? dto.projectFilter : undefined,
+        priorityFilter: dto.priorityFilter !== undefined ? dto.priorityFilter : undefined,
       });
     }
 

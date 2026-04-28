@@ -16,7 +16,10 @@
 import { ReportingPeriodRepository } from '../../../domain/repositories/reporting-period.repository';
 import { PlannedTaskRepository } from '../../../domain/repositories/planned-task.repository';
 import { UserRepository } from '../../../domain/repositories/user.repository';
-import { CapacityCalculator, CapacityCalculationResult } from '../../../domain/services/capacity-calculator.service';
+import {
+  CapacityCalculator,
+  CapacityCalculationResult,
+} from '../../../domain/services/capacity-calculator.service';
 import { Percentage } from '../../../domain/value-objects/percentage.vo';
 import { Minutes } from '../../../domain/value-objects/minutes.vo';
 import { NotFoundError } from '../../../domain/errors/domain.error';
@@ -71,7 +74,7 @@ export class GetCapacityUseCase {
 
     // 2. Определяем параметры расчёта
     const workHoursPerMonth = period.workHoursPerMonth ?? 168; // 168 часов = 21 день × 8 часов
-    const reservePercent = period.reservePercent ?? Percentage.fromPercent(0.3);
+    const reservePercent = period.reservePercent ?? Percentage.fromPercent(30);
     const yellowThreshold = period.yellowThreshold ?? Percentage.fromPercent(80);
     const redThreshold = period.redThreshold ?? Percentage.fromPercent(100);
 
@@ -89,10 +92,7 @@ export class GetCapacityUseCase {
 
     for (const user of allUsers) {
       // 4a. Загружаем задачи, назначенные на этого сотрудника в данном периоде
-      const assignedTasks = await this.plannedTaskRepository.findAssignedToUser(
-        user.id,
-        periodId,
-      );
+      const assignedTasks = await this.plannedTaskRepository.findAssignedToUser(user.id, periodId);
 
       // 4b. Суммируем запланированное время
       let totalPlannedMinutes = Minutes.zero();
@@ -117,7 +117,7 @@ export class GetCapacityUseCase {
         employeeId: user.id,
         fullName: user.fullName,
         availableHours: result.availableMinutes.hours,
-        plannedHours: result.loadPercent.percent * result.availableMinutes.hours / 100,
+        plannedHours: (result.loadPercent.percent * result.availableMinutes.hours) / 100,
         loadPercent: result.loadPercent.percent,
         loadZone: result.loadZone,
         taskCount: assignedTasks.length,

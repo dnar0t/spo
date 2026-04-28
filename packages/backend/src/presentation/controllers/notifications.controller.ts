@@ -63,7 +63,7 @@ export class NotificationsController {
    * Список всех шаблонов уведомлений (ADMIN).
    */
   @Get('templates')
-  @Roles('Администратор')
+  @Roles('admin')
   async getTemplates() {
     return await this.getNotificationTemplatesUseCase.execute();
   }
@@ -73,7 +73,7 @@ export class NotificationsController {
    * Создание нового шаблона уведомления (ADMIN).
    */
   @Post('templates')
-  @Roles('Администратор')
+  @Roles('admin')
   @HttpCode(HttpStatus.CREATED)
   async createTemplate(
     @Body() body: { eventName: string; subject: string; body: string; isActive?: boolean },
@@ -97,7 +97,7 @@ export class NotificationsController {
    * Обновление шаблона уведомления (ADMIN).
    */
   @Put('templates/:id')
-  @Roles('Администратор')
+  @Roles('admin')
   async updateTemplate(
     @Param('id') id: string,
     @Body() body: { eventName?: string; subject?: string; body?: string; isActive?: boolean },
@@ -127,7 +127,7 @@ export class NotificationsController {
    * Пароль возвращается в замаскированном виде.
    */
   @Get('smtp')
-  @Roles('Администратор')
+  @Roles('admin')
   async getSmtpConfig() {
     const config = await this.getSmtpConfigUseCase.execute();
     if (!config) {
@@ -141,7 +141,7 @@ export class NotificationsController {
    * Обновление SMTP конфигурации (ADMIN).
    */
   @Put('smtp')
-  @Roles('Администратор')
+  @Roles('admin')
   async updateSmtpConfig(
     @Body()
     body: {
@@ -176,7 +176,7 @@ export class NotificationsController {
    * Тестирование SMTP подключения (ADMIN).
    */
   @Post('smtp/test')
-  @Roles('Администратор')
+  @Roles('admin')
   async testSmtpConnection(@Req() req: RequestWithUser) {
     const config = await this.getSmtpConfigUseCase.execute();
 
@@ -207,7 +207,7 @@ export class NotificationsController {
    * Получение истории отправки уведомлений (ADMIN).
    */
   @Get('history')
-  @Roles('Администратор')
+  @Roles('admin')
   async getHistory(
     @Query('recipientId') recipientId?: string,
     @Query('eventName') eventName?: string,
@@ -256,7 +256,7 @@ export class NotificationsController {
    * Запуск обработки PENDING уведомлений (ADMIN).
    */
   @Post('process-pending')
-  @Roles('Администратор')
+  @Roles('admin')
   @HttpCode(HttpStatus.ACCEPTED)
   async processPending() {
     return {

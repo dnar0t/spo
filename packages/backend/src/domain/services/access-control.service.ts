@@ -53,11 +53,7 @@ export class AccessControlService {
    * - Пользователь является руководителем целевого сотрудника;
    * - Пользователь имеет роль ADMIN, DIRECTOR, HR или SUPER_HR.
    */
-  canViewPersonalReport(
-    viewerId: string,
-    targetUserId: string,
-    context: AccessContext,
-  ): boolean {
+  canViewPersonalReport(viewerId: string, targetUserId: string, context: AccessContext): boolean {
     // Свой отчёт можно смотреть всегда
     if (viewerId === targetUserId) {
       return true;
@@ -69,7 +65,7 @@ export class AccessControlService {
     }
 
     // Административные роли имеют доступ ко всем отчётам
-    return this.hasRole(context, 'ADMIN', 'DIRECTOR', 'HR', 'SUPER_HR');
+    return this.hasRole(context, 'admin', 'director', 'hr', 'super_hr');
   }
 
   /**
@@ -91,7 +87,7 @@ export class AccessControlService {
     }
 
     // Административные роли
-    return this.hasRole(context, 'ADMIN', 'DIRECTOR');
+    return this.hasRole(context, 'admin', 'director');
   }
 
   /**
@@ -106,7 +102,7 @@ export class AccessControlService {
       return true;
     }
 
-    return this.hasRole(context, 'ADMIN', 'DIRECTOR');
+    return this.hasRole(context, 'admin', 'director');
   }
 
   /**
@@ -121,7 +117,7 @@ export class AccessControlService {
       return true;
     }
 
-    return this.hasRole(context, 'ADMIN', 'DIRECTOR', 'FINANCE');
+    return this.hasRole(context, 'admin', 'director', 'finance');
   }
 
   /**
@@ -131,15 +127,12 @@ export class AccessControlService {
    * - Руководителю этого сотрудника (управляет ставками подчинённых);
    * - Пользователям с ролью ADMIN, DIRECTOR или HR.
    */
-  canManageRates(
-    targetUserId: string,
-    context: AccessContext,
-  ): boolean {
+  canManageRates(targetUserId: string, context: AccessContext): boolean {
     if (context.isManagerOf?.(targetUserId)) {
       return true;
     }
 
-    return this.hasRole(context, 'ADMIN', 'DIRECTOR', 'HR');
+    return this.hasRole(context, 'admin', 'director', 'hr');
   }
 
   /**
@@ -148,7 +141,7 @@ export class AccessControlService {
    * Разрешено только пользователям с ролью ADMIN или DIRECTOR.
    */
   canReopenPeriod(context: AccessContext): boolean {
-    return this.hasRole(context, 'ADMIN', 'DIRECTOR');
+    return this.hasRole(context, 'admin', 'director');
   }
 
   /**
@@ -169,6 +162,6 @@ export class AccessControlService {
    * Разрешено только пользователям с ролью DIRECTOR (директор).
    */
   canModifyFixedPlan(context: AccessContext): boolean {
-    return this.hasRole(context, 'DIRECTOR');
+    return this.hasRole(context, 'director');
   }
 }

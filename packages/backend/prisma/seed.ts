@@ -147,19 +147,76 @@ async function main() {
   // ─── Evaluation Scales (Formula Configurations) ───
   const formulas = [
     // Manager evaluation scales
-    { name: 'manager_eval_excellent', formulaType: 'MANAGER_EVAL', value: 13000, description: 'Оценка руководителя: Отлично (130%)' },
-    { name: 'manager_eval_good', formulaType: 'MANAGER_EVAL', value: 11000, description: 'Оценка руководителя: Хорошо (110%)' },
-    { name: 'manager_eval_satisfactory', formulaType: 'MANAGER_EVAL', value: 10000, description: 'Оценка руководителя: Удовлетворительно (100%)' },
-    { name: 'manager_eval_unsatisfactory', formulaType: 'MANAGER_EVAL', value: 7000, description: 'Оценка руководителя: Неудовлетворительно (70%)' },
+    {
+      name: 'manager_eval_excellent',
+      formulaType: 'MANAGER_EVAL',
+      value: 13000,
+      description: 'Оценка руководителя: Отлично (130%)',
+    },
+    {
+      name: 'manager_eval_good',
+      formulaType: 'MANAGER_EVAL',
+      value: 11000,
+      description: 'Оценка руководителя: Хорошо (110%)',
+    },
+    {
+      name: 'manager_eval_satisfactory',
+      formulaType: 'MANAGER_EVAL',
+      value: 10000,
+      description: 'Оценка руководителя: Удовлетворительно (100%)',
+    },
+    {
+      name: 'manager_eval_unsatisfactory',
+      formulaType: 'MANAGER_EVAL',
+      value: 7000,
+      description: 'Оценка руководителя: Неудовлетворительно (70%)',
+    },
     // Business evaluation scales
-    { name: 'business_eval_direct_profit', formulaType: 'BUSINESS_EVAL', value: 15000, description: 'Оценка бизнеса: Прямая выгода (150%)' },
-    { name: 'business_eval_obvious_benefit', formulaType: 'BUSINESS_EVAL', value: 12500, description: 'Оценка бизнеса: Польза очевидна (125%)' },
-    { name: 'business_eval_useful', formulaType: 'BUSINESS_EVAL', value: 10000, description: 'Оценка бизнеса: Полезно (100%)' },
-    { name: 'business_eval_neutral', formulaType: 'BUSINESS_EVAL', value: 8000, description: 'Оценка бизнеса: Нейтрально (80%)' },
+    {
+      name: 'business_eval_direct_profit',
+      formulaType: 'BUSINESS_EVAL',
+      value: 15000,
+      description: 'Оценка бизнеса: Прямая выгода (150%)',
+    },
+    {
+      name: 'business_eval_obvious_benefit',
+      formulaType: 'BUSINESS_EVAL',
+      value: 12500,
+      description: 'Оценка бизнеса: Польза очевидна (125%)',
+    },
+    {
+      name: 'business_eval_useful',
+      formulaType: 'BUSINESS_EVAL',
+      value: 10000,
+      description: 'Оценка бизнеса: Полезно (100%)',
+    },
+    {
+      name: 'business_eval_neutral',
+      formulaType: 'BUSINESS_EVAL',
+      value: 8000,
+      description: 'Оценка бизнеса: Нейтрально (80%)',
+    },
+    // Base percent (базовый процент для расчёта зарплаты, ТЗ §14.5)
+    {
+      name: 'base_percent',
+      formulaType: 'BASE_PERCENT',
+      value: 7000,
+      description: 'Базовый процент: 70% (0.7) — basis points 7000',
+    },
     // Tax formulas
     { name: 'ndfl_rate', formulaType: 'NDFL', value: 1300, description: 'НДФЛ: 13%' },
-    { name: 'insurance_rate', formulaType: 'INSURANCE', value: 3020, description: 'Страховые взносы: 30.2%' },
-    { name: 'reserve_vacation_rate', formulaType: 'RESERVE', value: 1210, description: 'Резерв отпускных: 12.1%' },
+    {
+      name: 'insurance_rate',
+      formulaType: 'INSURANCE',
+      value: 3020,
+      description: 'Страховые взносы: 30.2%',
+    },
+    {
+      name: 'reserve_vacation_rate',
+      formulaType: 'RESERVE',
+      value: 1210,
+      description: 'Резерв отпускных: 12.1%',
+    },
   ];
 
   for (const formula of formulas) {
@@ -197,12 +254,36 @@ async function main() {
 
   // ─── Notification Templates ───
   const notificationTemplates = [
-    { eventName: 'period.opened', subject: 'Период {{periodName}} открыт', body: 'Период {{periodName}} открыт для планирования.' },
-    { eventName: 'period.closed', subject: 'Период {{periodName}} закрыт', body: 'Период {{periodName}} закрыт. Отчёты доступны для просмотра.' },
-    { eventName: 'plan.fixed', subject: 'План на {{periodName}} зафиксирован', body: 'План на период {{periodName}} был зафиксирован.' },
-    { eventName: 'sync.completed', subject: 'Синхронизация с YouTrack завершена', body: 'Синхронизация завершена: создано {{created}}, обновлено {{updated}}.' },
-    { eventName: 'sync.failed', subject: 'Ошибка синхронизации с YouTrack', body: 'Синхронизация с YouTrack не удалась: {{error}}.' },
-    { eventName: 'report.ready', subject: 'Отчёт за {{periodName}} готов', body: 'Итоговый отчёт за период {{periodName}} сформирован.' },
+    {
+      eventName: 'period.opened',
+      subject: 'Период {{periodName}} открыт',
+      body: 'Период {{periodName}} открыт для планирования.',
+    },
+    {
+      eventName: 'period.closed',
+      subject: 'Период {{periodName}} закрыт',
+      body: 'Период {{periodName}} закрыт. Отчёты доступны для просмотра.',
+    },
+    {
+      eventName: 'plan.fixed',
+      subject: 'План на {{periodName}} зафиксирован',
+      body: 'План на период {{periodName}} был зафиксирован.',
+    },
+    {
+      eventName: 'sync.completed',
+      subject: 'Синхронизация с YouTrack завершена',
+      body: 'Синхронизация завершена: создано {{created}}, обновлено {{updated}}.',
+    },
+    {
+      eventName: 'sync.failed',
+      subject: 'Ошибка синхронизации с YouTrack',
+      body: 'Синхронизация с YouTrack не удалась: {{error}}.',
+    },
+    {
+      eventName: 'report.ready',
+      subject: 'Отчёт за {{periodName}} готов',
+      body: 'Итоговый отчёт за период {{periodName}} сформирован.',
+    },
   ];
 
   for (const tmpl of notificationTemplates) {

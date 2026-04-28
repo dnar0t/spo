@@ -29,14 +29,9 @@ export class CreatePeriodUseCase {
     }
 
     // 2. Проверяем, что период с таким month/year ещё не существует
-    const existing = await this.reportingPeriodRepository.findByMonthYear(
-      dto.month,
-      dto.year,
-    );
+    const existing = await this.reportingPeriodRepository.findByMonthYear(dto.month, dto.year);
     if (existing) {
-      throw new ConflictError(
-        `Reporting period for ${dto.month}/${dto.year} already exists`,
-      );
+      throw new ConflictError(`Reporting period for ${dto.month}/${dto.year} already exists`);
     }
 
     // 3. Создаём период через фабричный метод доменной сущности
@@ -46,28 +41,22 @@ export class CreatePeriodUseCase {
       workHoursPerMonth: dto.workHoursPerMonth ?? null,
       reservePercent:
         dto.reservePercent !== undefined
-          ? Percentage.fromBasisPoints(dto.reservePercent)
+          ? Percentage.fromPercent(dto.reservePercent * 100) // float 0..1 → проценты → basis points
           : null,
       testPercent:
         dto.testPercent !== undefined
-          ? Percentage.fromBasisPoints(dto.testPercent)
+          ? Percentage.fromPercent(dto.testPercent * 100) // float 0..1 → проценты → basis points
           : null,
       debugPercent:
-        dto.debugPercent !== undefined
-          ? Percentage.fromBasisPoints(dto.debugPercent)
-          : null,
+        dto.debugPercent !== undefined ? Percentage.fromPercent(dto.debugPercent * 100) : null,
       mgmtPercent:
-        dto.mgmtPercent !== undefined
-          ? Percentage.fromBasisPoints(dto.mgmtPercent)
-          : null,
+        dto.mgmtPercent !== undefined ? Percentage.fromPercent(dto.mgmtPercent * 100) : null,
       yellowThreshold:
         dto.yellowThreshold !== undefined
-          ? Percentage.fromBasisPoints(dto.yellowThreshold)
+          ? Percentage.fromPercent(dto.yellowThreshold * 100)
           : null,
       redThreshold:
-        dto.redThreshold !== undefined
-          ? Percentage.fromBasisPoints(dto.redThreshold)
-          : null,
+        dto.redThreshold !== undefined ? Percentage.fromPercent(dto.redThreshold * 100) : null,
       businessGroupingLevel: dto.businessGroupingLevel ?? null,
       employeeFilter: dto.employeeIds ?? null,
       projectFilter: dto.projectFilter ?? null,

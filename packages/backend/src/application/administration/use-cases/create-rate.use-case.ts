@@ -22,8 +22,13 @@ export class CreateRateUseCase {
     context?: { ipAddress?: string; userAgent?: string },
   ): Promise<RateResponseDto> {
     // 1. Конвертация входных данных
-    const monthlySalaryKopecks = Math.round(dto.monthlySalary * 100);
-    const annualMinutes = Math.round(dto.annualHours * 60);
+    // Поддерживаем как старые имена полей (monthlySalary, annualHours),
+    // так и новые (monthlyNetRub, workHoursPerYear)
+    const monthlySalaryRub = dto.monthlySalary ?? dto.monthlyNetRub;
+    const annualHours = dto.annualHours ?? dto.workHoursPerYear;
+
+    const monthlySalaryKopecks = Math.round(monthlySalaryRub * 100);
+    const annualMinutes = Math.round(annualHours * 60);
     const effectiveFrom = new Date(dto.effectiveFrom);
 
     if (isNaN(effectiveFrom.getTime())) {
@@ -85,7 +90,9 @@ export class CreateRateUseCase {
       id: savedRate.id,
       userId: savedRate.userId,
       monthlySalary: savedRate.monthlySalary.rubles,
+      monthlyNetRub: savedRate.monthlySalary.rubles,
       annualHours: savedRate.annualHours / 60,
+      workHoursPerYear: savedRate.annualHours / 60,
       hourlyRate: savedRate.hourlyRate.rublesPerHour,
       effectiveFrom: savedRate.effectiveFrom.toISOString(),
       effectiveTo: savedRate.effectiveTo?.toISOString() ?? null,

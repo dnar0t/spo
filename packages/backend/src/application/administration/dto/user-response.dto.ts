@@ -2,6 +2,7 @@
  * UserResponseDto
  *
  * DTO для ответа с данными пользователя.
+ * Включает основные поля, а также ABAC-атрибуты, 2FA и источник.
  */
 export class UserResponseDto {
   id: string;
@@ -12,4 +13,15 @@ export class UserResponseDto {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+
+  // ABAC-атрибуты для системы разграничения доступа
+  abacProjects: string[];
+  abacSystems: string[];
+  abacRoles: string[];
+
+  // Двухфакторная аутентификация
+  twoFactorEnabled: boolean;
+
+  // Источник данных пользователя (например, 'youtrack', 'ad', 'manual')
+  source: string;
 }

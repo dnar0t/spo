@@ -79,7 +79,7 @@
 - [x] Реализовать ABAC `AccessControlService` (canViewPersonalReport, canEditManagerEvaluation, canEditBusinessEvaluation, canViewFinance, canManageRates, canReopenPeriod, canModifyFixedPlan) (@Agent-Security)
 - [x] Реализовать `AuditLogger` (через Prisma в таблицу AuditLog) (@Agent-Security)
 - [x] Реализовать encrypted secrets storage (`EncryptionService` AES-256-GCM) и маскинг секретов в API (@Agent-Security)
-- [ ] Создать frontend login page и route protection (@Agent-Frontend)
+- [x] Создать frontend login page и route protection (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 3 (@Agent-Orchestrator)
 
 ### Part 4 — Administration and Dictionaries

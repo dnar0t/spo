@@ -154,7 +154,7 @@ export class ReportingController {
    * Создание оценки руководителя.
    */
   @Post('evaluations/manager')
-  @Roles('Менеджер', 'Администратор', 'Директор')
+  @Roles('manager', 'admin', 'director')
   async createManagerEvaluation(
     @Body() body: CreateManagerEvaluationRequestDto,
     @Req() req: RequestWithUser,
@@ -176,7 +176,7 @@ export class ReportingController {
    * Обновление оценки руководителя по ID.
    */
   @Put('evaluations/manager/:id')
-  @Roles('Менеджер', 'Администратор', 'Директор')
+  @Roles('manager', 'admin', 'director')
   async updateManagerEvaluation(
     @Param('id') id: string,
     @Body() body: UpdateManagerEvaluationRequestDto,
@@ -213,7 +213,7 @@ export class ReportingController {
    * Создание бизнес-оценки.
    */
   @Post('evaluations/business')
-  @Roles('Бизнес-оценщик', 'Администратор', 'Директор')
+  @Roles('business', 'admin', 'director')
   async createBusinessEvaluation(
     @Body() body: CreateBusinessEvaluationRequestDto,
     @Req() req: RequestWithUser,
@@ -234,7 +234,7 @@ export class ReportingController {
    * Обновление бизнес-оценки по ID.
    */
   @Put('evaluations/business/:id')
-  @Roles('Бизнес-оценщик', 'Администратор', 'Директор')
+  @Roles('business', 'admin', 'director')
   async updateBusinessEvaluation(
     @Param('id') id: string,
     @Body() body: UpdateBusinessEvaluationRequestDto,
@@ -271,7 +271,7 @@ export class ReportingController {
    * Пересчёт отчётов периода (только ADMIN).
    */
   @Post('periods/:id/recalculate')
-  @Roles('Администратор', 'Директор')
+  @Roles('admin', 'director')
   async recalculateReports(@Param('id') id: string) {
     const personalResult = await this.generatePersonalReportsUseCase.execute({
       periodId: id,

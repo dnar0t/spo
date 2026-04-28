@@ -8,9 +8,11 @@ import { PlanningAppModule } from './presentation/controllers/planning-app.modul
 import { AuthAppModule } from './presentation/controllers/auth-app.module';
 import { AdminAppModule } from './presentation/controllers/admin-app.module';
 import { FinanceAppModule } from './presentation/controllers/finance-app.module';
+import { DashboardAppModule } from './presentation/controllers/dashboard-app.module';
 import { PeriodClosingAppModule } from './presentation/controllers/period-closing-app.module';
 import { ExportAppModule } from './presentation/controllers/export-app.module';
 import { NotificationsAppModule } from './presentation/controllers/notifications-app.module';
+import { TimesheetAppModule } from './presentation/controllers/timesheet-app.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { NotificationsAppModule } from './presentation/controllers/notifications
     PeriodClosingAppModule,
     ExportAppModule,
     NotificationsAppModule,
+    TimesheetAppModule,
+    DashboardAppModule,
   ],
   controllers: [HealthController],
   providers: [],

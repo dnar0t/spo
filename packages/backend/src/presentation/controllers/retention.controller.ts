@@ -29,7 +29,7 @@ export class RetentionController {
    */
   @Post('run')
   @HttpCode(HttpStatus.OK)
-  @Roles('ADMIN')
+  @Roles('admin')
   async runRetention() {
     this.logger.log('Manual retention run requested');
 
@@ -47,7 +47,7 @@ export class RetentionController {
    * GET /api/admin/retention/stats
    */
   @Get('stats')
-  @Roles('ADMIN')
+  @Roles('admin')
   async getStats() {
     this.logger.log('Retention stats requested');
 

@@ -69,6 +69,11 @@ export class CreateUserUseCase {
       isActive: savedUser.isActive,
       createdAt: savedUser.createdAt,
       updatedAt: savedUser.updatedAt,
+      abacProjects: [],
+      abacSystems: [],
+      abacRoles: [],
+      twoFactorEnabled: false,
+      source: 'manual',
     };
   }
 }

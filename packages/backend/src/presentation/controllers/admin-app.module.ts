@@ -13,12 +13,15 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../../infrastructure/auth/auth.module';
 import { AdministrationModule } from '../../infrastructure/prisma/administration.module';
 import { PrismaEmployeeProfileRepository } from '../../infrastructure/prisma/repositories/prisma-employee-profile.repository';
+import { PrismaRefreshSessionRepository } from '../../infrastructure/prisma/repositories/prisma-refresh-session.repository';
+import { PrismaAuditLogRepository } from '../../infrastructure/prisma/repositories/prisma-audit-log.repository';
 import { PrismaEmployeeRateRepository } from '../../infrastructure/prisma/repositories/prisma-employee-rate.repository';
 import { PrismaFormulaConfigRepository } from '../../infrastructure/prisma/repositories/prisma-formula-config.repository';
 import { PrismaEvaluationScaleRepository } from '../../infrastructure/prisma/repositories/prisma-evaluation-scale.repository';
 import { PrismaWorkRoleRepository } from '../../infrastructure/prisma/repositories/prisma-work-role.repository';
 import { PrismaPlanningSettingsRepository } from '../../infrastructure/prisma/repositories/prisma-planning-settings.repository';
 import { PrismaUserRepository } from '../../infrastructure/prisma/repositories/prisma-user.repository';
+import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { AdminController } from './admin.controller';
 import { CreateUserUseCase } from '../../application/administration/use-cases/create-user.use-case';
 import { UpdateUserUseCase } from '../../application/administration/use-cases/update-user.use-case';
@@ -28,13 +31,19 @@ import { AssignManagerUseCase } from '../../application/administration/use-cases
 import { GetUsersUseCase } from '../../application/administration/use-cases/get-users.use-case';
 import { CreateRateUseCase } from '../../application/administration/use-cases/create-rate.use-case';
 import { GetRatesUseCase } from '../../application/administration/use-cases/get-rates.use-case';
+import { DeleteRateUseCase } from '../../application/administration/use-cases/delete-rate.use-case';
 import { UpdateFormulaUseCase } from '../../application/administration/use-cases/update-formula.use-case';
 import { GetFormulasUseCase } from '../../application/administration/use-cases/get-formulas.use-case';
 import { UpdateEvaluationScaleUseCase } from '../../application/administration/use-cases/update-evaluation-scale.use-case';
 import { GetEvaluationScalesUseCase } from '../../application/administration/use-cases/get-evaluation-scales.use-case';
 import { UpdatePlanningSettingsUseCase } from '../../application/administration/use-cases/update-planning-settings.use-case';
+import { GetPlanningSettingsUseCase } from '../../application/administration/use-cases/get-planning-settings.use-case';
 import { GetDictionariesUseCase } from '../../application/administration/use-cases/get-dictionaries.use-case';
 import { GetAuditLogUseCase } from '../../application/administration/use-cases/get-audit-log.use-case';
+import { GetIntegrationsUseCase } from '../../application/administration/use-cases/get-integrations.use-case';
+import { UpdateIntegrationUseCase } from '../../application/administration/use-cases/update-integration.use-case';
+import { GetActiveSessionsUseCase } from '../../application/administration/use-cases/get-active-sessions.use-case';
+import { GetSensitiveChangesUseCase } from '../../application/administration/use-cases/get-sensitive-changes.use-case';
 import { IAuditLogger } from '../../application/auth/ports/audit-logger';
 
 @Module({
@@ -54,10 +63,8 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: UserRepository, IAuditLogger
     {
       provide: CreateUserUseCase,
-      useFactory: (
-        userRepo: PrismaUserRepository,
-        auditLogger: IAuditLogger,
-      ) => new CreateUserUseCase(userRepo, auditLogger),
+      useFactory: (userRepo: PrismaUserRepository, auditLogger: IAuditLogger) =>
+        new CreateUserUseCase(userRepo, auditLogger),
       inject: [PrismaUserRepository, IAuditLogger],
     },
 
@@ -65,10 +72,8 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: UserRepository, IAuditLogger
     {
       provide: UpdateUserUseCase,
-      useFactory: (
-        userRepo: PrismaUserRepository,
-        auditLogger: IAuditLogger,
-      ) => new UpdateUserUseCase(userRepo, auditLogger),
+      useFactory: (userRepo: PrismaUserRepository, auditLogger: IAuditLogger) =>
+        new UpdateUserUseCase(userRepo, auditLogger),
       inject: [PrismaUserRepository, IAuditLogger],
     },
 
@@ -76,10 +81,8 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: UserRepository, IAuditLogger
     {
       provide: DeactivateUserUseCase,
-      useFactory: (
-        userRepo: PrismaUserRepository,
-        auditLogger: IAuditLogger,
-      ) => new DeactivateUserUseCase(userRepo, auditLogger),
+      useFactory: (userRepo: PrismaUserRepository, auditLogger: IAuditLogger) =>
+        new DeactivateUserUseCase(userRepo, auditLogger),
       inject: [PrismaUserRepository, IAuditLogger],
     },
 
@@ -87,10 +90,8 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: UserRepository, IAuditLogger
     {
       provide: AssignRolesUseCase,
-      useFactory: (
-        userRepo: PrismaUserRepository,
-        auditLogger: IAuditLogger,
-      ) => new AssignRolesUseCase(userRepo, auditLogger),
+      useFactory: (userRepo: PrismaUserRepository, auditLogger: IAuditLogger) =>
+        new AssignRolesUseCase(userRepo, auditLogger),
       inject: [PrismaUserRepository, IAuditLogger],
     },
 
@@ -110,8 +111,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: UserRepository
     {
       provide: GetUsersUseCase,
-      useFactory: (userRepo: PrismaUserRepository) =>
-        new GetUsersUseCase(userRepo),
+      useFactory: (userRepo: PrismaUserRepository) => new GetUsersUseCase(userRepo),
       inject: [PrismaUserRepository],
     },
 
@@ -119,10 +119,8 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: EmployeeRateRepository, IAuditLogger
     {
       provide: CreateRateUseCase,
-      useFactory: (
-        rateRepo: PrismaEmployeeRateRepository,
-        auditLogger: IAuditLogger,
-      ) => new CreateRateUseCase(rateRepo, auditLogger),
+      useFactory: (rateRepo: PrismaEmployeeRateRepository, auditLogger: IAuditLogger) =>
+        new CreateRateUseCase(rateRepo, auditLogger),
       inject: [PrismaEmployeeRateRepository, IAuditLogger],
     },
 
@@ -130,19 +128,25 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: EmployeeRateRepository
     {
       provide: GetRatesUseCase,
-      useFactory: (rateRepo: PrismaEmployeeRateRepository) =>
-        new GetRatesUseCase(rateRepo),
+      useFactory: (rateRepo: PrismaEmployeeRateRepository) => new GetRatesUseCase(rateRepo),
       inject: [PrismaEmployeeRateRepository],
+    },
+
+    // --- DeleteRateUseCase ---
+    // Зависимости: EmployeeRateRepository, IAuditLogger
+    {
+      provide: DeleteRateUseCase,
+      useFactory: (rateRepo: PrismaEmployeeRateRepository, auditLogger: IAuditLogger) =>
+        new DeleteRateUseCase(rateRepo, auditLogger),
+      inject: [PrismaEmployeeRateRepository, IAuditLogger],
     },
 
     // --- UpdateFormulaUseCase ---
     // Зависимости: FormulaConfigRepository, IAuditLogger
     {
       provide: UpdateFormulaUseCase,
-      useFactory: (
-        formulaRepo: PrismaFormulaConfigRepository,
-        auditLogger: IAuditLogger,
-      ) => new UpdateFormulaUseCase(formulaRepo, auditLogger),
+      useFactory: (formulaRepo: PrismaFormulaConfigRepository, auditLogger: IAuditLogger) =>
+        new UpdateFormulaUseCase(formulaRepo, auditLogger),
       inject: [PrismaFormulaConfigRepository, IAuditLogger],
     },
 
@@ -159,10 +163,8 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: EvaluationScaleRepository, IAuditLogger
     {
       provide: UpdateEvaluationScaleUseCase,
-      useFactory: (
-        scaleRepo: PrismaEvaluationScaleRepository,
-        auditLogger: IAuditLogger,
-      ) => new UpdateEvaluationScaleUseCase(scaleRepo, auditLogger),
+      useFactory: (scaleRepo: PrismaEvaluationScaleRepository, auditLogger: IAuditLogger) =>
+        new UpdateEvaluationScaleUseCase(scaleRepo, auditLogger),
       inject: [PrismaEvaluationScaleRepository, IAuditLogger],
     },
 
@@ -179,31 +181,75 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: PlanningSettingsRepository, IAuditLogger
     {
       provide: UpdatePlanningSettingsUseCase,
-      useFactory: (
-        settingsRepo: PrismaPlanningSettingsRepository,
-        auditLogger: IAuditLogger,
-      ) => new UpdatePlanningSettingsUseCase(settingsRepo, auditLogger),
+      useFactory: (settingsRepo: PrismaPlanningSettingsRepository, auditLogger: IAuditLogger) =>
+        new UpdatePlanningSettingsUseCase(settingsRepo, auditLogger),
       inject: [PrismaPlanningSettingsRepository, IAuditLogger],
     },
 
+    // --- GetPlanningSettingsUseCase ---
+    // Зависимости: PlanningSettingsRepository
+    {
+      provide: GetPlanningSettingsUseCase,
+      useFactory: (settingsRepo: PrismaPlanningSettingsRepository) =>
+        new GetPlanningSettingsUseCase(settingsRepo),
+      inject: [PrismaPlanningSettingsRepository],
+    },
+
     // --- GetDictionariesUseCase ---
-    // Зависимости: WorkRoleRepository, EvaluationScaleRepository
+    // Зависимости: WorkRoleRepository, EvaluationScaleRepository, PrismaService
     {
       provide: GetDictionariesUseCase,
       useFactory: (
         workRoleRepo: PrismaWorkRoleRepository,
         scaleRepo: PrismaEvaluationScaleRepository,
-      ) => new GetDictionariesUseCase(workRoleRepo, scaleRepo),
-      inject: [PrismaWorkRoleRepository, PrismaEvaluationScaleRepository],
+        prisma: PrismaService,
+      ) => new GetDictionariesUseCase(workRoleRepo, scaleRepo, prisma),
+      inject: [PrismaWorkRoleRepository, PrismaEvaluationScaleRepository, PrismaService],
     },
 
     // --- GetAuditLogUseCase ---
     // Зависимости: IAuditLogger
     {
       provide: GetAuditLogUseCase,
-      useFactory: (auditLogger: IAuditLogger) =>
-        new GetAuditLogUseCase(auditLogger),
+      useFactory: (auditLogger: IAuditLogger) => new GetAuditLogUseCase(auditLogger),
       inject: [IAuditLogger],
+    },
+
+    // --- GetIntegrationsUseCase ---
+    // Зависимости: PrismaService
+    {
+      provide: GetIntegrationsUseCase,
+      useFactory: (prisma: PrismaService) => new GetIntegrationsUseCase(prisma),
+      inject: [PrismaService],
+    },
+
+    // --- UpdateIntegrationUseCase ---
+    // Зависимости: PrismaService, IAuditLogger
+    {
+      provide: UpdateIntegrationUseCase,
+      useFactory: (prisma: PrismaService, auditLogger: IAuditLogger) =>
+        new UpdateIntegrationUseCase(prisma, auditLogger),
+      inject: [PrismaService, IAuditLogger],
+    },
+
+    // --- GetActiveSessionsUseCase ---
+    // Зависимости: RefreshSessionRepository, UserRepository
+    {
+      provide: GetActiveSessionsUseCase,
+      useFactory: (
+        refreshSessionRepo: PrismaRefreshSessionRepository,
+        userRepo: PrismaUserRepository,
+      ) => new GetActiveSessionsUseCase(refreshSessionRepo, userRepo),
+      inject: [PrismaRefreshSessionRepository, PrismaUserRepository],
+    },
+
+    // --- GetSensitiveChangesUseCase ---
+    // Зависимости: AuditLogRepository (PrismaAuditLogRepository)
+    {
+      provide: GetSensitiveChangesUseCase,
+      useFactory: (auditLogRepo: PrismaAuditLogRepository) =>
+        new GetSensitiveChangesUseCase(auditLogRepo),
+      inject: [PrismaAuditLogRepository],
     },
   ],
 })

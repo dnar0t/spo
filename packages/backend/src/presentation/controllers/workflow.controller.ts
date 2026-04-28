@@ -53,7 +53,7 @@ export class WorkflowController {
    * Тело запроса: { targetState: string, reason?: string }
    */
   @Post('periods/:id/transition')
-  @Roles('Менеджер', 'Администратор', 'Директор')
+  @Roles('manager', 'admin', 'director')
   async transition(@Param('id') id: string, @Req() req: RequestWithUser) {
     return {
       message: 'Use POST /api/workflow/periods/:id/transition with body: { targetState, reason }',
@@ -72,7 +72,7 @@ export class WorkflowController {
    * Тело запроса: { reason: string }
    */
   @Post('periods/:id/reopen')
-  @Roles('Администратор', 'Директор')
+  @Roles('admin', 'director')
   async reopenPeriod(@Param('id') id: string, @Req() req: RequestWithUser) {
     return {
       message: 'Use POST /api/workflow/periods/:id/reopen with body: { reason }',

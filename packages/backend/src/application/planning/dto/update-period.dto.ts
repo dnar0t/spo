@@ -3,6 +3,9 @@
  *
  * DTO для обновления настроек существующего отчётного периода.
  * Все поля опциональны — обновляются только переданные значения.
+ *
+ * Проценты передаются как float (0..1), где 0.3 = 30%.
+ * В БД и домене хранятся basis points (0-10000).
  */
 import {
   IsOptional,
@@ -10,6 +13,7 @@ import {
   IsArray,
   IsString,
   IsEnum,
+  IsNumber,
   Min,
   Max,
   ArrayMinSize,
@@ -23,46 +27,46 @@ export class UpdatePeriodDto {
   @Min(1)
   readonly workHoursPerMonth?: number;
 
-  /** Резерв времени в процентах (basis points: 1000 = 10%) */
+  /** Резерв времени как float (0..1), напр. 0.3 = 30% */
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  @Max(10000)
+  @Max(1)
   readonly reservePercent?: number;
 
-  /** Процент на тестирование (basis points) */
+  /** Процент на тестирование как float (0..1) */
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  @Max(10000)
+  @Max(1)
   readonly testPercent?: number;
 
-  /** Процент на отладку (basis points) */
+  /** Процент на отладку как float (0..1) */
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  @Max(10000)
+  @Max(1)
   readonly debugPercent?: number;
 
-  /** Процент на управление (basis points) */
+  /** Процент на управление как float (0..1) */
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  @Max(10000)
+  @Max(1)
   readonly mgmtPercent?: number;
 
-  /** Жёлтый порог загрузки (basis points: 8000 = 80%) */
+  /** Жёлтый порог загрузки как float (0..1), напр. 0.8 = 80% */
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  @Max(10000)
+  @Max(1)
   readonly yellowThreshold?: number;
 
-  /** Красный порог загрузки (basis points: 10000 = 100%) */
+  /** Красный порог загрузки как float (0..1), напр. 1.0 = 100% */
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  @Max(10000)
+  @Max(1)
   readonly redThreshold?: number;
 
   /** Уровень группировки бизнес-задач */

@@ -2,10 +2,10 @@
  * PeriodResponseDto
  *
  * DTO для ответа API с данными отчётного периода.
- * Все значения преобразованы в «человеческие» единицы:
- * - проценты выводятся как число (например, 20.5 для 20.5%)
+ * Все значения преобразованы в единицы, совместимые с фронтом:
+ * - проценты выводятся как float (0..1), например 0.3 для 30%
  * - время выводится в часах
- * - пороги выводятся в процентах
+ * - пороги выводятся как float (0..1)
  */
 import { ReportingPeriod } from '../../../domain/entities/reporting-period.entity';
 import { Percentage } from '../../../domain/value-objects/percentage.vo';
@@ -42,8 +42,7 @@ export class PeriodResponseDto {
    * Проценты из basis points преобразуются в проценты (число с плавающей точкой).
    */
   static fromDomain(period: ReportingPeriod): PeriodResponseDto {
-    const safePercent = (p: Percentage | null): number | null =>
-      p !== null ? p.percent : null;
+    const safePercent = (p: Percentage | null): number | null => (p !== null ? p.decimal : null);
 
     return new PeriodResponseDto({
       id: period.id,

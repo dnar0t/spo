@@ -50,6 +50,7 @@ model User {
   refreshSessions RefreshSession[]
   loginAttempts   LoginAttempt[]
   personalReports  PersonalReport[]
+  timesheets       Timesheet[]
 
   @@index([isActive])
   @@index([adLogin])
@@ -723,4 +724,78 @@ model LoginAttempt {
   @@index([ipAddress, attemptedAt])
   @@index([attemptedAt])
   @@map("login_attempts")
+}
+
+// ──────────────────────────────
+// Timesheet (Табель учёта рабочего времени)
+// ──────────────────────────────
+
+model Timesheet {
+  id         String   @id @default(uuid()) @map("id")
+  employeeId String   @map("employee_id")
+  year       Int      @map("year")
+  month      Int      @map("month")
+  status     String   @default("draft") @map("status")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  employee User            @relation(fields: [employeeId], references: [id])
+  rows     TimesheetRow[]
+  history  TimesheetStatusTransition[]
+  changes  TimesheetRowChange[]
+
+  @@unique([employeeId, year, month])
+  @@index([employeeId])
+  @@index([year, month])
+  @@index([status])
+  @@map("timesheets")
+}
+
+model TimesheetRow {
+  id                String   @id @default(uuid()) @map("id")
+  timesheetId        String   @map("timesheet_id")
+  issueIdReadable   String   @map("issue_id_readable")
+  source            String   @default("plan") @map("source")
+  minutes           Int      @default(0) @map("minutes")
+  comment           String?  @map("comment")
+  managerGrade      String   @default("none") @map("manager_grade")
+  businessGrade     String   @default("none") @map("business_grade")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  timesheet Timesheet @relation(fields: [timesheetId], references: [id])
+
+  @@index([timesheetId])
+  @@map("timesheet_rows")
+}
+
+model TimesheetStatusTransition {
+  id         String   @id @default(uuid()) @map("id")
+  timesheetId String  @map("timesheet_id")
+  actorId    String   @map("actor_id")
+  fromStatus String?  @map("from_status")
+  toStatus   String   @map("to_status")
+  comment    String?  @map("comment")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  timesheet Timesheet @relation(fields: [timesheetId], references: [id])
+
+  @@index([timesheetId])
+  @@map("timesheet_status_transitions")
+}
+
+model TimesheetRowChange {
+  id         String   @id @default(uuid()) @map("id")
+  timesheetId String  @map("timesheet_id")
+  rowId      String   @map("row_id")
+  actorId    String   @map("actor_id")
+  field      String   @map("field")
+  fromValue  String   @map("from_value")
+  toValue    String   @map("to_value")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  timesheet Timesheet @relation(fields: [timesheetId], references: [id])
+
+  @@index([timesheetId])
+  @@map("timesheet_row_changes")
 }

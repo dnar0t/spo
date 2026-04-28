@@ -14,6 +14,7 @@ import { Controller, Get, Post, Param, Body, UseGuards, Req, Logger } from '@nes
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
 import { ClosePeriodUseCase } from '../../application/planning/use-cases/close-period.use-case';
+import { GetPeriodReadinessUseCase } from '../../application/planning/use-cases/get-period-readiness.use-case';
 import { ReopenPeriodUseCase } from '../../application/reporting/use-cases/reopen-period.use-case';
 import { PeriodSnapshotRepository } from '../../domain/repositories/period-snapshot.repository';
 import { NotFoundError } from '../../domain/errors/domain.error';
@@ -42,6 +43,7 @@ export class PeriodClosingController {
   constructor(
     private readonly closePeriodUseCase: ClosePeriodUseCase,
     private readonly reopenPeriodUseCase: ReopenPeriodUseCase,
+    private readonly getPeriodReadinessUseCase: GetPeriodReadinessUseCase,
     private readonly periodSnapshotRepository: PeriodSnapshotRepository,
   ) {}
 
@@ -54,7 +56,7 @@ export class PeriodClosingController {
    * переводит период в состояние PERIOD_CLOSED.
    */
   @Post(':id/close')
-  @Roles('Администратор', 'Директор')
+  @Roles('admin', 'director')
   async closePeriod(
     @Param('id') id: string,
     @Body() body: ClosePeriodBody,
@@ -84,7 +86,7 @@ export class PeriodClosingController {
    * Удаляет снэпшот данных, переводит период в PERIOD_REOPENED.
    */
   @Post(':id/reopen')
-  @Roles('Администратор', 'Директор')
+  @Roles('admin', 'director')
   async reopenPeriod(
     @Param('id') id: string,
     @Body() body: ReopenPeriodBody,
@@ -114,7 +116,7 @@ export class PeriodClosingController {
    * Доступно: ADMIN, DIRECTOR, HR, FINANCE.
    */
   @Get(':id/snapshot')
-  @Roles('Администратор', 'Директор', 'HR', 'Финансы')
+  @Roles('admin', 'director', 'hr', 'finance')
   async getSnapshot(@Param('id') id: string) {
     const snapshot = await this.periodSnapshotRepository.findByPeriodId(id);
     if (!snapshot) {
@@ -144,7 +146,7 @@ export class PeriodClosingController {
    * Доступно: ADMIN, DIRECTOR, HR, FINANCE.
    */
   @Get(':id/snapshot/status')
-  @Roles('Администратор', 'Директор', 'HR', 'Финансы')
+  @Roles('admin', 'director', 'hr', 'finance')
   async getSnapshotStatus(@Param('id') id: string) {
     const snapshot = await this.periodSnapshotRepository.findByPeriodId(id);
 
@@ -154,5 +156,19 @@ export class PeriodClosingController {
       snapshotId: snapshot?.id ?? null,
       createdAt: snapshot?.createdAt?.toISOString() ?? null,
     };
+  }
+
+  // ─── Проверить готовность к закрытию периода ───
+
+  /**
+   * GET /api/periods/:id/readiness
+   * Чек-лист готовности периода к закрытию (только ADMIN / DIRECTOR).
+   * Проверяет: зафиксирован ли план, отправлены ли табели,
+   * проставлены ли оценки.
+   */
+  @Get(':id/readiness')
+  @Roles('admin', 'director')
+  async getReadiness(@Param('id') id: string) {
+    return await this.getPeriodReadinessUseCase.execute(id);
   }
 }

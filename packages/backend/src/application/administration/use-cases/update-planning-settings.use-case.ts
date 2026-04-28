@@ -40,27 +40,22 @@ export class UpdatePlanningSettingsUseCase {
       businessGroupingLevel?: string | null;
       updatedBy: string;
     } = {
-      workHoursPerMonth: dto.workHoursPerMonth !== undefined
-        ? Math.round(dto.workHoursPerMonth * 60) // часы → минуты
-        : undefined,
-      reservePercent: dto.reservePercent !== undefined
-        ? Math.round(dto.reservePercent * 100) // проценты → basis points
-        : undefined,
-      testPercent: dto.testPercent !== undefined
-        ? Math.round(dto.testPercent * 100)
-        : undefined,
-      debugPercent: dto.debugPercent !== undefined
-        ? Math.round(dto.debugPercent * 100)
-        : undefined,
-      mgmtPercent: dto.mgmtPercent !== undefined
-        ? Math.round(dto.mgmtPercent * 100)
-        : undefined,
-      yellowThreshold: dto.yellowThreshold !== undefined
-        ? Math.round(dto.yellowThreshold * 100)
-        : undefined,
-      redThreshold: dto.redThreshold !== undefined
-        ? Math.round(dto.redThreshold * 100)
-        : undefined,
+      workHoursPerMonth:
+        dto.workHoursPerMonth !== undefined
+          ? Math.round(dto.workHoursPerMonth * 60) // часы → минуты
+          : undefined,
+      reservePercent:
+        dto.reservePercent !== undefined
+          ? Math.round(dto.reservePercent * 10000) // float (0..1) → basis points
+          : undefined,
+      testPercent: dto.testPercent !== undefined ? Math.round(dto.testPercent * 10000) : undefined,
+      debugPercent:
+        dto.debugPercent !== undefined ? Math.round(dto.debugPercent * 10000) : undefined,
+      mgmtPercent: dto.mgmtPercent !== undefined ? Math.round(dto.mgmtPercent * 10000) : undefined,
+      yellowThreshold:
+        dto.yellowThreshold !== undefined ? Math.round(dto.yellowThreshold * 10000) : undefined,
+      redThreshold:
+        dto.redThreshold !== undefined ? Math.round(dto.redThreshold * 10000) : undefined,
       businessGroupingLevel: dto.businessGroupingLevel,
       updatedBy: dto.updatedBy,
     };

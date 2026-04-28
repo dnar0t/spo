@@ -600,7 +600,7 @@ async function createReportingPeriods(adminUser: any) {
         year,
         state,
         workHoursPerMonth: 160 * 60,
-        reservePercent: 30,
+        reservePercent: 3000,
         testPercent: 2000,
         debugPercent: 3000,
         mgmtPercent: 1000,

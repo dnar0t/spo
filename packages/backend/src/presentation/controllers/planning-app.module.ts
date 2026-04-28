@@ -29,6 +29,10 @@ import { AssignTaskUseCase } from '../../application/planning/use-cases/assign-t
 import { UnassignTaskUseCase } from '../../application/planning/use-cases/unassign-task.use-case';
 import { FixPlanUseCase } from '../../application/planning/use-cases/fix-plan.use-case';
 import { TransitionPeriodUseCase } from '../../application/planning/use-cases/transition-period.use-case';
+import { DeletePeriodUseCase } from '../../application/planning/use-cases/delete-period.use-case';
+import { UpdateTaskSortUseCase } from '../../application/planning/use-cases/update-task-sort.use-case';
+import { UpdateTaskReadinessUseCase } from '../../application/planning/use-cases/update-task-readiness.use-case';
+import { GetPlanVersionsUseCase } from '../../application/planning/use-cases/get-plan-versions.use-case';
 import { PlanFixedEvent } from '../../domain/events/plan-fixed.event';
 
 /**
@@ -178,6 +182,46 @@ class ConsoleEventBus {
         periodTransitionRepo: PrismaPeriodTransitionRepository,
       ) => new TransitionPeriodUseCase(reportingPeriodRepo, periodTransitionRepo),
       inject: [PrismaReportingPeriodRepository, PrismaPeriodTransitionRepository],
+    },
+
+    // --- DeletePeriodUseCase ---
+    // Зависимости: ReportingPeriodRepository
+    {
+      provide: DeletePeriodUseCase,
+      useFactory: (reportingPeriodRepo: PrismaReportingPeriodRepository) =>
+        new DeletePeriodUseCase(reportingPeriodRepo),
+      inject: [PrismaReportingPeriodRepository],
+    },
+
+    // --- UpdateTaskSortUseCase ---
+    // Зависимости: PlannedTaskRepository
+    {
+      provide: UpdateTaskSortUseCase,
+      useFactory: (plannedTaskRepo: PrismaPlannedTaskRepository) =>
+        new UpdateTaskSortUseCase(plannedTaskRepo),
+      inject: [PrismaPlannedTaskRepository],
+    },
+
+    // --- UpdateTaskReadinessUseCase ---
+    // Зависимости: ReportingPeriodRepository, PlannedTaskRepository
+    {
+      provide: UpdateTaskReadinessUseCase,
+      useFactory: (
+        reportingPeriodRepo: PrismaReportingPeriodRepository,
+        plannedTaskRepo: PrismaPlannedTaskRepository,
+      ) => new UpdateTaskReadinessUseCase(reportingPeriodRepo, plannedTaskRepo),
+      inject: [PrismaReportingPeriodRepository, PrismaPlannedTaskRepository],
+    },
+
+    // --- GetPlanVersionsUseCase ---
+    // Зависимости: ReportingPeriodRepository, SprintPlanRepository
+    {
+      provide: GetPlanVersionsUseCase,
+      useFactory: (
+        reportingPeriodRepo: PrismaReportingPeriodRepository,
+        sprintPlanRepo: PrismaSprintPlanRepository,
+      ) => new GetPlanVersionsUseCase(reportingPeriodRepo, sprintPlanRepo),
+      inject: [PrismaReportingPeriodRepository, PrismaSprintPlanRepository],
     },
 
     // ====================================================================

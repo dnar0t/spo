@@ -7,6 +7,8 @@
  * жизненным циклом периодов (стейт-машина).
  *
  * Префикс: planning
+ *
+ * Защищён JwtAuthGuard + RolesGuard.
  */
 import {
   Controller,
@@ -20,7 +22,10 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { RolesGuard, Roles } from '../guards/roles.guard';
 import { CreatePeriodUseCase } from '../../application/planning/use-cases/create-period.use-case';
 import { UpdatePeriodUseCase } from '../../application/planning/use-cases/update-period.use-case';
 import { GetPeriodsUseCase } from '../../application/planning/use-cases/get-periods.use-case';
@@ -31,6 +36,10 @@ import { AssignTaskUseCase } from '../../application/planning/use-cases/assign-t
 import { UnassignTaskUseCase } from '../../application/planning/use-cases/unassign-task.use-case';
 import { FixPlanUseCase } from '../../application/planning/use-cases/fix-plan.use-case';
 import { TransitionPeriodUseCase } from '../../application/planning/use-cases/transition-period.use-case';
+import { DeletePeriodUseCase } from '../../application/planning/use-cases/delete-period.use-case';
+import { UpdateTaskSortUseCase } from '../../application/planning/use-cases/update-task-sort.use-case';
+import { UpdateTaskReadinessUseCase } from '../../application/planning/use-cases/update-task-readiness.use-case';
+import { GetPlanVersionsUseCase } from '../../application/planning/use-cases/get-plan-versions.use-case';
 import { CreatePeriodDto } from '../../application/planning/dto/create-period.dto';
 import { UpdatePeriodDto } from '../../application/planning/dto/update-period.dto';
 import { AssignTaskDto } from '../../application/planning/dto/assign-task.dto';
@@ -38,6 +47,7 @@ import { FixPlanDto } from '../../application/planning/dto/fix-plan.dto';
 import { InvalidArgumentError } from '../../domain/errors/domain.error';
 
 @Controller('planning')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class PlanningController {
   private readonly logger = new Logger(PlanningController.name);
 
@@ -52,6 +62,10 @@ export class PlanningController {
     private readonly unassignTaskUseCase: UnassignTaskUseCase,
     private readonly fixPlanUseCase: FixPlanUseCase,
     private readonly transitionPeriodUseCase: TransitionPeriodUseCase,
+    private readonly deletePeriodUseCase: DeletePeriodUseCase,
+    private readonly updateTaskSortUseCase: UpdateTaskSortUseCase,
+    private readonly updateTaskReadinessUseCase: UpdateTaskReadinessUseCase,
+    private readonly getPlanVersionsUseCase: GetPlanVersionsUseCase,
   ) {}
 
   // ====================================================================
@@ -65,6 +79,7 @@ export class PlanningController {
    */
   @Post('periods')
   @HttpCode(HttpStatus.CREATED)
+  @Roles('admin', 'director')
   async createPeriod(@Body() dto: CreatePeriodDto) {
     this.logger.log(`Creating period: ${dto.month}/${dto.year}`);
 
@@ -116,6 +131,7 @@ export class PlanningController {
    * PUT /api/planning/periods/:id
    */
   @Put('periods/:id')
+  @Roles('admin', 'director')
   async updatePeriod(@Param('id') id: string, @Body() dto: UpdatePeriodDto) {
     this.logger.log(`Updating period: id=${id}`);
 
@@ -129,15 +145,12 @@ export class PlanningController {
    * DELETE /api/planning/periods/:id
    */
   @Delete('periods/:id')
-  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('admin', 'director')
   async deletePeriod(@Param('id') id: string) {
     this.logger.log(`Deleting period: id=${id}`);
 
-    // Удаление периода в состоянии PLANNING.
-    // Примечание: это будет заменено на отдельный use case.
-    throw new Error(
-      'Delete operation is not fully implemented. Use a dedicated DeletePeriodUseCase.',
-    );
+    await this.deletePeriodUseCase.execute(id);
   }
 
   // ====================================================================
@@ -220,6 +233,7 @@ export class PlanningController {
    * PUT /api/planning/periods/:id/tasks/:taskId
    */
   @Put('periods/:id/tasks/:taskId')
+  @Roles('admin', 'director', 'manager')
   async assignTask(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
@@ -243,6 +257,7 @@ export class PlanningController {
    */
   @Delete('periods/:id/tasks/:taskId')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('admin', 'director', 'manager')
   async unassignTask(@Param('id') id: string, @Param('taskId') taskId: string) {
     this.logger.log(`Unassigning task ${taskId} in period ${id}`);
 
@@ -255,7 +270,8 @@ export class PlanningController {
    * PUT /api/planning/periods/:id/tasks/:taskId/sort
    */
   @Put('periods/:id/tasks/:taskId/sort')
-  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'director', 'manager')
   async updateTaskSortOrder(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
@@ -263,11 +279,8 @@ export class PlanningController {
   ) {
     this.logger.log(`Updating sort order for task ${taskId} in period ${id}`);
 
-    // В текущей реализации UseCase для обновления порядка сортировки отдельно нет.
-    throw new Error(
-      'Sort order update is not fully implemented yet. ' +
-        'Use the dedicated UpdateTaskSortOrderUseCase when available.',
-    );
+    const result = await this.updateTaskSortUseCase.execute(taskId, sortOrder);
+    return result;
   }
 
   /**
@@ -276,7 +289,8 @@ export class PlanningController {
    * PUT /api/planning/periods/:id/tasks/:taskId/readiness
    */
   @Put('periods/:id/tasks/:taskId/readiness')
-  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'director', 'manager')
   async updateTaskReadiness(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
@@ -284,11 +298,8 @@ export class PlanningController {
   ) {
     this.logger.log(`Updating readiness for task ${taskId} in period ${id}: ${readinessPercent}%`);
 
-    // В текущей реализации UseCase для обновления готовности отдельно нет.
-    throw new Error(
-      'Readiness update is not fully implemented yet. ' +
-        'Use the dedicated UpdateTaskReadinessUseCase when available.',
-    );
+    const result = await this.updateTaskReadinessUseCase.execute(taskId, readinessPercent);
+    return result;
   }
 
   // ====================================================================
@@ -302,6 +313,7 @@ export class PlanningController {
    */
   @Post('periods/:id/fix-plan')
   @HttpCode(HttpStatus.CREATED)
+  @Roles('admin', 'director')
   async fixPlan(@Param('id') id: string, @Body() dto?: FixPlanDto) {
     this.logger.log(`Fixing plan for period: id=${id}`);
 
@@ -316,15 +328,13 @@ export class PlanningController {
    * GET /api/planning/periods/:id/plan-versions
    */
   @Get('periods/:id/plan-versions')
-  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'director', 'manager')
   async getPlanVersions(@Param('id') id: string) {
     this.logger.log(`Fetching plan versions for period: id=${id}`);
 
-    // В текущей реализации нет отдельного UseCase для получения версий плана.
-    throw new Error(
-      'Plan versions listing is not fully implemented yet. ' +
-        'Use the dedicated GetPlanVersionsUseCase when available.',
-    );
+    const result = await this.getPlanVersionsUseCase.execute(id);
+    return result;
   }
 
   // ====================================================================
@@ -338,6 +348,7 @@ export class PlanningController {
    */
   @Post('periods/:id/transition')
   @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'director')
   async transitionPeriod(
     @Param('id') id: string,
     @Body('transition') transition: string,

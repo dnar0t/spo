@@ -849,6 +849,8 @@ CLOSED → REOPENED → DIRECTOR_REVIEW → CLOSED
 
 | 9.0 | 2026-04-27 | Team Lead | Part 11 (Performance, Security, Backup, Operations) — реализованы: backup.sh, restore.sh, RetentionService + RetentionCronService + RetentionController, production docker-compose.prod.yml (PostgreSQL, Redis, Backend, Nginx, Backup), deployment-guide.md, runbook.md, performance-test-checklist.md, regression-test-checklist.md (80 тест-кейсов по 9 модулям). Plan.md обновлён. |
 
+| 10.0 | 2026-04-27 | Team Lead | Part 3 (Frontend) — Login page и route protection завершены: Login.tsx (форма логина, валидация, loading/error states), useAuth hook (login, logout, auto-refresh), ProtectedRoute компонент, api.ts (fetch wrapper с авто-прикреплением Bearer token и refresh на 401), AppLayout использует реальные данные пользователя и роли. Build — без ошибок. |
+
 | 2.0 | 2026-04-27 | TeamLead | Part 1 (Project Setup) завершён: monorepo, NestJS, health endpoint, shared package, Docker Compose, ESLint/Prettier, README. Part 2 (Database) завершён: полная Prisma-схема (без Float), Value Objects (Money, Minutes, Percentage, HourlyRate), User Entity, User Repository, PrismaUserRepository, seed данных, Prisma client генерация. Проект компилируется (`npm run build` — 37 файлов без ошибок). plan.md обновлён. |
 
 

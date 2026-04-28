@@ -105,6 +105,11 @@ export class UpdateUserUseCase {
       isActive: updatedUser.isActive,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
+      abacProjects: [],
+      abacSystems: [],
+      abacRoles: [],
+      twoFactorEnabled: false,
+      source: 'manual',
     };
   }
 }

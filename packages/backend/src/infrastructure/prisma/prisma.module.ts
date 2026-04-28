@@ -15,12 +15,14 @@ import { PrismaEvaluationScaleRepository } from './repositories/prisma-evaluatio
 import { PrismaWorkRoleRepository } from './repositories/prisma-work-role.repository';
 import { PrismaPlanningSettingsRepository } from './repositories/prisma-planning-settings.repository';
 import { PrismaPersonalReportRepository } from './repositories/prisma-personal-report.repository';
+import { PrismaTimesheetRepository } from './repositories/prisma-timesheet.repository';
 import { PrismaSummaryReportRepository } from './repositories/prisma-summary-report.repository';
 import { PrismaManagerEvaluationRepository } from './repositories/prisma-manager-evaluation.repository';
 import { PrismaBusinessEvaluationRepository } from './repositories/prisma-business-evaluation.repository';
 import { PrismaNotificationTemplateRepository } from './repositories/prisma-notification-template.repository';
 import { PrismaNotificationRunRepository } from './repositories/prisma-notification-run.repository';
 import { PrismaSmtpConfigRepository } from './repositories/prisma-smtp-config.repository';
+import { PrismaAuditLogRepository } from './repositories/prisma-audit-log.repository';
 
 @Global()
 @Module({
@@ -41,12 +43,14 @@ import { PrismaSmtpConfigRepository } from './repositories/prisma-smtp-config.re
     PrismaWorkRoleRepository,
     PrismaPlanningSettingsRepository,
     PrismaPersonalReportRepository,
+    PrismaTimesheetRepository,
     PrismaSummaryReportRepository,
     PrismaManagerEvaluationRepository,
     PrismaBusinessEvaluationRepository,
     PrismaNotificationTemplateRepository,
     PrismaNotificationRunRepository,
     PrismaSmtpConfigRepository,
+    PrismaAuditLogRepository,
   ],
   exports: [
     PrismaService,
@@ -65,12 +69,14 @@ import { PrismaSmtpConfigRepository } from './repositories/prisma-smtp-config.re
     PrismaWorkRoleRepository,
     PrismaPlanningSettingsRepository,
     PrismaPersonalReportRepository,
+    PrismaTimesheetRepository,
     PrismaSummaryReportRepository,
     PrismaManagerEvaluationRepository,
     PrismaBusinessEvaluationRepository,
     PrismaNotificationTemplateRepository,
     PrismaNotificationRunRepository,
     PrismaSmtpConfigRepository,
+    PrismaAuditLogRepository,
   ],
 })
 export class PrismaModule {}

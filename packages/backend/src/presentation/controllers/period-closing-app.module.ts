@@ -15,6 +15,7 @@ import { FinanceModule } from '../../infrastructure/prisma/finance.module';
 import { AuthModule } from '../../infrastructure/auth/auth.module';
 import { PeriodClosingController } from './period-closing.controller';
 import { ClosePeriodUseCase } from '../../application/planning/use-cases/close-period.use-case';
+import { GetPeriodReadinessUseCase } from '../../application/planning/use-cases/get-period-readiness.use-case';
 import { CreateSnapshotUseCase } from '../../application/planning/use-cases/create-snapshot.use-case';
 import { ReopenPeriodUseCase } from '../../application/reporting/use-cases/reopen-period.use-case';
 import { AccessControlService } from '../../domain/services/access-control.service';
@@ -115,19 +116,24 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
         transitionRepo: PrismaPeriodTransitionRepository,
         snapshotRepo: PrismaPeriodSnapshotRepository,
         accessControlService: AccessControlService,
-      ) =>
-        new ReopenPeriodUseCase(
-          periodRepo,
-          transitionRepo,
-          snapshotRepo,
-          accessControlService,
-        ),
+      ) => new ReopenPeriodUseCase(periodRepo, transitionRepo, snapshotRepo, accessControlService),
       inject: [
         PrismaReportingPeriodRepository,
         PrismaPeriodTransitionRepository,
         PrismaPeriodSnapshotRepository,
         AccessControlService,
       ],
+    },
+
+    // GetPeriodReadinessUseCase
+    // Зависимости: ReportingPeriodRepository, PersonalReportRepository
+    {
+      provide: GetPeriodReadinessUseCase,
+      useFactory: (
+        periodRepo: PrismaReportingPeriodRepository,
+        personalReportRepo: PrismaPersonalReportRepository,
+      ) => new GetPeriodReadinessUseCase(periodRepo, personalReportRepo),
+      inject: [PrismaReportingPeriodRepository, PrismaPersonalReportRepository],
     },
   ],
 })

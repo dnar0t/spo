@@ -23,9 +23,7 @@ export interface PaginatedResult<T> {
 }
 
 export class GetUsersUseCase {
-  constructor(
-    private readonly userRepository: UserRepository,
-  ) {}
+  constructor(private readonly userRepository: UserRepository) {}
 
   async execute(query: GetUsersQuery): Promise<PaginatedResult<UserResponseDto>> {
     const page = Math.max(1, query.page ?? 1);
@@ -37,15 +35,16 @@ export class GetUsersUseCase {
     let filtered = allUsers;
 
     if (query.isActive !== undefined) {
-      filtered = filtered.filter(u => u.isActive === query.isActive);
+      filtered = filtered.filter((u) => u.isActive === query.isActive);
     }
 
     if (query.search) {
       const searchLower = query.search.toLowerCase();
-      filtered = filtered.filter(u =>
-        (u.login?.toLowerCase().includes(searchLower)) ||
-        (u.email?.toLowerCase().includes(searchLower)) ||
-        (u.fullName?.toLowerCase().includes(searchLower))
+      filtered = filtered.filter(
+        (u) =>
+          u.login?.toLowerCase().includes(searchLower) ||
+          u.email?.toLowerCase().includes(searchLower) ||
+          u.fullName?.toLowerCase().includes(searchLower),
       );
     }
 
@@ -59,7 +58,7 @@ export class GetUsersUseCase {
     const paginatedItems = filtered.slice(startIndex, startIndex + limit);
 
     return {
-      items: paginatedItems.map(user => ({
+      items: paginatedItems.map((user) => ({
         id: user.id,
         login: user.login,
         email: user.email,
@@ -68,6 +67,12 @@ export class GetUsersUseCase {
         isActive: user.isActive,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        // ABAC-атрибуты — заглушки (БД пока не содержит эти поля)
+        abacProjects: [],
+        abacSystems: [],
+        abacRoles: [],
+        twoFactorEnabled: false,
+        source: 'manual',
       })),
       total,
       page,

@@ -3,7 +3,7 @@
  *
  * Контроллер для административных endpoints.
  * Предоставляет API для управления пользователями, ставками, формулами,
- * справочниками, аудитом и настройками планирования.
+ * справочниками, аудитом, настройками планирования и интеграциями.
  *
  * Все endpoints защищены JwtAuthGuard + RolesGuard.
  */
@@ -32,13 +32,19 @@ import { AssignManagerUseCase } from '../../application/administration/use-cases
 import { GetUsersUseCase } from '../../application/administration/use-cases/get-users.use-case';
 import { CreateRateUseCase } from '../../application/administration/use-cases/create-rate.use-case';
 import { GetRatesUseCase } from '../../application/administration/use-cases/get-rates.use-case';
+import { DeleteRateUseCase } from '../../application/administration/use-cases/delete-rate.use-case';
 import { UpdateFormulaUseCase } from '../../application/administration/use-cases/update-formula.use-case';
 import { GetFormulasUseCase } from '../../application/administration/use-cases/get-formulas.use-case';
 import { UpdateEvaluationScaleUseCase } from '../../application/administration/use-cases/update-evaluation-scale.use-case';
 import { GetEvaluationScalesUseCase } from '../../application/administration/use-cases/get-evaluation-scales.use-case';
 import { UpdatePlanningSettingsUseCase } from '../../application/administration/use-cases/update-planning-settings.use-case';
+import { GetPlanningSettingsUseCase } from '../../application/administration/use-cases/get-planning-settings.use-case';
 import { GetDictionariesUseCase } from '../../application/administration/use-cases/get-dictionaries.use-case';
 import { GetAuditLogUseCase } from '../../application/administration/use-cases/get-audit-log.use-case';
+import { GetIntegrationsUseCase } from '../../application/administration/use-cases/get-integrations.use-case';
+import { UpdateIntegrationUseCase } from '../../application/administration/use-cases/update-integration.use-case';
+import { GetActiveSessionsUseCase } from '../../application/administration/use-cases/get-active-sessions.use-case';
+import { GetSensitiveChangesUseCase } from '../../application/administration/use-cases/get-sensitive-changes.use-case';
 import { CreateUserDto } from '../../application/administration/dto/create-user.dto';
 import { UpdateUserDto } from '../../application/administration/dto/update-user.dto';
 import { AssignRolesDto } from '../../application/administration/dto/assign-roles.dto';
@@ -62,6 +68,7 @@ export class AdminController {
     private readonly getUsersUseCase: GetUsersUseCase,
     private readonly createRateUseCase: CreateRateUseCase,
     private readonly getRatesUseCase: GetRatesUseCase,
+    private readonly deleteRateUseCase: DeleteRateUseCase,
     private readonly updateFormulaUseCase: UpdateFormulaUseCase,
     private readonly getFormulasUseCase: GetFormulasUseCase,
     private readonly updateEvaluationScaleUseCase: UpdateEvaluationScaleUseCase,
@@ -69,6 +76,11 @@ export class AdminController {
     private readonly updatePlanningSettingsUseCase: UpdatePlanningSettingsUseCase,
     private readonly getDictionariesUseCase: GetDictionariesUseCase,
     private readonly getAuditLogUseCase: GetAuditLogUseCase,
+    private readonly getIntegrationsUseCase: GetIntegrationsUseCase,
+    private readonly updateIntegrationUseCase: UpdateIntegrationUseCase,
+    private readonly getActiveSessionsUseCase: GetActiveSessionsUseCase,
+    private readonly getSensitiveChangesUseCase: GetSensitiveChangesUseCase,
+    private readonly getPlanningSettingsUseCase: GetPlanningSettingsUseCase,
   ) {}
 
   // ====================================================================
@@ -81,7 +93,7 @@ export class AdminController {
    * GET /api/admin/users
    */
   @Get('users')
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('admin', 'director')
   async getUsers(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
@@ -107,7 +119,7 @@ export class AdminController {
    */
   @Post('users')
   @HttpCode(HttpStatus.CREATED)
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('admin', 'director')
   async createUser(@Body() dto: CreateUserDto, @Req() req?: any) {
     this.logger.log(`Creating user: ${dto.login}`);
 
@@ -126,7 +138,7 @@ export class AdminController {
    * PUT /api/admin/users/:id
    */
   @Put('users/:id')
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('admin', 'director')
   async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req?: any) {
     this.logger.log(`Updating user: ${id}`);
 
@@ -149,7 +161,7 @@ export class AdminController {
    */
   @Delete('users/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('admin', 'director')
   async deactivateUser(@Param('id') id: string, @Req() req?: any) {
     this.logger.log(`Deactivating user: ${id}`);
 
@@ -171,7 +183,7 @@ export class AdminController {
    */
   @Put('users/:id/roles')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('admin', 'director')
   async assignRoles(@Param('id') id: string, @Body() dto: AssignRolesDto, @Req() req?: any) {
     this.logger.log(`Assigning roles to user: ${id}`);
 
@@ -193,7 +205,7 @@ export class AdminController {
    */
   @Put('users/:id/manager')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('ADMIN', 'DIRECTOR', 'MANAGER')
+  @Roles('admin', 'director', 'manager')
   async assignManager(@Param('id') id: string, @Body() dto: AssignManagerDto, @Req() req?: any) {
     this.logger.log(`Assigning manager to user: ${id}`);
 
@@ -211,6 +223,27 @@ export class AdminController {
   // ====================================================================
   // Rates (Ставки)
   // ====================================================================
+
+  /**
+   * Батч-получение текущих ставок для нескольких сотрудников.
+   * Должен быть объявлен до динамических маршрутов (:userId) для корректного роутинга.
+   *
+   * GET /api/admin/rates/batch?employeeIds=...
+   */
+  @Get('rates/batch')
+  @Roles('admin', 'director', 'hr')
+  async getRatesBatch(@Query('employeeIds') employeeIds: string) {
+    this.logger.log(`Getting rates batch for employees: ${employeeIds}`);
+
+    const ids = employeeIds ? employeeIds.split(',') : [];
+    const result = await this.getRatesUseCase.getCurrentBatch(ids);
+
+    // Преобразуем Map в массив для удобства клиента
+    return Array.from(result.entries()).map(([userId, rate]) => ({
+      userId,
+      rate,
+    }));
+  }
 
   /**
    * Получить текущую ставку сотрудника.
@@ -232,7 +265,7 @@ export class AdminController {
    */
   @Post('rates/:userId')
   @HttpCode(HttpStatus.CREATED)
-  @Roles('ADMIN', 'DIRECTOR', 'HR')
+  @Roles('admin', 'director', 'hr')
   async createRate(@Param('userId') userId: string, @Body() dto: CreateRateDto, @Req() req?: any) {
     this.logger.log(`Creating rate for user: ${userId}`);
 
@@ -260,6 +293,21 @@ export class AdminController {
     return result;
   }
 
+  /**
+   * Мягкое удаление ставки (проставляет effectiveTo = now()).
+   *
+   * DELETE /api/admin/rates/:id
+   */
+  @Delete('rates/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('admin', 'director', 'hr')
+  async deleteRate(@Param('id') id: string, @Req() req?: any) {
+    this.logger.log(`Deleting rate: ${id}`);
+
+    const userId = req?.user?.id ?? 'system';
+    await this.deleteRateUseCase.execute(id, userId);
+  }
+
   // ====================================================================
   // Formulas (Формулы)
   // ====================================================================
@@ -283,7 +331,7 @@ export class AdminController {
    * PUT /api/admin/formulas/:id
    */
   @Put('formulas/:id')
-  @Roles('ADMIN', 'DIRECTOR', 'FINANCE')
+  @Roles('admin', 'director', 'finance')
   async updateFormula(@Param('id') id: string, @Body() dto: UpdateFormulaDto, @Req() req?: any) {
     this.logger.log(`Updating formula: ${id}`);
 
@@ -304,7 +352,7 @@ export class AdminController {
   // ====================================================================
 
   /**
-   * Получить все справочники (workRoles, evaluationScales).
+   * Получить все справочники (workRoles, evaluationScales, projects, systems, workTypes).
    *
    * GET /api/admin/dictionaries
    */
@@ -339,7 +387,7 @@ export class AdminController {
    * PUT /api/admin/evaluation-scales/:id
    */
   @Put('evaluation-scales/:id')
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('admin', 'director')
   async updateEvaluationScale(
     @Param('id') id: string,
     @Body() dto: UpdateEvaluationScaleDto,
@@ -368,7 +416,7 @@ export class AdminController {
    * GET /api/admin/audit-log
    */
   @Get('audit-log')
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('admin', 'director')
   async getAuditLog(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
@@ -399,12 +447,24 @@ export class AdminController {
   // ====================================================================
 
   /**
+   * Получить текущие настройки планирования.
+   *
+   * GET /api/admin/settings/planning
+   */
+  @Get('settings/planning')
+  @Roles('admin', 'director')
+  async getPlanningSettings() {
+    this.logger.log('Getting planning settings');
+    return await this.getPlanningSettingsUseCase.execute();
+  }
+
+  /**
    * Обновить настройки планирования.
    *
    * PUT /api/admin/settings/planning
    */
   @Put('settings/planning')
-  @Roles('ADMIN', 'DIRECTOR')
+  @Roles('admin', 'director')
   async updatePlanningSettings(@Body() dto: UpdatePlanningSettingsDto, @Req() req?: any) {
     this.logger.log('Updating planning settings');
 
@@ -416,5 +476,71 @@ export class AdminController {
         userAgent: req?.headers?.['user-agent'],
       },
     );
+  }
+
+  // ====================================================================
+  // Integrations (Интеграции)
+  // ====================================================================
+
+  /**
+   * Получить список всех настроек интеграций.
+   *
+   * GET /api/admin/integrations
+   */
+  @Get('integrations')
+  @Roles('admin', 'director')
+  async getIntegrations() {
+    this.logger.log('Getting integrations');
+
+    return await this.getIntegrationsUseCase.execute();
+  }
+
+  /**
+   * Обновить настройки конкретной интеграции.
+   *
+   * PUT /api/admin/integrations/:id
+   */
+  @Put('integrations/:id')
+  @Roles('admin', 'director')
+  async updateIntegration(@Param('id') id: string, @Body() dto: any, @Req() req?: any) {
+    this.logger.log(`Updating integration: ${id}`);
+
+    const userId = req?.user?.id ?? 'system';
+    return await this.updateIntegrationUseCase.execute(id, dto, {
+      userId,
+      ipAddress: req?.ip,
+      userAgent: req?.headers?.['user-agent'],
+    });
+  }
+
+  /**
+   * Получить все активные сессии пользователей.
+   *
+   * GET /api/admin/sessions
+   */
+  @Get('sessions')
+  @Roles('admin', 'director')
+  async getActiveSessions() {
+    this.logger.log('Getting active sessions');
+
+    return await this.getActiveSessionsUseCase.execute();
+  }
+
+  /**
+   * Получить журнал чувствительных изменений.
+   *
+   * GET /api/admin/sensitive-changes
+   */
+  @Get('sensitive-changes')
+  @Roles('admin', 'director')
+  async getSensitiveChanges(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    this.logger.log('Getting sensitive changes');
+
+    return await this.getSensitiveChangesUseCase.execute({ page, limit, dateFrom, dateTo });
   }
 }
