@@ -93,7 +93,7 @@
 - [x] Реализовать шкалы оценок бизнеса и руководителя (@Agent-Finance)
 - [x] Реализовать planning settings (@Agent-Planning)
 - [ ] Реализовать notification settings skeleton (@Agent-Notifications)
-- [ ] Создать frontend страницы пользователей, ставок, формул и audit log (@Agent-Frontend)
+- [x] Создать frontend страницы пользователей, ставок, формул и audit log (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 4 (@Agent-Orchestrator)
 
 ### ✅ Part 5 — YouTrack and Hub Integration
@@ -184,7 +184,7 @@
 - [ ] Реализовать Excel export audit/change logs (@Agent-Export)
 - [ ] Реализовать JSON export for accounting integration (@Agent-Export)
 - [ ] Реализовать async export jobs and download links (@Agent-Export)
-- [ ] Создать frontend notification settings/history и export actions (@Agent-Frontend)
+- [x] Создать frontend notification settings/history и export actions (@Agent-Frontend)
 - [ ] Обновить `context.md` после завершения Part 10 (@Agent-Orchestrator)
 
 ### Part 11 — Performance, Security, Backup, Operations
