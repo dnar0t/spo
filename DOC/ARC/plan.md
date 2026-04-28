@@ -26,10 +26,13 @@
 - [x] Part 8 — Finance, Evaluations, Cost Calculation (@Agent-Finance)
 - [x] Part 9 — Period Closing, Snapshots, Reopen (@Agent-Planning)
 - [x] Part 10 — Notifications and Export (@Agent-Notifications, @Agent-Export)
+- [x] Part 11 — Performance, Security, Backup, Operations (@Agent-QA, @Agent-Security, @Agent-DevOps, @Agent-Docs)
 
 ---
 
 ## 🔄 In Progress
+
+- [ ] Part 12 — Pilot and Stabilization (@Agent-Orchestrator)
 
 
 
@@ -199,15 +202,23 @@
 
 ### Part 12 — Pilot and Stabilization
 
-- [ ] Подготовить пилотный набор проектов YouTrack (@Agent-Integration)
-- [ ] Синхронизировать пользователей и задачи (@Agent-Integration)
-- [ ] Создать пилотный период (@Agent-Planning)
-- [ ] Сформировать и зафиксировать план (@Agent-Planning)
-- [ ] Загрузить факт (@Agent-Integration)
-- [ ] Выставить тестовые оценки руководителя и бизнеса (@Agent-Reporting)
-- [ ] Проверить финансовые расчёты вручную на выборке (@Agent-QA)
-- [ ] Закрыть период и проверить immutable snapshots (@Agent-QA)
-- [ ] Проверить все экспорты (@Agent-QA)
+**Note:** Пилот заблокирован до подключения реального YouTrack, AD/LDAP и SMTP.
+Выполнена только подготовительная часть — централизованная обработка ошибок.
+
+- [x] Реализовать Global Exception Filter (@Agent-Orchestrator)
+- [x] Реализовать Response Wrapper Interceptor (@Agent-Orchestrator)
+- [x] Реализовать Request Logging Interceptor (@Agent-Orchestrator)
+- [x] Реализовать Custom Validation Pipe (@Agent-Orchestrator)
+- [x] Почистить контроллеры от дублированного handleError и try/catch (@Agent-Orchestrator)
+- [ ] Подготовить пилотный набор проектов YouTrack (@Agent-Integration) — 🔴 блокировано
+- [ ] Синхронизировать пользователей и задачи (@Agent-Integration) — 🔴 блокировано
+- [ ] Создать пилотный период (@Agent-Planning) — 🔴 блокировано
+- [ ] Сформировать и зафиксировать план (@Agent-Planning) — 🔴 блокировано
+- [ ] Загрузить факт (@Agent-Integration) — 🔴 блокировано
+- [ ] Выставить тестовые оценки руководителя и бизнеса (@Agent-Reporting) — 🔴 блокировано
+- [ ] Проверить финансовые расчёты вручную на выборке (@Agent-QA) — 🔴 блокировано
+- [ ] Закрыть период и проверить immutable snapshots (@Agent-QA) — 🔴 блокировано
+- [ ] Проверить все экспорты (@Agent-QA) — 🔴 блокировано
 - [ ] Собрать список дефектов и улучшений (@Agent-Orchestrator)
 - [ ] Исправить критичные дефекты пилота (@Assigned Agent)
 - [ ] Обновить `context.md` по итогам пилота (@Agent-Orchestrator)
