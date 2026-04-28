@@ -857,7 +857,10 @@ CLOSED → REOPENED → DIRECTOR_REVIEW → CLOSED
 
 | 13.0 | 2026-04-27 | Team Lead | Part 8 (Frontend) — Страница финансов интегрирована с реальным API: создан useFinance hook (React Query: groups, by-project, by-system, totals, freeze), Finance.tsx переведён с моков на API-вызовы (tree view по историям, системам, проектам, сортировка, фильтры, бизнес-оценки, freeze). Оценки руководителя и бизнеса также отображаются в Reports.tsx. Build — без ошибок. |
 
+| 14.0 | 2026-04-27 | Team Lead | Part 9 (Frontend) — Страница закрытия периода интегрирована с реальным API: создан usePeriodClose hook (React Query: readiness checklist, close, reopen, snapshot status/data, statistics), PeriodClose.tsx переведён с моков на API-вызовы (checklist готовности, close/reopen диалоги, просмотр snapshot, история периодов). Build — без ошибок. |
+
 | 2.0 | 2026-04-27 | TeamLead | Part 1 (Project Setup) завершён: monorepo, NestJS, health endpoint, shared package, Docker Compose, ESLint/Prettier, README. Part 2 (Database) завершён: полная Prisma-схема (без Float), Value Objects (Money, Minutes, Percentage, HourlyRate), User Entity, User Repository, PrismaUserRepository, seed данных, Prisma client генерация. Проект компилируется (`npm run build` — 37 файлов без ошибок). plan.md обновлён. |
+
 
 
 ---

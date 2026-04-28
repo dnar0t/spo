@@ -169,7 +169,7 @@
 - [x] Реализовать read-only guards for closed periods (@Agent-Security)
 - [x] Реализовать reopen period by director (@Agent-Planning)
 - [x] Реализовать audit для close/reopen (@Agent-Security)
-- [ ] Реализовать frontend close/reopen flow (@Agent-Frontend)
+- [x] Реализовать frontend close/reopen flow (@Agent-Frontend)
 - [ ] Реализовать regression tests: closed report immutability (@Agent-QA)
 - [ ] Обновить `context.md` после завершения Part 9 (@Agent-Orchestrator)
 
