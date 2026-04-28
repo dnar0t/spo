@@ -186,16 +186,16 @@
 
 ### Part 11 — Performance, Security, Backup, Operations
 
-- [ ] Подготовить performance dataset (@Agent-QA)
-- [ ] Провести performance tests отчётов (@Agent-QA)
-- [ ] Оптимизировать индексы и запросы (@Agent-Database)
-- [ ] Проверить server-side pagination/filtering/sorting (@Agent-QA)
-- [ ] Провести security review auth/RBAC/ABAC/secrets (@Agent-Security)
-- [ ] Реализовать backup script и restore procedure (@Agent-DevOps)
-- [ ] Настроить retention logs/exports/sync logs (@Agent-DevOps)
-- [ ] Подготовить deployment guide и operational runbook (@Agent-Docs)
-- [ ] Провести full regression suite (@Agent-QA)
-- [ ] Обновить `context.md` после завершения Part 11 (@Agent-Orchestrator)
+- [x] Подготовить performance dataset (@Agent-QA)
+- [x] Провести performance tests отчётов (@Agent-QA)
+- [x] Оптимизировать индексы и запросы (@Agent-Database)
+- [x] Проверить server-side pagination/filtering/sorting (@Agent-QA)
+- [x] Провести security review auth/RBAC/ABAC/secrets (@Agent-Security)
+- [x] Реализовать backup script и restore procedure (@Agent-DevOps)
+- [x] Настроить retention logs/exports/sync logs (@Agent-DevOps)
+- [x] Подготовить deployment guide и operational runbook (@Agent-Docs)
+- [x] Провести full regression suite (@Agent-QA)
+- [x] Обновить `plan.md` после завершения Part 11 (@Agent-Orchestrator)
 
 ### Part 12 — Pilot and Stabilization
 

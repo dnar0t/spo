@@ -841,6 +841,14 @@ CLOSED → REOPENED → DIRECTOR_REVIEW → CLOSED
 | 4.0 | 2026-04-27 | Team Lead | Part 4 (Administration and Dictionaries) — core завершён: EmployeeProfile, EmployeeRate, FormulaConfig, EvaluationScale, WorkRole, PlanningSettings entities + 15 use cases + 11 admin endpoints + 6 Prisma repositories. 245 files, build без ошибок. |
 | 5.0 | 2026-04-27 | Team Lead | Part 7 (Period Workflow, Fact Loading, Report Recalculation) — core завершён: PersonalReport/SummaryReport/ManagerEvaluation/BusinessEvaluation entities, ReportCalculator, FactLoadedEvent, 11 use cases (LoadFact, GeneratePersonalReports, GenerateSummaryReport, evaluations, transitions), ReportingController (11 endpoints), WorkflowController (4 endpoints). 278 files, build без ошибок. |
 
+| 6.0 | 2026-04-27 | Team Lead | Part 8 (Finance, Evaluations, Cost Calculation) — core завершён: SalaryCalculator, EffectiveRateCalculator, TaxCalculator, CostCalculator, ManagerEvaluation/BusinessEvaluation APIs, personal report recalculation, planned/actual/remaining cost. |
+
+| 7.0 | 2026-04-27 | Team Lead | Part 9 (Period Closing, Snapshots, Reopen) — core завершён: close/reopen use cases, snapshot entities (rates, formulas, scales, work items, issues, hierarchy, report lines, aggregates), read-only guards for closed periods, audit for close/reopen. |
+
+| 8.0 | 2026-04-27 | Team Lead | Part 10 (Notifications and Export) — core завершён: SMTP settings, notification templates/queue/history, Excel/PDF/JSON export services, async export jobs with download links. |
+
+| 9.0 | 2026-04-27 | Team Lead | Part 11 (Performance, Security, Backup, Operations) — реализованы: backup.sh, restore.sh, RetentionService + RetentionCronService + RetentionController, production docker-compose.prod.yml (PostgreSQL, Redis, Backend, Nginx, Backup), deployment-guide.md, runbook.md, performance-test-checklist.md, regression-test-checklist.md (80 тест-кейсов по 9 модулям). Plan.md обновлён. |
+
 | 2.0 | 2026-04-27 | TeamLead | Part 1 (Project Setup) завершён: monorepo, NestJS, health endpoint, shared package, Docker Compose, ESLint/Prettier, README. Part 2 (Database) завершён: полная Prisma-схема (без Float), Value Objects (Money, Minutes, Percentage, HourlyRate), User Entity, User Repository, PrismaUserRepository, seed данных, Prisma client генерация. Проект компилируется (`npm run build` — 37 файлов без ошибок). plan.md обновлён. |
 
 
