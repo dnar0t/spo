@@ -27,6 +27,9 @@ export interface PersonalReportRepository {
   /** Обновить строку отчёта */
   update(entity: PersonalReport): Promise<PersonalReport>;
 
+  /** Обновить множество строк отчёта (например, для заморозки) */
+  updateMany(ids: string[], data: { isFrozen?: boolean; frozenAt?: Date | null }): Promise<void>;
+
   /** Удалить все строки отчёта по ID периода */
   deleteByPeriodId(periodId: string): Promise<void>;
 

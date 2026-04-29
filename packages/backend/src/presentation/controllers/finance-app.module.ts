@@ -9,8 +9,7 @@ import { FinanceModule } from '../../infrastructure/prisma/finance.module';
 import { FinanceController } from './finance.controller';
 import { PrismaReportingPeriodRepository } from '../../infrastructure/prisma/repositories/prisma-reporting-period.repository';
 import { PrismaPersonalReportRepository } from '../../infrastructure/prisma/repositories/prisma-personal-report.repository';
-import { PrismaPlannedTaskRepository } from '../../infrastructure/prisma/repositories/prisma-planned-task.repository';
-import { PrismaYouTrackIssueRepository } from '../../infrastructure/prisma/repositories/prisma-youtrack-issue.repository';
+
 import { EffectiveRateCalculator } from '../../domain/services/effective-rate-calculator.service';
 import { TaxCalculator } from '../../domain/services/tax-calculator.service';
 import { CostCalculator } from '../../domain/services/cost-calculator.service';
@@ -21,6 +20,10 @@ import { GetPeriodByProjectUseCase } from '../../application/finance/use-cases/g
 import { GetPeriodBySystemUseCase } from '../../application/finance/use-cases/get-period-by-system.use-case';
 import { GetPeriodTotalsUseCase } from '../../application/finance/use-cases/get-period-totals.use-case';
 import { IAuditLogger } from '../../application/auth/ports/audit-logger';
+import {
+  IYouTrackIssueRepository,
+  YOUTRACK_ISSUE_REPOSITORY,
+} from '../../application/finance/ports/youtrack-issue-repository';
 
 @Module({
   imports: [FinanceModule],
@@ -60,14 +63,12 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       useFactory: (
         periodRepo: PrismaReportingPeriodRepository,
         personalReportRepo: PrismaPersonalReportRepository,
-        plannedTaskRepo: PrismaPlannedTaskRepository,
-        issueRepo: PrismaYouTrackIssueRepository,
-      ) => new GetPeriodGroupsUseCase(periodRepo, personalReportRepo, plannedTaskRepo, issueRepo),
+        issueRepo: IYouTrackIssueRepository,
+      ) => new GetPeriodGroupsUseCase(periodRepo, personalReportRepo, issueRepo),
       inject: [
         PrismaReportingPeriodRepository,
         PrismaPersonalReportRepository,
-        PrismaPlannedTaskRepository,
-        PrismaYouTrackIssueRepository,
+        YOUTRACK_ISSUE_REPOSITORY,
       ],
     },
     {
@@ -75,15 +76,12 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       useFactory: (
         periodRepo: PrismaReportingPeriodRepository,
         personalReportRepo: PrismaPersonalReportRepository,
-        plannedTaskRepo: PrismaPlannedTaskRepository,
-        issueRepo: PrismaYouTrackIssueRepository,
-      ) =>
-        new GetPeriodByProjectUseCase(periodRepo, personalReportRepo, plannedTaskRepo, issueRepo),
+        issueRepo: IYouTrackIssueRepository,
+      ) => new GetPeriodByProjectUseCase(periodRepo, personalReportRepo, issueRepo),
       inject: [
         PrismaReportingPeriodRepository,
         PrismaPersonalReportRepository,
-        PrismaPlannedTaskRepository,
-        PrismaYouTrackIssueRepository,
+        YOUTRACK_ISSUE_REPOSITORY,
       ],
     },
     {
@@ -91,14 +89,12 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       useFactory: (
         periodRepo: PrismaReportingPeriodRepository,
         personalReportRepo: PrismaPersonalReportRepository,
-        plannedTaskRepo: PrismaPlannedTaskRepository,
-        issueRepo: PrismaYouTrackIssueRepository,
-      ) => new GetPeriodBySystemUseCase(periodRepo, personalReportRepo, plannedTaskRepo, issueRepo),
+        issueRepo: IYouTrackIssueRepository,
+      ) => new GetPeriodBySystemUseCase(periodRepo, personalReportRepo, issueRepo),
       inject: [
         PrismaReportingPeriodRepository,
         PrismaPersonalReportRepository,
-        PrismaPlannedTaskRepository,
-        PrismaYouTrackIssueRepository,
+        YOUTRACK_ISSUE_REPOSITORY,
       ],
     },
     {

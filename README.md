@@ -143,6 +143,31 @@ npm run format        # Форматирование кода
 - `DOC/ARC/plan.md` — План разработки
 - `DOC/ARC/context.md` — Контекст для ИИ-агентов
 
+## Тестирование
+
+```bash
+npm test              # Запуск всех тестов
+```
+
+Проект содержит **97 автоматических тестов** в 6 тестовых наборах:
+
+| Набор | Описание |
+|-------|----------|
+| `test/auth/rbac.spec.ts` | RBAC: RolesGuard + @Roles() декоратор (9 тестов) |
+| `test/auth/abac.spec.ts` | ABAC: доступ к личным отчётам по ролям и иерархии (23 теста) |
+| `test/finance/freeze.spec.ts` | Freeze финансов: snapshot, флаг frozen, immutable reports (8 тестов) |
+| `test/regression/closed-report-immutability.spec.ts` | Неизменность закрытых отчётов: close/reopen, snapshots, аудит (25 тестов) |
+| `test/regression/fix-plan-outbox.spec.ts` | FixPlan + Transactional Outbox (4 теста) |
+| `test/youtrack/youtrack-guards.spec.ts` | YouTrackController guards: RBAC по матрице доступа (26 тестов) |
+| `test/smoke/build.test.ts` | Smoke-тест сборки (2 теста) |
+
+## Аудит
+
+Результаты аудита реализации и план исправлений:
+
+- `DOC/Verifications/verification_290426_1.md` — результаты аудита
+- `DOC/ARC/plan_verification_290426_1.md` — план исправлений
+
 ## Лицензия
 
 Internal. Все права защищены.

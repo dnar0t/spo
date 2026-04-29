@@ -6,6 +6,7 @@ import { IAuditLogger } from '../ports/audit-logger';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { AuthResponseDto } from '../dto/auth-response.dto';
 import { InvalidTokenError, SessionExpiredError } from '../../../domain/errors/auth.errors';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
 /**
  * RefreshTokenUseCase
@@ -28,6 +29,7 @@ export class RefreshTokenUseCase {
     private readonly userRepository: UserRepository,
     private readonly jwtService: IJwtService,
     private readonly auditLogger: IAuditLogger,
+    private readonly prismaService: PrismaService,
   ) {}
 
   async execute(
@@ -92,15 +94,20 @@ export class RefreshTokenUseCase {
       throw new InvalidTokenError('User associated with session not found');
     }
 
-    // 6. Generate new access token
+    // 6. Load user roles from DB
+    const userRoles = await this.prismaService.userRole.findMany({
+      where: { userId: user.id },
+      include: { role: true },
+    });
+    const roles: string[] = userRoles.map((ur) => ur.role.name);
+
+    // 7. Generate new access token with roles
     const accessToken = this.jwtService.generateAccessToken({
       sub: user.id,
       login: user.login,
       sessionId: newSession.id,
+      roles,
     });
-
-    // 7. Load user roles
-    const roles: string[] = [];
 
     // 8. Audit log
     await this.auditLogger.log({
@@ -111,6 +118,7 @@ export class RefreshTokenUseCase {
       details: {
         oldSessionId: session.id,
         expiresAt: newSession.expiresAt.toISOString(),
+        roles,
       },
       ipAddress: context?.ipAddress,
       userAgent: context?.userAgent,

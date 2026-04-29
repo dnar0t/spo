@@ -13,6 +13,7 @@ import {
   AccountLockedError,
   LdapConnectionError,
 } from '../../../domain/errors/auth.errors';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
 export class LoginUseCase {
   private readonly MAX_FAILED_ATTEMPTS = 5;
@@ -26,6 +27,7 @@ export class LoginUseCase {
     private readonly ldapAuthAdapter: ILdapAuthAdapter,
     private readonly jwtService: IJwtService,
     private readonly auditLogger: IAuditLogger,
+    private readonly prismaService: PrismaService,
   ) {}
 
   async execute(
@@ -131,15 +133,20 @@ export class LoginUseCase {
     );
     await this.refreshSessionRepository.save(session);
 
-    // 8. Generate access token
+    // 8. Load user roles from DB
+    const userRoles = await this.prismaService.userRole.findMany({
+      where: { userId: user.id },
+      include: { role: true },
+    });
+    const roles: string[] = userRoles.map((ur) => ur.role.name);
+
+    // 9. Generate access token with roles
     const accessToken = this.jwtService.generateAccessToken({
       sub: user.id,
       login: user.login,
       sessionId: session.id,
+      roles,
     });
-
-    // 9. Load user roles (from persistence – will be populated from user roles repository)
-    const roles: string[] = [];
 
     // 10. Audit log
     await this.auditLogger.log({
@@ -147,7 +154,7 @@ export class LoginUseCase {
       action: 'LOGIN_SUCCESS',
       entityType: 'User',
       entityId: user.id,
-      details: { sessionId: session.id },
+      details: { sessionId: session.id, roles },
       ipAddress: context?.ipAddress,
       userAgent: context?.userAgent,
     });

@@ -19,6 +19,7 @@ import { RefreshTokenDto } from '../../application/auth/dto/refresh-token.dto';
 import { AuthResponseDto } from '../../application/auth/dto/auth-response.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { ILdapAuthAdapter } from '../../application/auth/ports/ldap-auth.adapter';
 
 /**
@@ -53,10 +54,7 @@ export class AuthController {
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() dto: LoginDto,
-    @Req() req: Request,
-  ): Promise<AuthResponseDto> {
+  async login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto> {
     const ipAddress = req.ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
@@ -76,10 +74,7 @@ export class AuthController {
    */
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(
-    @Body() dto: RefreshTokenDto,
-    @Req() req: Request,
-  ): Promise<AuthResponseDto> {
+  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request): Promise<AuthResponseDto> {
     const ipAddress = req.ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
@@ -141,7 +136,7 @@ export class AuthController {
    */
   @Post('test-ldap')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles(ROLES.ADMIN)
   @HttpCode(HttpStatus.OK)
   async testLdap(@Req() req: Request) {
     const user = (req as any).user;
@@ -154,10 +149,7 @@ export class AuthController {
     // In real scenarios, this would bind to LDAP anonymously or with a service account
     let connectionStatus: string;
     try {
-      const result = await this.ldapAuthAdapter.authenticate(
-        'test-connection',
-        'test-password',
-      );
+      const result = await this.ldapAuthAdapter.authenticate('test-connection', 'test-password');
       connectionStatus = result.success ? 'connected' : 'authentication_failed';
     } catch (error) {
       connectionStatus = `error: ${(error as Error).message}`;

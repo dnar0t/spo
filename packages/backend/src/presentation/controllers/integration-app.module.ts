@@ -18,8 +18,21 @@ import { PrismaReportingPeriodRepository } from '../../infrastructure/prisma/rep
 import { PrismaPlannedTaskRepository } from '../../infrastructure/prisma/repositories/prisma-planned-task.repository';
 import { PrismaUserRepository } from '../../infrastructure/prisma/repositories/prisma-user.repository';
 import { YouTrackExportServiceImpl } from '../../infrastructure/youtrack/services/youtrack-export-service.impl';
+import { YouTrackRepositoryImpl } from '../../infrastructure/youtrack/services/youtrack-repository.impl';
 import { EventBusService } from '../../infrastructure/event-bus.service';
+import { YouTrackController } from './youtrack.controller';
 import { ExportPlanToYouTrackUseCase } from '../../application/integration/use-cases/export-plan-to-youtrack.use-case';
+import { GetYouTrackStatusUseCase } from '../../application/integration/use-cases/get-status.use-case';
+import { TestYouTrackConnectionUseCase } from '../../application/integration/use-cases/test-connection.use-case';
+import { RunYouTrackSyncUseCase } from '../../application/integration/use-cases/start-sync.use-case';
+import { GetSyncRunsUseCase } from '../../application/integration/use-cases/get-sync-runs.use-case';
+import { GetSyncRunDetailUseCase } from '../../application/integration/use-cases/get-sync-run-detail.use-case';
+import { GetYouTrackIssuesUseCase } from '../../application/integration/use-cases/get-issues.use-case';
+import { GetYouTrackStatsUseCase } from '../../application/integration/use-cases/get-stats.use-case';
+import {
+  IYouTrackRepository,
+  YOUTRACK_REPOSITORY,
+} from '../../application/integration/ports/youtrack-repository';
 import { PlanFixedEvent } from '../../domain/events/plan-fixed.event';
 
 /**
@@ -72,8 +85,97 @@ class PlanFixedEventHandler implements OnModuleInit {
 
 @Module({
   imports: [YouTrackModule, PlanningModule],
-  controllers: [],
+  controllers: [YouTrackController],
   providers: [
+    // ====================================================================
+    // Репозиторий YouTrack (порт → реализация)
+    //
+    // Регистрируем реализацию IYouTrackRepository под символическим токеном,
+    // чтобы use cases могли инжектить порт через @Inject(YOUTRACK_REPOSITORY).
+    // ====================================================================
+    {
+      provide: YOUTRACK_REPOSITORY,
+      useClass: YouTrackRepositoryImpl,
+    },
+
+    // ====================================================================
+    // Use Case: GetYouTrackStatusUseCase
+    //
+    // Получение статуса подключения к YouTrack.
+    // ====================================================================
+    {
+      provide: GetYouTrackStatusUseCase,
+      useFactory: (repository: IYouTrackRepository) => new GetYouTrackStatusUseCase(repository),
+      inject: [YOUTRACK_REPOSITORY],
+    },
+
+    // ====================================================================
+    // Use Case: TestYouTrackConnectionUseCase
+    //
+    // Тест подключения к YouTrack API.
+    // ====================================================================
+    {
+      provide: TestYouTrackConnectionUseCase,
+      useFactory: (repository: IYouTrackRepository) =>
+        new TestYouTrackConnectionUseCase(repository),
+      inject: [YOUTRACK_REPOSITORY],
+    },
+
+    // ====================================================================
+    // Use Case: RunYouTrackSyncUseCase
+    //
+    // Запуск полной синхронизации с YouTrack.
+    // ====================================================================
+    {
+      provide: RunYouTrackSyncUseCase,
+      useFactory: (repository: IYouTrackRepository) => new RunYouTrackSyncUseCase(repository),
+      inject: [YOUTRACK_REPOSITORY],
+    },
+
+    // ====================================================================
+    // Use Case: GetSyncRunsUseCase
+    //
+    // Получение истории синхронизаций.
+    // ====================================================================
+    {
+      provide: GetSyncRunsUseCase,
+      useFactory: (repository: IYouTrackRepository) => new GetSyncRunsUseCase(repository),
+      inject: [YOUTRACK_REPOSITORY],
+    },
+
+    // ====================================================================
+    // Use Case: GetSyncRunDetailUseCase
+    //
+    // Получение деталей конкретной синхронизации.
+    // ====================================================================
+    {
+      provide: GetSyncRunDetailUseCase,
+      useFactory: (repository: IYouTrackRepository) => new GetSyncRunDetailUseCase(repository),
+      inject: [YOUTRACK_REPOSITORY],
+    },
+
+    // ====================================================================
+    // Use Case: GetYouTrackIssuesUseCase
+    //
+    // Получение списка синхронизированных задач.
+    // ====================================================================
+    {
+      provide: GetYouTrackIssuesUseCase,
+      useFactory: (repository: IYouTrackRepository) => new GetYouTrackIssuesUseCase(repository),
+      inject: [YOUTRACK_REPOSITORY],
+    },
+
+    // ====================================================================
+    // Use Case: GetYouTrackStatsUseCase
+    //
+    // Получение статистики по интеграции.
+    // ====================================================================
+    {
+      provide: GetYouTrackStatsUseCase,
+      useFactory: (repository: IYouTrackRepository) => new GetYouTrackStatsUseCase(repository),
+      inject: [YOUTRACK_REPOSITORY],
+    },
+
     // ====================================================================
     // Use Case: ExportPlanToYouTrack
     //

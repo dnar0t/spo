@@ -27,6 +27,7 @@ import { PrismaEmployeeRateRepository } from '../../infrastructure/prisma/reposi
 import { PrismaFormulaConfigRepository } from '../../infrastructure/prisma/repositories/prisma-formula-config.repository';
 import { PrismaEvaluationScaleRepository } from '../../infrastructure/prisma/repositories/prisma-evaluation-scale.repository';
 import { PrismaPeriodSnapshotRepository } from '../../infrastructure/prisma/repositories/prisma-period-snapshot.repository';
+import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { IAuditLogger } from '../../application/auth/ports/audit-logger';
 
 @Module({
@@ -42,7 +43,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     // Зависимости: ReportingPeriodRepository, EmployeeRateRepository,
     //              FormulaConfigRepository, EvaluationScaleRepository,
     //              PersonalReportRepository, SummaryReportRepository,
-    //              PeriodSnapshotRepository
+    //              PeriodSnapshotRepository, PrismaService
     {
       provide: CreateSnapshotUseCase,
       useFactory: (
@@ -53,6 +54,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
         personalReportRepo: PrismaPersonalReportRepository,
         summaryReportRepo: PrismaSummaryReportRepository,
         snapshotRepo: PrismaPeriodSnapshotRepository,
+        prisma: PrismaService,
       ) =>
         new CreateSnapshotUseCase(
           periodRepo,
@@ -62,6 +64,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
           personalReportRepo,
           summaryReportRepo,
           snapshotRepo,
+          prisma,
         ),
       inject: [
         PrismaReportingPeriodRepository,
@@ -71,6 +74,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
         PrismaPersonalReportRepository,
         PrismaSummaryReportRepository,
         PrismaPeriodSnapshotRepository,
+        PrismaService,
       ],
     },
 

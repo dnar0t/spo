@@ -13,6 +13,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../../infrastructure/auth/auth.module';
 import { PrismaModule } from '../../infrastructure/prisma/prisma.module';
+import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { PrismaUserRepository } from '../../infrastructure/prisma/repositories/prisma-user.repository';
 import { PrismaRefreshSessionRepository } from '../../infrastructure/prisma/repositories/prisma-refresh-session.repository';
 import { PrismaLoginAttemptRepository } from '../../infrastructure/prisma/repositories/prisma-login-attempt.repository';
@@ -50,6 +51,7 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
         ldapAuthAdapter: ILdapAuthAdapter,
         jwtService: IJwtService,
         auditLogger: IAuditLogger,
+        prismaService: PrismaService,
       ) =>
         new LoginUseCase(
           authDomainService,
@@ -59,6 +61,7 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
           ldapAuthAdapter,
           jwtService,
           auditLogger,
+          prismaService,
         ),
       inject: [
         AuthDomainService,
@@ -68,6 +71,7 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
         ILdapAuthAdapter,
         IJwtService,
         IAuditLogger,
+        PrismaService,
       ],
     },
 
@@ -79,6 +83,7 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
         userRepository: UserRepository,
         jwtService: IJwtService,
         auditLogger: IAuditLogger,
+        prismaService: PrismaService,
       ) =>
         new RefreshTokenUseCase(
           authDomainService,
@@ -86,6 +91,7 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
           userRepository,
           jwtService,
           auditLogger,
+          prismaService,
         ),
       inject: [
         AuthDomainService,
@@ -93,22 +99,20 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
         PrismaUserRepository,
         IJwtService,
         IAuditLogger,
+        PrismaService,
       ],
     },
 
     {
       provide: LogoutUseCase,
-      useFactory: (
-        refreshSessionRepository: RefreshSessionRepository,
-        auditLogger: IAuditLogger,
-      ) => new LogoutUseCase(refreshSessionRepository, auditLogger),
+      useFactory: (refreshSessionRepository: RefreshSessionRepository, auditLogger: IAuditLogger) =>
+        new LogoutUseCase(refreshSessionRepository, auditLogger),
       inject: [PrismaRefreshSessionRepository, IAuditLogger],
     },
 
     {
       provide: GetCurrentUserUseCase,
-      useFactory: (userRepository: UserRepository) =>
-        new GetCurrentUserUseCase(userRepository),
+      useFactory: (userRepository: UserRepository) => new GetCurrentUserUseCase(userRepository),
       inject: [PrismaUserRepository],
     },
 
@@ -133,11 +137,6 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
       inject: [],
     },
   ],
-  exports: [
-    JwtAuthGuard,
-    RolesGuard,
-    LoginUseCase,
-    RefreshTokenUseCase,
-  ],
+  exports: [JwtAuthGuard, RolesGuard, LoginUseCase, RefreshTokenUseCase],
 })
 export class AuthAppModule {}

@@ -64,13 +64,18 @@ export class FreezeFinancialsUseCase {
       // Суммируем totalWithTax до заморозки
       totalCostBeforeFreeze += report.totalWithTax?.kopecks ?? 0;
 
-      // TODO: Установить флаг frozen в persistence
-      // Пока просто собираем ID
+      // Собираем ID для массового обновления
       frozenLineIds.push(report.id);
 
       // Суммируем totalWithTax после заморозки
       totalCostAfterFreeze += report.totalWithTax?.kopecks ?? 0;
     }
+
+    // 4.1. Устанавливаем флаг frozen в persistence для всех строк отчёта
+    await this.personalReportRepository.updateMany(frozenLineIds, {
+      isFrozen: true,
+      frozenAt: new Date(),
+    });
 
     // 5. Логируем аудит
     await this.auditLogger.log({

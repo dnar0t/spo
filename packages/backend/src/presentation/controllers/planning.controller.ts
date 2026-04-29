@@ -26,6 +26,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { CreatePeriodUseCase } from '../../application/planning/use-cases/create-period.use-case';
 import { UpdatePeriodUseCase } from '../../application/planning/use-cases/update-period.use-case';
 import { GetPeriodsUseCase } from '../../application/planning/use-cases/get-periods.use-case';
@@ -86,7 +87,7 @@ export class PlanningController {
    */
   @Post('periods')
   @HttpCode(HttpStatus.CREATED)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async createPeriod(@Body() dto: CreatePeriodDto) {
     this.logger.log(`Creating period: ${dto.month}/${dto.year}`);
 
@@ -138,7 +139,7 @@ export class PlanningController {
    * PUT /api/planning/periods/:id
    */
   @Put('periods/:id')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async updatePeriod(@Param('id') id: string, @Body() dto: UpdatePeriodDto) {
     this.logger.log(`Updating period: id=${id}`);
 
@@ -153,7 +154,7 @@ export class PlanningController {
    */
   @Delete('periods/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async deletePeriod(@Param('id') id: string) {
     this.logger.log(`Deleting period: id=${id}`);
 
@@ -240,7 +241,7 @@ export class PlanningController {
    * PUT /api/planning/periods/:id/tasks/:taskId
    */
   @Put('periods/:id/tasks/:taskId')
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async assignTask(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
@@ -264,7 +265,7 @@ export class PlanningController {
    */
   @Delete('periods/:id/tasks/:taskId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async unassignTask(@Param('id') id: string, @Param('taskId') taskId: string) {
     this.logger.log(`Unassigning task ${taskId} in period ${id}`);
 
@@ -278,7 +279,7 @@ export class PlanningController {
    */
   @Put('periods/:id/tasks/:taskId/sort')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async updateTaskSortOrder(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
@@ -297,7 +298,7 @@ export class PlanningController {
    */
   @Put('periods/:id/tasks/:taskId/readiness')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async updateTaskReadiness(
     @Param('id') id: string,
     @Param('taskId') taskId: string,
@@ -320,7 +321,7 @@ export class PlanningController {
    */
   @Post('periods/:id/fix-plan')
   @HttpCode(HttpStatus.CREATED)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async fixPlan(@Param('id') id: string, @Body() dto?: FixPlanDto) {
     this.logger.log(`Fixing plan for period: id=${id}`);
 
@@ -336,7 +337,7 @@ export class PlanningController {
    */
   @Get('periods/:id/plan-versions')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async getPlanVersions(@Param('id') id: string) {
     this.logger.log(`Fetching plan versions for period: id=${id}`);
 
@@ -355,7 +356,7 @@ export class PlanningController {
    */
   @Post('periods/:id/carry-over-readiness')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async carryOverReadiness(@Param('id') id: string) {
     this.logger.log(`Carrying over readiness for period: id=${id}`);
 
@@ -376,7 +377,7 @@ export class PlanningController {
    */
   @Put('periods/:id/modify-fixed-plan')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async modifyFixedPlan(@Param('id') id: string, @Body() dto: ModifyFixedPlanDto) {
     this.logger.log(`Modifying fixed plan for period: id=${id}, taskId=${dto.taskId}`);
 
@@ -396,7 +397,7 @@ export class PlanningController {
    */
   @Post('periods/:id/transition')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async transitionPeriod(
     @Param('id') id: string,
     @Body('transition') transition: string,

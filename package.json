@@ -5,7 +5,8 @@
   "description": "Система Планирования и Отчетности (СПО)",
   "workspaces": [
     "packages/backend",
-    "packages/shared"
+    "packages/shared",
+    "spo-front"
   ],
   "scripts": {
     "build": "npm run build --workspaces",

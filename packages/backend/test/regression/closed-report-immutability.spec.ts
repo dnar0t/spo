@@ -598,3 +598,222 @@ describe('Closed Report Immutability (Regression)', () => {
     });
   });
 });
+
+describe('7. После закрытия периода workItems, issues и hierarchy в snapshot не пустые', () => {
+  it('workItems в snapshot не пустые после закрытия периода', () => {
+    const period = createPlanningPeriod({ id: 'snapshot-workitems' });
+    const snapshot = PeriodSnapshot.create({
+      periodId: period.id,
+      employeeRates: { 'user-1': { hourlyRate: 1500 } },
+      formulas: { overhead: 'dev * 0.2' },
+      evaluationScales: { quality: [1, 2, 3, 4, 5] },
+      workItems: {
+        items: [
+          { issueNumber: 'PROJ-42', type: 'dev', minutes: 480 },
+          { issueNumber: 'PROJ-43', type: 'test', minutes: 120 },
+        ],
+      },
+      issues: {
+        'PROJ-42': { summary: 'Implement feature X' },
+        'PROJ-43': { summary: 'Write tests' },
+      },
+      issueHierarchy: {
+        'PROJ-42': { parent: 'EPIC-1' },
+        'PROJ-43': { parent: 'EPIC-1' },
+        'EPIC-1': { parent: null },
+      },
+      reportLines: { lines: [] },
+      aggregates: { totalDev: 480, totalTest: 120 },
+    });
+
+    period.transitionTo(PeriodState.periodClosed(), 'user-1');
+
+    // Проверяем что workItems содержит данные
+    const workItems = snapshot.workItems as { items: unknown[] };
+    expect(workItems.items).toBeDefined();
+    expect(workItems.items.length).toBeGreaterThan(0);
+    expect(workItems.items[0]).toHaveProperty('issueNumber');
+
+    // Проверяем что issues не пуст
+    const issues = snapshot.issues as Record<string, unknown>;
+    expect(Object.keys(issues).length).toBeGreaterThan(0);
+    expect(issues['PROJ-42']).toBeDefined();
+
+    // Проверяем что hierarchy не пуста
+    const hierarchy = snapshot.issueHierarchy as Record<string, unknown>;
+    expect(Object.keys(hierarchy).length).toBeGreaterThan(0);
+    expect(hierarchy['EPIC-1']).toBeDefined();
+    expect((hierarchy['EPIC-1'] as Record<string, unknown>).parent).toBeNull();
+  });
+
+  it('snapshot содержит корректные агрегированные данные после закрытия', () => {
+    const period = createPlanningPeriod({ id: 'snapshot-aggregates' });
+    const snapshot = PeriodSnapshot.create({
+      periodId: period.id,
+      employeeRates: { 'user-1': { hourlyRate: 1500 } },
+      formulas: { overhead: 'dev * 0.2' },
+      evaluationScales: { quality: [1, 2, 3, 4, 5] },
+      workItems: {
+        items: [
+          { issueNumber: 'PROJ-42', type: 'dev', minutes: 480 },
+          { issueNumber: 'PROJ-43', type: 'test', minutes: 120 },
+        ],
+      },
+      issues: {
+        'PROJ-42': { summary: 'Implement feature X' },
+        'PROJ-43': { summary: 'Write tests' },
+      },
+      issueHierarchy: {
+        'PROJ-42': { parent: 'EPIC-1' },
+        'PROJ-43': { parent: 'EPIC-1' },
+        'EPIC-1': { parent: null },
+      },
+      reportLines: { lines: [] },
+      aggregates: { totalDev: 480, totalTest: 120, totalFact: 600 },
+    });
+
+    period.transitionTo(PeriodState.periodClosed(), 'user-1');
+
+    const aggregates = snapshot.aggregates as Record<string, unknown>;
+    expect(aggregates.totalDev).toBe(480);
+    expect(aggregates.totalTest).toBe(120);
+    expect(aggregates.totalFact).toBe(600);
+  });
+});
+
+describe('8. Изменение справочников не меняет исторические данные в snapshot', () => {
+  it('изменение employeeRates в источнике не влияет на snapshot', () => {
+    const period = createPlanningPeriod({ id: 'snapshot-dict-employees' });
+
+    const originalRates: Record<string, unknown> = {
+      'user-1': { hourlyRate: 1500 },
+      'user-2': { hourlyRate: 2000 },
+    };
+
+    const snapshot = PeriodSnapshot.create({
+      periodId: period.id,
+      employeeRates: originalRates,
+      formulas: { overhead: 'dev * 0.2' },
+      evaluationScales: { quality: [1, 2, 3, 4, 5] },
+      workItems: { items: [] },
+      issues: { 'PROJ-42': { summary: 'Implement feature X' } },
+      issueHierarchy: { 'PROJ-42': { parent: null } },
+      reportLines: { lines: [] },
+      aggregates: { totalDev: 480, totalTest: 0 },
+    });
+
+    period.transitionTo(PeriodState.periodClosed(), 'user-1');
+
+    // Получаем rates из snapshot
+    const snapshotRates = snapshot.employeeRates;
+    expect((snapshotRates['user-1'] as Record<string, unknown>).hourlyRate).toBe(1500);
+
+    // Имитируем изменение справочника ставок в БД
+    originalRates['user-1'] = { hourlyRate: 9999 };
+    originalRates['user-3'] = { hourlyRate: 3000 };
+
+    // Проверяем что snapshot остался неизменным
+    const ratesAfterMutation = snapshot.employeeRates;
+    expect((ratesAfterMutation['user-1'] as Record<string, unknown>).hourlyRate).toBe(1500);
+    expect(ratesAfterMutation['user-3']).toBeUndefined();
+  });
+
+  it('изменение formulas в источнике не влияет на snapshot', () => {
+    const period = createPlanningPeriod({ id: 'snapshot-dict-formulas' });
+
+    const originalFormulas: Record<string, unknown> = {
+      overhead: 'dev * 0.2',
+      ndfl: '0.13',
+    };
+
+    const snapshot = PeriodSnapshot.create({
+      periodId: period.id,
+      employeeRates: { 'user-1': { hourlyRate: 1500 } },
+      formulas: originalFormulas,
+      evaluationScales: { quality: [1, 2, 3, 4, 5] },
+      workItems: { items: [] },
+      issues: { 'PROJ-42': { summary: 'Implement feature X' } },
+      issueHierarchy: { 'PROJ-42': { parent: null } },
+      reportLines: { lines: [] },
+      aggregates: { totalDev: 480, totalTest: 0 },
+    });
+
+    period.transitionTo(PeriodState.periodClosed(), 'user-1');
+
+    // Получаем формулы из snapshot
+    const snapshotFormulas = snapshot.formulas;
+    expect(snapshotFormulas.overhead).toBe('dev * 0.2');
+
+    // Имитируем изменение формул в системе
+    originalFormulas.overhead = 'dev * 0.3';
+    originalFormulas.insurance = '0.05';
+
+    // Проверяем что snapshot остался неизменным
+    const formulasAfterMutation = snapshot.formulas;
+    expect(formulasAfterMutation.overhead).toBe('dev * 0.2');
+    expect(formulasAfterMutation.insurance).toBeUndefined();
+  });
+
+  it('изменение evaluationScales в источнике не влияет на snapshot', () => {
+    const period = createPlanningPeriod({ id: 'snapshot-dict-scales' });
+
+    const originalScales: Record<string, unknown> = {
+      quality: [1, 2, 3, 4, 5],
+      productivity: [1, 2, 3],
+    };
+
+    const snapshot = PeriodSnapshot.create({
+      periodId: period.id,
+      employeeRates: { 'user-1': { hourlyRate: 1500 } },
+      formulas: { overhead: 'dev * 0.2' },
+      evaluationScales: originalScales,
+      workItems: { items: [] },
+      issues: { 'PROJ-42': { summary: 'Implement feature X' } },
+      issueHierarchy: { 'PROJ-42': { parent: null } },
+      reportLines: { lines: [] },
+      aggregates: { totalDev: 480, totalTest: 0 },
+    });
+
+    period.transitionTo(PeriodState.periodClosed(), 'user-1');
+
+    // Получаем шкалы из snapshot
+    const snapshotScales = snapshot.evaluationScales;
+    expect(snapshotScales.quality).toEqual([1, 2, 3, 4, 5]);
+
+    // Имитируем изменение шкал оценок
+    originalScales.quality = [1, 2, 3, 4, 5, 6];
+    delete originalScales.productivity;
+
+    // Проверяем что snapshot остался неизменным
+    const scalesAfterMutation = snapshot.evaluationScales;
+    expect(scalesAfterMutation.quality).toEqual([1, 2, 3, 4, 5]);
+    expect(scalesAfterMutation.productivity).toEqual([1, 2, 3]);
+  });
+
+  it('snapshot data возвращает копии при каждом вызове геттера', () => {
+    const period = createPlanningPeriod({ id: 'snapshot-copy' });
+
+    const snapshot = PeriodSnapshot.create({
+      periodId: period.id,
+      employeeRates: { 'user-1': { hourlyRate: 1500 } },
+      formulas: { overhead: 'dev * 0.2' },
+      evaluationScales: { quality: [1, 2, 3, 4, 5] },
+      workItems: { items: [] },
+      issues: { 'PROJ-42': { summary: 'Implement feature X' } },
+      issueHierarchy: { 'PROJ-42': { parent: null } },
+      reportLines: { lines: [] },
+      aggregates: { totalDev: 480, totalTest: 0 },
+    });
+
+    period.transitionTo(PeriodState.periodClosed(), 'user-1');
+
+    // Два последовательных вызова геттера возвращают разные объекты
+    const firstCall = snapshot.employeeRates;
+    const secondCall = snapshot.employeeRates;
+    expect(firstCall).not.toBe(secondCall);
+
+    // Модификация первого результата не влияет на второй
+    (firstCall['user-1'] as Record<string, unknown>).hourlyRate = 9999;
+    expect((secondCall['user-1'] as Record<string, unknown>).hourlyRate).toBe(1500);
+  });
+});

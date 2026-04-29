@@ -6,7 +6,8 @@ import { YouTrackApiClient } from './youtrack-api.client';
 import { YouTrackMapper } from './youtrack-mapper';
 import { SyncEngine } from './sync-engine';
 import { YouTrackExportServiceImpl } from './services/youtrack-export-service.impl';
-import { YouTrackController } from '../../presentation/controllers/youtrack.controller';
+import { PrismaYouTrackIssueRepository } from './repositories/prisma-youtrack-issue.repository';
+import { YOUTRACK_ISSUE_REPOSITORY } from '../../application/finance/ports/youtrack-issue-repository';
 
 @Module({
   imports: [
@@ -17,8 +18,23 @@ import { YouTrackController } from '../../presentation/controllers/youtrack.cont
     ConfigModule,
     PrismaModule,
   ],
-  controllers: [YouTrackController],
-  providers: [YouTrackApiClient, YouTrackMapper, SyncEngine, YouTrackExportServiceImpl],
-  exports: [YouTrackApiClient, YouTrackMapper, SyncEngine, YouTrackExportServiceImpl],
+  controllers: [],
+  providers: [
+    YouTrackApiClient,
+    YouTrackMapper,
+    SyncEngine,
+    YouTrackExportServiceImpl,
+    {
+      provide: YOUTRACK_ISSUE_REPOSITORY,
+      useClass: PrismaYouTrackIssueRepository,
+    },
+  ],
+  exports: [
+    YouTrackApiClient,
+    YouTrackMapper,
+    SyncEngine,
+    YouTrackExportServiceImpl,
+    YOUTRACK_ISSUE_REPOSITORY,
+  ],
 })
 export class YouTrackModule {}

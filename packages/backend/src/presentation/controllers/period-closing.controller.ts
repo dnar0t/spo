@@ -13,6 +13,7 @@
 import { Controller, Get, Post, Param, Body, UseGuards, Req, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { ClosePeriodUseCase } from '../../application/planning/use-cases/close-period.use-case';
 import { GetPeriodReadinessUseCase } from '../../application/planning/use-cases/get-period-readiness.use-case';
 import { ReopenPeriodUseCase } from '../../application/reporting/use-cases/reopen-period.use-case';
@@ -56,7 +57,7 @@ export class PeriodClosingController {
    * переводит период в состояние PERIOD_CLOSED.
    */
   @Post(':id/close')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async closePeriod(
     @Param('id') id: string,
     @Body() body: ClosePeriodBody,
@@ -86,7 +87,7 @@ export class PeriodClosingController {
    * Удаляет снэпшот данных, переводит период в PERIOD_REOPENED.
    */
   @Post(':id/reopen')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async reopenPeriod(
     @Param('id') id: string,
     @Body() body: ReopenPeriodBody,
@@ -116,7 +117,7 @@ export class PeriodClosingController {
    * Доступно: ADMIN, DIRECTOR, HR, FINANCE.
    */
   @Get(':id/snapshot')
-  @Roles('admin', 'director', 'hr', 'finance')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.HR, ROLES.FINANCE)
   async getSnapshot(@Param('id') id: string) {
     const snapshot = await this.periodSnapshotRepository.findByPeriodId(id);
     if (!snapshot) {
@@ -146,7 +147,7 @@ export class PeriodClosingController {
    * Доступно: ADMIN, DIRECTOR, HR, FINANCE.
    */
   @Get(':id/snapshot/status')
-  @Roles('admin', 'director', 'hr', 'finance')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.HR, ROLES.FINANCE)
   async getSnapshotStatus(@Param('id') id: string) {
     const snapshot = await this.periodSnapshotRepository.findByPeriodId(id);
 
@@ -167,7 +168,7 @@ export class PeriodClosingController {
    * проставлены ли оценки.
    */
   @Get(':id/readiness')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async getReadiness(@Param('id') id: string) {
     return await this.getPeriodReadinessUseCase.execute(id);
   }

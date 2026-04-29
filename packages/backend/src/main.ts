@@ -38,12 +38,13 @@ async function bootstrap() {
   app.useGlobalInterceptors(new RequestLoggingInterceptor(), new ResponseWrapperInterceptor());
 
   // ---- CORS ----
+  const configService = app.get(ConfigService);
+  const corsOrigins = configService.get('CORS_ORIGINS', 'http://localhost:5173').split(',');
   app.enableCors({
-    origin: true,
+    origin: corsOrigins,
     credentials: true,
   });
 
-  const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
 
   await app.listen(port);

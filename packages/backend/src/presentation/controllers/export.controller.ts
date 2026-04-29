@@ -17,7 +17,8 @@ import { Controller, Get, Post, Param, Query, Req, Logger, HttpStatus, Res } fro
 import { UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { RolesGuard } from '../guards/roles.guard';
+import { Roles, RolesGuard } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { ExportPlanUseCase } from '../../application/export/use-cases/export-plan.use-case';
 import { ExportSummaryReportUseCase } from '../../application/export/use-cases/export-summary-report.use-case';
 import { ExportPersonalReportUseCase } from '../../application/export/use-cases/export-personal-report.use-case';
@@ -65,6 +66,7 @@ export class ExportController {
    * @param format Формат: xlsx | pdf (по умолчанию xlsx)
    */
   @Post('plan/:periodId')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.VIEWER)
   async exportPlan(
     @Param('periodId') periodId: string,
     @Query('format') format: string,
@@ -87,6 +89,7 @@ export class ExportController {
    * @param format Формат: xlsx | pdf (по умолчанию xlsx)
    */
   @Post('summary/:periodId')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.VIEWER)
   async exportSummaryReport(
     @Param('periodId') periodId: string,
     @Query('format') format: string,
@@ -110,6 +113,7 @@ export class ExportController {
    * @param format Формат: xlsx | pdf (по умолчанию xlsx)
    */
   @Post('personal/:periodId/:userId')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.EMPLOYEE)
   async exportPersonalReport(
     @Param('periodId') periodId: string,
     @Param('userId') userId: string,
@@ -136,6 +140,7 @@ export class ExportController {
    * @param toDate Опциональная дата окончания
    */
   @Post('audit')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async exportAuditLog(
     @Query('periodId') periodId: string | undefined,
     @Query('userId') userId: string | undefined,
@@ -160,6 +165,7 @@ export class ExportController {
    * @param periodId ID периода
    */
   @Post('accounting/:periodId')
+  @Roles(ROLES.ACCOUNTANT, ROLES.ADMIN, ROLES.DIRECTOR)
   async exportJsonAccounting(@Param('periodId') periodId: string, @Req() req: RequestWithUser) {
     return await this.exportJsonAccountingUseCase.execute({
       periodId,
@@ -174,6 +180,7 @@ export class ExportController {
    * Получение списка задач на экспорт текущего пользователя.
    */
   @Get('jobs')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.VIEWER)
   async getJobs(@Req() req: RequestWithUser) {
     return await this.getExportJobsUseCase.execute({
       userId: req.user.id,
@@ -189,6 +196,7 @@ export class ExportController {
    * @param path Путь к файлу (может быть передан в query как запасной вариант)
    */
   @Get('download/:jobId')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.VIEWER)
   async downloadFile(
     @Param('jobId') jobId: string,
     @Query('path') filePath: string | undefined,

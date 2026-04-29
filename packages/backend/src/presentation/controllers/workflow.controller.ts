@@ -8,6 +8,7 @@
 import { Controller, Get, Post, Param, UseGuards, Req, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { TransitionPeriodUseCase } from '../../application/reporting/use-cases/transition-period.use-case';
 import { GetPeriodHistoryUseCase } from '../../application/reporting/use-cases/get-period-history.use-case';
 import { NotFoundError } from '../../domain/errors/domain.error';
@@ -53,7 +54,7 @@ export class WorkflowController {
    * Тело запроса: { targetState: string, reason?: string }
    */
   @Post('periods/:id/transition')
-  @Roles('manager', 'admin', 'director')
+  @Roles(ROLES.MANAGER, ROLES.ADMIN, ROLES.DIRECTOR)
   async transition(@Param('id') id: string, @Req() req: RequestWithUser) {
     return {
       message: 'Use POST /api/workflow/periods/:id/transition with body: { targetState, reason }',
@@ -72,7 +73,7 @@ export class WorkflowController {
    * Тело запроса: { reason: string }
    */
   @Post('periods/:id/reopen')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async reopenPeriod(@Param('id') id: string, @Req() req: RequestWithUser) {
     return {
       message: 'Use POST /api/workflow/periods/:id/reopen with body: { reason }',

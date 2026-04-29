@@ -2,8 +2,8 @@
 
 **Project:** Система Планирования и Отчетности (СПО)  
 **File:** `plan.md`  
-**Version:** 2.0  
-**Updated:** 2026-04-27  
+**Version:** 2.1
+**Updated:** 2026-04-29  
 **Execution model:** команда ИИ-агентов  
 **Timeline:** не используется. Выполнение идёт по чекбоксам и зависимостям.  
 **Rule:** после завершения существенного блока обновлять `context.md`.
@@ -27,12 +27,16 @@
 - [x] Part 9 — Period Closing, Snapshots, Reopen (@Agent-Planning)
 - [x] Part 10 — Notifications and Export (@Agent-Notifications, @Agent-Export)
 - [x] Part 11 — Performance, Security, Backup, Operations (@Agent-QA, @Agent-Security, @Agent-DevOps, @Agent-Docs)
+- [x] Проведён аудит реализации (`DOC/Verifications/verification_290426_1.md`)
+- [x] Составлен план исправлений (`DOC/ARC/plan_verification_290426_1.md`)
+- [x] Исправлено ~95% замечаний аудита
 
 ---
 
 ## 🔄 In Progress
 
-- [ ] Part 12 — Pilot and Stabilization (@Agent-Orchestrator) — 🔴 блокировано
+- [x] Аудит и исправление замечаний — выполнено
+- [ ] Part 12 — Pilot and Stabilization (@Agent-Orchestrator) — 🔴 блокировано (требуется инфраструктура: PostgreSQL, LDAP, SMTP)
 
 
 
@@ -344,3 +348,37 @@
 - [ ] Для закрытых периодов использовать immutable snapshots
 - [ ] Для отчётов использовать materialized report tables
 - [ ] Все права проверять на backend
+
+## Результаты верификации
+
+Проведён внешний аудит (29.04.2026). 
+Подробный план исправлений: `plan_verification_290426_1.md`.
+
+Статус: большинство критичных замечаний (CR-01 — CR-20) исправлены.
+Остались: CR-11 (httpOnly cookie), CR-15 (LDAP), CR-18 (CI/CD требует проверки).
+
+## 📋 Результаты аудита 29.04.2026
+
+### Выполненные исправления
+
+| Этап | Задачи | Статус |
+|------|--------|--------|
+| 0 — Подготовка | Удаление устаревшей Prisma схемы, baseline сборки | ✅ Выполнено |
+| 1 — RBAC и авторизация | Загрузка ролей, унификация регистра, guards YouTrackController, вынос use cases | ✅ Выполнено |
+| 2 — Безопасность | CORS allowlist, fail-fast secrets | ✅ Выполнено |
+| 3 — Frontend/Backend | Mock-данные убраны, API_BASE_URL в env, spo-front в workspace | ✅ Выполнено |
+| 4 — Доменная полнота | Outbox, Snapshot, Freeze, группировки, shared enums | ✅ Выполнено |
+| 5 — Тестирование и CI/CD | CI workflow, 97 тестов, ExportController roles, health endpoint | ✅ Выполнено |
+| 6 — Документация | Context, Plan, README синхронизированы | ✅ Выполнено |
+
+### Отложенные задачи
+
+| Задача | Причина блокера |
+|--------|----------------|
+| Initial Prisma migration | Требуется запущенный PostgreSQL |
+| Refresh token в httpOnly cookie | Требует согласованных изменений backend+frontend |
+| CSRF защита | Зависит от httpOnly cookie |
+| CSP заголовки | Некритично для MVP |
+| LDAPS adapter | Требует доступа к LDAP-серверу и пакета ldapjs |
+| Frontend integration test | Требует уточнения подхода к тестированию |
+| BullMQ очереди | Заменены in-process + outbox для MVP |

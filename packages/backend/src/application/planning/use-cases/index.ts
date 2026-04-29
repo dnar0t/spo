@@ -23,7 +23,7 @@ export {
   type AssignTaskParams,
 } from './assign-task.use-case';
 export { UnassignTaskUseCase, type UnassignTaskResult } from './unassign-task.use-case';
-export { FixPlanUseCase, type FixPlanResult, type EventBus } from './fix-plan.use-case';
+export { FixPlanUseCase, type FixPlanResult } from './fix-plan.use-case';
 export {
   ModifyFixedPlanUseCase,
   type ModifyFixedPlanDto,

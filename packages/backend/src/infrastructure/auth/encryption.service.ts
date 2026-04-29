@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'node:crypto';
 import { IEncryptionService } from '../../application/auth/ports/encryption.service';
@@ -17,7 +17,6 @@ import { IEncryptionService } from '../../application/auth/ports/encryption.serv
  */
 @Injectable()
 export class EncryptionService implements IEncryptionService {
-  private readonly logger = new Logger(EncryptionService.name);
   private readonly key: Buffer;
   private readonly algorithm = 'aes-256-gcm';
   private readonly ivLength = 12;
@@ -26,16 +25,16 @@ export class EncryptionService implements IEncryptionService {
   constructor(private readonly configService: ConfigService) {
     const keyHex = this.configService.get<string>('ENCRYPTION_KEY');
 
-    if (!keyHex || keyHex.length !== 64) {
-      this.logger.warn(
-        'ENCRYPTION_KEY is not configured or invalid (expected 64 hex chars). ' +
-          'Using a derived development key. This is INSECURE for production!',
-      );
-      // Use a deterministic key for dev only (SHA-256 of a dev string)
-      this.key = crypto.createHash('sha256').update('spo-dev-encryption-key').digest();
-    } else {
-      this.key = Buffer.from(keyHex, 'hex');
+    if (!keyHex) {
+      throw new Error('ENCRYPTION_KEY environment variable is required');
     }
+    if (keyHex.length !== 64) {
+      throw new Error(
+        'ENCRYPTION_KEY must be 64 hex characters (32 bytes). ' +
+          'Generate one with: openssl rand -hex 32',
+      );
+    }
+    this.key = Buffer.from(keyHex, 'hex');
   }
 
   /**
@@ -48,10 +47,7 @@ export class EncryptionService implements IEncryptionService {
       authTagLength: this.authTagLength,
     });
 
-    const encrypted = Buffer.concat([
-      cipher.update(plainText, 'utf8'),
-      cipher.final(),
-    ]);
+    const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
 
     const authTag = cipher.getAuthTag();
 
@@ -81,10 +77,7 @@ export class EncryptionService implements IEncryptionService {
 
     decipher.setAuthTag(authTag);
 
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
-    ]);
+    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
 
     return decrypted.toString('utf8');
   }

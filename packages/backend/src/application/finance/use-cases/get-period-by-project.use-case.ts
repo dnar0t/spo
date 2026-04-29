@@ -3,15 +3,12 @@
  *
  * Группировка финансовых данных отчётного периода по проектам.
  * Собирает все PersonalReport строки за период и группирует их
- * по идентификатору проекта (из YouTrackIssue).
- *
- * TODO: Полная реализация требует доступа к issue hierarchy через
- *       YouTrackIssueRepository для определения projectId по каждому issue.
- *       Сейчас — заглушка с возвратом общей суммы по периоду.
+ * по идентификатору проекта (из YouTrackIssue.projectName).
  */
-import { PrismaReportingPeriodRepository } from '../../../infrastructure/prisma/repositories/prisma-reporting-period.repository';
-import { PrismaPersonalReportRepository } from '../../../infrastructure/prisma/repositories/prisma-personal-report.repository';
+import { ReportingPeriodRepository } from '../../../domain/repositories/reporting-period.repository';
+import { PersonalReportRepository } from '../../../domain/repositories/personal-report.repository';
 import { NotFoundError } from '../../../domain/errors/domain.error';
+import { IYouTrackIssueRepository } from '../ports/youtrack-issue-repository';
 
 export interface ProjectGroupDto {
   readonly projectId: string;
@@ -45,10 +42,9 @@ export interface GetPeriodByProjectResponseDto {
 
 export class GetPeriodByProjectUseCase {
   constructor(
-    private readonly periodRepo: PrismaReportingPeriodRepository,
-    private readonly personalReportRepo: PrismaPersonalReportRepository,
-    // TODO: добавить YouTrackIssueRepository для получения projectId по issue
-    // private readonly youtrackIssueRepo: PrismaYouTrackIssueRepository,
+    private readonly periodRepo: ReportingPeriodRepository,
+    private readonly personalReportRepo: PersonalReportRepository,
+    private readonly issueRepo: IYouTrackIssueRepository,
   ) {}
 
   async execute(periodId: string): Promise<GetPeriodByProjectResponseDto> {
@@ -61,73 +57,102 @@ export class GetPeriodByProjectUseCase {
     // 2. Получаем все строки личных отчётов за период
     const reports = await this.personalReportRepo.findByPeriodId(periodId);
 
-    // 3. Собираем уникальные issueId из отчётов
-    // TODO: Получать иерархию issue через YouTrackIssueRepository,
-    //       чтобы определить projectId для каждого issue.
-    //       Пока используем заглушку — все задачи в одном проекте "UNKNOWN".
+    // 3. Получаем задачи YouTrack, связанные с отчётами периода
+    const issues = await this.issueRepo.findByPeriodId(Number(periodId));
 
-    const uniqueIssueIds = new Set(reports.map(r => r.youtrackIssueId));
-    const uniqueUserIds = new Set(reports.map(r => r.userId));
+    // Строим маппинг youtrackIssueId -> projectName
+    const issueProjectMap = new Map<string, string>();
+    for (const issue of issues) {
+      const projectName = issue.projectName || issue.systemName || 'Unknown Project';
+      issueProjectMap.set(issue.id, projectName);
+    }
 
-    // 4. Формируем группы (заглушка — одна группа на весь период)
-    const totalPlannedMinutes = reports.reduce(
-      (sum, r) => sum + (r.totalPlannedMinutes?.minutes ?? 0), 0,
-    );
-    const totalActualMinutes = reports.reduce(
-      (sum, r) => sum + (r.totalActualMinutes?.minutes ?? 0), 0,
-    );
-    const totalBaseAmount = reports.reduce(
-      (sum, r) => sum + (r.baseAmount?.kopecks ?? 0), 0,
-    );
-    const totalManagerAmount = reports.reduce(
-      (sum, r) => sum + (r.managerAmount?.kopecks ?? 0), 0,
-    );
-    const totalBusinessAmount = reports.reduce(
-      (sum, r) => sum + (r.businessAmount?.kopecks ?? 0), 0,
-    );
-    const totalOnHand = reports.reduce(
-      (sum, r) => sum + (r.totalOnHand?.kopecks ?? 0), 0,
-    );
-    const totalWithTax = reports.reduce(
-      (sum, r) => sum + (r.totalWithTax?.kopecks ?? 0), 0,
-    );
-
-    const groups: ProjectGroupDto[] = [
+    // 4. Группируем по projectName
+    const groupsMap = new Map<
+      string,
       {
-        projectId: '__all__',
-        projectName: 'All Projects (stub)',
-        totalPlannedMinutes,
-        totalActualMinutes,
-        totalBaseAmount,
-        totalManagerAmount,
-        totalBusinessAmount,
-        totalOnHand,
-        totalWithTax,
-        employeeCount: uniqueUserIds.size,
-        issueCount: uniqueIssueIds.size,
-      },
-    ];
+        projectName: string;
+        employees: Set<string>;
+        issueIds: Set<string>;
+        totalPlannedMinutes: number;
+        totalActualMinutes: number;
+        totalBaseAmount: number;
+        totalManagerAmount: number;
+        totalBusinessAmount: number;
+        totalOnHand: number;
+        totalWithTax: number;
+      }
+    >();
 
-    // TODO: Реальная группировка по projectId:
-    //   - Для каждого unique issueId получить YouTrackIssue с projectId
-    //   - Сгруппировать reports по projectId
-    //   - Для каждой группы подсчитать суммы
-    //   - Вернуть массив ProjectGroupDto
+    for (const report of reports) {
+      const projectName = issueProjectMap.get(report.youtrackIssueId) ?? 'Unknown Project';
+
+      let group = groupsMap.get(projectName);
+      if (!group) {
+        group = {
+          projectName,
+          employees: new Set<string>(),
+          issueIds: new Set<string>(),
+          totalPlannedMinutes: 0,
+          totalActualMinutes: 0,
+          totalBaseAmount: 0,
+          totalManagerAmount: 0,
+          totalBusinessAmount: 0,
+          totalOnHand: 0,
+          totalWithTax: 0,
+        };
+        groupsMap.set(projectName, group);
+      }
+
+      group.employees.add(report.userId);
+      group.issueIds.add(report.youtrackIssueId);
+      group.totalPlannedMinutes += report.totalPlannedMinutes?.minutes ?? 0;
+      group.totalActualMinutes += report.totalActualMinutes?.minutes ?? 0;
+      group.totalBaseAmount += report.baseAmount?.kopecks ?? 0;
+      group.totalManagerAmount += report.managerAmount?.kopecks ?? 0;
+      group.totalBusinessAmount += report.businessAmount?.kopecks ?? 0;
+      group.totalOnHand += report.totalOnHand?.kopecks ?? 0;
+      group.totalWithTax += report.totalWithTax?.kopecks ?? 0;
+    }
+
+    // 5. Формируем результат
+    const groups: ProjectGroupDto[] = Array.from(groupsMap.values()).map((g) => ({
+      projectId: g.projectName,
+      projectName: g.projectName,
+      totalPlannedMinutes: g.totalPlannedMinutes,
+      totalActualMinutes: g.totalActualMinutes,
+      totalBaseAmount: g.totalBaseAmount,
+      totalManagerAmount: g.totalManagerAmount,
+      totalBusinessAmount: g.totalBusinessAmount,
+      totalOnHand: g.totalOnHand,
+      totalWithTax: g.totalWithTax,
+      employeeCount: g.employees.size,
+      issueCount: g.issueIds.size,
+    }));
+
+    // Сортируем группы по projectName
+    groups.sort((a, b) => a.projectName.localeCompare(b.projectName));
+
+    // Общие итоги
+    const allEmployees = new Set(reports.map((r) => r.userId));
+    const allIssues = new Set(reports.map((r) => r.youtrackIssueId));
+
+    const totals = {
+      totalPlannedMinutes: groups.reduce((s, g) => s + g.totalPlannedMinutes, 0),
+      totalActualMinutes: groups.reduce((s, g) => s + g.totalActualMinutes, 0),
+      totalBaseAmount: groups.reduce((s, g) => s + g.totalBaseAmount, 0),
+      totalManagerAmount: groups.reduce((s, g) => s + g.totalManagerAmount, 0),
+      totalBusinessAmount: groups.reduce((s, g) => s + g.totalBusinessAmount, 0),
+      totalOnHand: groups.reduce((s, g) => s + g.totalOnHand, 0),
+      totalWithTax: groups.reduce((s, g) => s + g.totalWithTax, 0),
+      employeeCount: allEmployees.size,
+      issueCount: allIssues.size,
+    };
 
     return {
       periodId,
       groups,
-      totals: {
-        totalPlannedMinutes,
-        totalActualMinutes,
-        totalBaseAmount,
-        totalManagerAmount,
-        totalBusinessAmount,
-        totalOnHand,
-        totalWithTax,
-        employeeCount: uniqueUserIds.size,
-        issueCount: uniqueIssueIds.size,
-      },
+      totals,
     };
   }
 }

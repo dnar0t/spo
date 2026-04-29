@@ -26,13 +26,7 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
-import {
-  appUsers,
-  AUDIT_ACTION_LABEL_RU,
-  SENSITIVE_KIND_LABEL_RU,
-  type AuditAction,
-} from '@/data/adminMock';
-import { orgEmployees } from '@/data/timesheetsMock';
+import { AUDIT_ACTION_LABEL_RU, SENSITIVE_KIND_LABEL_RU, type AuditAction } from '@/data/adminMock';
 import {
   useAdmin,
   type AuditEventDto,
@@ -44,21 +38,10 @@ const Audit = () => {
   const { toast } = useToast();
   const admin = useAdmin();
 
-  const userById = useMemo(() => {
-    const m = new Map(appUsers.map((u) => [u.id, u]));
-    return m;
-  }, []);
-  const empById = useMemo(() => {
-    const m = new Map(orgEmployees.map((e) => [e.id, e]));
-    return m;
-  }, []);
-
-  const userLabel = (uid: string) => {
-    const u = userById.get(uid);
-    if (!u) return uid;
-    const emp = empById.get(u.employeeId);
-    return emp ? `${emp.name} (${u.login})` : u.login;
-  };
+  // userLabel — fallback для отображения имени пользователя по ID.
+  // В нормальном состоянии API возвращает actorName/actorLogin в каждом событии.
+  // Если поле пустое — показываем ID как есть.
+  const userLabel = (uid: string) => uid;
 
   // ====== Журнал событий ======
   const [search, setSearch] = useState('');

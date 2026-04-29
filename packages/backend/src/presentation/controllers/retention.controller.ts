@@ -9,6 +9,7 @@
 import { Controller, Post, Get, HttpCode, HttpStatus, UseGuards, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { RetentionCronService } from '../../infrastructure/retention/retention-cron.service';
 import { RetentionService } from '../../infrastructure/retention/retention.service';
 
@@ -29,7 +30,7 @@ export class RetentionController {
    */
   @Post('run')
   @HttpCode(HttpStatus.OK)
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   async runRetention() {
     this.logger.log('Manual retention run requested');
 
@@ -47,7 +48,7 @@ export class RetentionController {
    * GET /api/admin/retention/stats
    */
   @Get('stats')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   async getStats() {
     this.logger.log('Retention stats requested');
 

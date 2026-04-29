@@ -5,10 +5,13 @@
  * - Проверяет, что период существует и находится в состоянии PLANNING
  * - Создаёт новую версию SprintPlan (или обновляет существующую)
  * - Фиксирует план (isFixed = true)
- * - Выпускает событие PlanFixedEvent (через event bus / outbox)
- * - Сохраняет SprintPlan и обновляет ReportingPeriod
- * - Переводит период в состояние PLAN_FIXED
+ * - Сохраняет SprintPlan и обновляет ReportingPeriod в одной Prisma-транзакции
+ * - Внутри транзакции также записывает OutboxMessage
+ * - Публикует событие PlanFixedEvent через in-process EventBus ТОЛЬКО
+ *   после успешного коммита транзакции (для внутреннего оповещения)
+ * - Критичные интеграции должны читать из outbox через OutboxProcessor
  */
+import { Injectable } from '@nestjs/common';
 import { ReportingPeriodRepository } from '../../../domain/repositories/reporting-period.repository';
 import { SprintPlanRepository } from '../../../domain/repositories/sprint-plan.repository';
 import { PlannedTaskRepository } from '../../../domain/repositories/planned-task.repository';
@@ -20,6 +23,9 @@ import { Minutes } from '../../../domain/value-objects/minutes.vo';
 import { PlanFixedEvent } from '../../../domain/events/plan-fixed.event';
 import { FixPlanDto } from '../dto/fix-plan.dto';
 import { NotFoundError, DomainStateError } from '../../../domain/errors/domain.error';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { OutboxService } from '../../../infrastructure/outbox.service';
+import { EventBusService } from '../../../infrastructure/event-bus.service';
 
 export interface FixPlanResult {
   /** ID плана спринта */
@@ -36,21 +42,16 @@ export interface FixPlanResult {
   fixedByUserId: string;
 }
 
-/**
- * Интерфейс для абстракции EventBus / Outbox.
- * Реализация будет предоставлена infrastructure слоем (через DI).
- */
-export interface EventBus {
-  publish(event: PlanFixedEvent): Promise<void>;
-}
-
+@Injectable()
 export class FixPlanUseCase {
   constructor(
     private readonly reportingPeriodRepository: ReportingPeriodRepository,
     private readonly sprintPlanRepository: SprintPlanRepository,
     private readonly plannedTaskRepository: PlannedTaskRepository,
     private readonly periodTransitionRepository: PeriodTransitionRepository,
-    private readonly eventBus: EventBus,
+    private readonly eventBus: EventBusService,
+    private readonly prisma: PrismaService,
+    private readonly outboxService: OutboxService,
   ) {}
 
   async execute(periodId: string, userId: string, dto?: FixPlanDto): Promise<FixPlanResult> {
@@ -76,12 +77,12 @@ export class FixPlanUseCase {
       );
     }
 
-    // 3. Проверяем, что userId валиден
+    // 4. Проверяем, что userId валиден
     if (!userId || userId.trim().length === 0) {
       throw new NotFoundError('User', '(empty)');
     }
 
-    // 4. Загружаем задачи периода для расчёта метрик
+    // 5. Загружаем задачи периода для расчёта метрик
     const plannedTasks = await this.plannedTaskRepository.findByPeriodId(periodId);
     const totalPlannedMinutes = plannedTasks.reduce(
       (sum, task) => sum.add(task.totalPlannedMinutes),
@@ -89,7 +90,7 @@ export class FixPlanUseCase {
     );
     const taskCount = plannedTasks.length;
 
-    // 5. Получаем или создаём SprintPlan
+    // 6. Получаем или создаём SprintPlan
     let sprintPlan = await this.sprintPlanRepository.findByPeriodId(periodId);
 
     if (!sprintPlan) {
@@ -107,28 +108,13 @@ export class FixPlanUseCase {
       sprintPlan.updateTaskCount(taskCount);
     }
 
-    // 6. Фиксируем план (инкрементирует версию внутри)
+    // 7. Фиксируем план (инкрементирует версию внутри)
     sprintPlan.fix(userId);
 
-    // 7. Сохраняем SprintPlan
-    const savedPlan = await this.sprintPlanRepository.save(sprintPlan);
-
-    // 8. Выпускаем событие PlanFixedEvent
-    const event = new PlanFixedEvent({
-      periodId,
-      versionNumber: savedPlan.versionNumber,
-      fixedByUserId: userId,
-      totalPlannedMinutes: totalPlannedMinutes.minutes,
-      taskCount,
-    });
-
-    await this.eventBus.publish(event);
-
-    // 9. Переводим период в состояние PLAN_FIXED
     const previousState = period.state;
     period.transitionTo(PeriodState.planFixed());
 
-    // 10. Создаём аудитный переход
+    // 8. Создаём аудитный переход
     const transition = PeriodTransition.create({
       periodId,
       fromState: previousState,
@@ -137,11 +123,54 @@ export class FixPlanUseCase {
       reason: dto?.comment ?? null,
     });
 
-    // 11. Сохраняем изменения периода и аудит
-    await this.periodTransitionRepository.save(transition);
-    await this.reportingPeriodRepository.update(period);
+    // 9. Выполняем всё в одной Prisma-транзакции: сохраняем данные + outbox
+    const savedPlan = await this.prisma.$transaction(async (tx) => {
+      // Сохраняем SprintPlan
+      const plan = await this.sprintPlanRepository.save(sprintPlan);
 
-    // 12. Возвращаем результат
+      // Записываем событие в outbox (внутри той же транзакции)
+      await this.outboxService.write(
+        {
+          aggregateType: 'ReportingPeriod',
+          aggregateId: periodId,
+          eventName: PlanFixedEvent.name,
+          payload: {
+            periodId,
+            versionNumber: plan.versionNumber,
+            fixedByUserId: userId,
+            totalPlannedMinutes: totalPlannedMinutes.minutes,
+            taskCount,
+          },
+        },
+        tx,
+      );
+
+      // Сохраняем переход состояния
+      await this.periodTransitionRepository.save(transition);
+
+      // Обновляем период
+      await this.reportingPeriodRepository.update(period);
+
+      return plan;
+    });
+
+    // 10. Публикуем событие через in-process EventBus ТОЛЬКО после успешного коммита.
+    //     Это допустимо для оповещения других частей приложения in-process,
+    //     НО критичные интеграции должны читать из outbox через OutboxProcessor.
+    const event = new PlanFixedEvent({
+      periodId,
+      versionNumber: savedPlan.versionNumber,
+      fixedByUserId: userId,
+      totalPlannedMinutes: totalPlannedMinutes.minutes,
+      taskCount,
+    });
+
+    // Fire-and-forget — не блокируем ответ клиента
+    this.eventBus.publish(event).catch((err) => {
+      console.error(`[FixPlanUseCase] Failed to publish event in-process: ${err.message}`);
+    });
+
+    // 11. Возвращаем результат
     return {
       sprintPlanId: savedPlan.id,
       versionNumber: savedPlan.versionNumber,

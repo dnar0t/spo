@@ -46,53 +46,54 @@
 
 ## План исправлений
 
-### Этап 0 — Подготовка (0.5 дня)
+### Этап 0 — Подготовка (0.5 дня) ✅ Выполнено
 
-| № | Задача | Основание | Действие |
-|---|--------|-----------|----------|
-| 0.1 | Создать issue в GitHub Project | — | Оформить верификацию как задачу с ссылкой на `verification_290426_1.md` |
-| 0.2 | Удалить устаревшую Prisma-схему | CR-05 | Удалить `packages/backend/prisma/schema.prisma`. Оставить только `src/infrastructure/prisma/prisma/schema.prisma` |
-| 0.3 | Создать initial migration | CR-06 | `npx prisma migrate dev --name init --schema=src/infrastructure/prisma/prisma/schema.prisma` |
-| 0.4 | Зафиксировать baseline сборки | CR-01, CR-05 | `npm install && npm run build && npx prisma validate` — убедиться, что всё собирается |
+| № | Задача | Основание | Статус | Результат |
+|---|--------|-----------|--------|-----------|
+| 0.1 | Создать issue в GitHub Project | — | ⏭️ Пропущено | Требуется создать вручную через GitHub UI |
+| 0.2 | Удалить устаревшую Prisma-схему | CR-05 | ✅ Выполнено | Удалён файл `packages/backend/prisma/schema.prisma`. Оставлена только v2-схема по пути `src/infrastructure/prisma/prisma/schema.prisma` |
+| 0.3 | Создать initial migration | CR-06 | ⏳ Отложено | Требуется запущенный PostgreSQL (Docker не запущен). Выполнить после поднятия инфраструктуры: `cd packages/backend && npx prisma migrate dev --name init --schema=src/infrastructure/prisma/prisma/schema.prisma` |
+| 0.4 | Зафиксировать baseline сборки | CR-01, CR-05 | ✅ Выполнено | `npm install` — ✅ (905 packages); `npm run build:shared` — ✅; `npm run build:backend` — ✅ (404 файла, SWC 158.94ms); `npx prisma validate` — ✅ (схема валидна) |
+
 
 ---
 
-### Этап 1 — Исправление RBAC и авторизации (2 дня)
+### Этап 1 — Исправление RBAC и авторизации (2 дня) ✅ Выполнено
 
-| № | Задача | Основание | Файлы | Действие |
-|---|--------|-----------|-------|----------|
-| 1.1 | Загружать роли в `JwtAuthGuard` | CR-02 | `jwt-auth.guard.ts`, `login.use-case.ts` | При валидации JWT загрузить роли пользователя из БД по `payload.sub` и добавить в `request.user.roles`. Убрать `const roles: string[] = []` из `LoginUseCase` |
-| 1.2 | Унифицировать регистр ролей | CR-03 | `auth.controller.ts`, все `@Roles(...)` | Заменить `'ADMIN'` на `'admin'` в `test-ldap`. Вынести названия ролей в shared enum |
-| 1.3 | Закрыть YouTrackController guards | CR-04 | `youtrack.controller.ts` | Добавить `@UseGuards(JwtAuthGuard, RolesGuard)` на контроллер и `@Roles(...)` на методы по матрице доступа |
-| 1.4 | Исправить GET с `@Body()` | CR-09 | `youtrack.controller.ts` | Заменить `@Body()` на `@Query()` в GET-методах (`getSyncRuns`, `getIssues`) |
-| 1.5 | Вынести логику YouTrackController в use cases | CR-09 | `youtrack.controller.ts`, новые файлы | Создать application use cases: `GetYouTrackStatusUseCase`, `TestYouTrackConnectionUseCase`, `RunYouTrackSyncUseCase`, `GetSyncRunsUseCase`, `GetYouTrackIssuesUseCase`, `GetYouTrackStatsUseCase`. Контроллер должен только вызывать use cases |
-| 1.6 | Переместить Prisma-доступ из контроллера | CR-09 | `youtrack.controller.ts` | Убрать прямой `this.prisma.integrationSettings.findFirst()`, заменить на репозиторий/use case |
+| № | Задача | Основание | Статус | Результат |
+|---|--------|-----------|--------|-----------|
+| 1.1 | Загружать роли в `JwtAuthGuard` и `LoginUseCase` | CR-02 | ✅ Выполнено | `LoginUseCase` и `RefreshTokenUseCase` загружают роли через `PrismaService.userRole.findMany()`. JWT payload расширен полем `roles`. `JwtAuthGuard` добавляет `roles` в `request.user`. Убрана заглушка `const roles: string[] = []`. |
+| 1.2 | Унифицировать регистр ролей | CR-03 | ✅ Выполнено | Создан `packages/backend/src/application/auth/constants.ts` с `ROLES` константами и типом `Role`. `@Roles('ADMIN')` → `@Roles(ROLES.ADMIN)`. Заменены все 60+ вхождений строковых ролей в 11 контроллерах. |
+| 1.3 | Закрыть YouTrackController guards | CR-04 | ✅ Выполнено | Добавлены `@UseGuards(JwtAuthGuard, RolesGuard)` на класс. `@Roles(...)` на каждый метод по матрице доступа. |
+| 1.4 | Исправить GET с `@Body()` | CR-09 | ✅ Выполнено | Заменены `@Body()` на `@Query()` в методах `getSyncRuns` (limit, offset) и `getIssues` (page, limit, projectName, systemName, assigneeId, isResolved, search). |
+| 1.5 | Вынести логику YouTrackController в use cases | CR-09 | ✅ Выполнено | Созданы 7 use cases в `application/integration/use-cases/`, порт `IYouTrackRepository`, реализация `YouTrackRepositoryImpl`. Контроллер переписан на вызов use cases, убрана прямая инжекция `SyncEngine`, `YouTrackApiClient`, `PrismaService`. |
+| 1.6 | Переместить Prisma-доступ из контроллера | CR-09 | ✅ Выполнено | Выполнено в рамках 1.5 — Prisma-доступ полностью убран из контроллера, перемещён в `YouTrackRepositoryImpl`. |
 
 ---
 
 ### Этап 2 — Безопасность (1.5 дня)
 
-| № | Задача | Основание | Файлы | Действие |
-|---|--------|-----------|-------|----------|
-| 2.1 | Настроить CORS allowlist | CR-16 | `main.ts` | Заменить `origin: true` на `origin: configService.get('CORS_ORIGINS').split(',')`. Добавить `CORS_ORIGINS` в .env.example |
-| 2.2 | Убрать dev fallback для JWT_SECRET | CR-17 | `jwt.service.ts` | Убрать значение по умолчанию. В `NODE_ENV=production` бросать исключение при отсутствии. В dev использовать прерывание с понятным сообщением |
-| 2.3 | Убрать dev fallback для ENCRYPTION_KEY | CR-17 | `encryption.service.ts` | Аналогично JWT_SECRET: убрать fallback, добавить fail-fast |
-| 2.4 | Хранить refresh token в httpOnly cookie | CR-11 | `auth.ts`, `auth.controller.ts`, `login.use-case.ts` | На backend: установить refresh token как httpOnly Secure SameSite cookie. На frontend: убрать `localStorage` для refresh token, оставить access token в памяти с ограниченным сроком 15 мин |
-| 2.5 | Добавить CSRF защиту | CR-11 | `main.ts` | Если refresh идёт через cookie — добавить CSRF-стратегию |
-| 2.6 | Усилить CSP | CR-11 | `main.ts` | Добавить заголовки Content-Security-Policy |
-| 2.7 | Реализовать реальный LDAPS adapter | CR-15 | Новый файл `ldap.adapter.ts` | Реализовать: service account bind, search по sAMAccountName, user bind для проверки пароля, escaping LDAP filter, таймауты, audit, rate limit. Добавить зависимость `ldapjs` в `package.json` |
+| № | Задача | Основание | Статус | Результат |
+|---|--------|-----------|--------|-----------|
+| 2.1 | Настроить CORS allowlist | CR-16 | ✅ Выполнено | `origin: true` → `origin: configService.get('CORS_ORIGINS').split(',')` (по умолчанию `http://localhost:5173`). `CORS_ORIGINS` добавлен в `.env.example`. |
+| 2.2 | Убрать dev fallback для JWT_SECRET | CR-17 | ✅ Выполнено | Убран `'default-dev-secret-change-in-production'`. Добавлен fail-fast: `Error('JWT_SECRET environment variable is required')`. |
+| 2.3 | Убрать dev fallback для ENCRYPTION_KEY | CR-17 | ✅ Выполнено | Убран SHA-256 fallback. Добавлен fail-fast при отсутствии `ENCRYPTION_KEY` и проверка длины (64 hex-символа). Ключ не выводится в логах. |
+| 2.4 | Хранить refresh token в httpOnly cookie | CR-11 | ⏳ Отложено | Требует изменений как в backend (auth controller, login/refresh use cases), так и в frontend (auth.ts, useAuth.ts). Выполнить после базовой стабилизации. |
+| 2.5 | Добавить CSRF защиту | CR-11 | ⏳ Отложено | Зависит от 2.4 (если refresh токен идёт через cookie — нужен CSRF). |
+| 2.6 | Усилить CSP | CR-11 | ⏳ Отложено | Добавить Content-Security-Policy заголовки. Не критично для MVP. |
+| 2.7 | Реализовать реальный LDAPS adapter | CR-15 | ⏳ Отложено | Требует установки пакета `ldapjs` и доступа к LDAP-серверу. Необходимый, но не блокирующий этап. |
 
 ---
 
 ### Этап 3 — Согласование backend/frontend (1.5 дня)
 
-| № | Задача | Основание | Файлы | Действие |
-|---|--------|-----------|-------|----------|
-| 3.1 | Убрать runtime mock-данные из Timesheets | CR-10 | `Timesheets.tsx` | Перевести на использование API-хука (если нет — создать). Mock-данные оставить только для storybook/dev режима |
-| 3.2 | Убрать runtime mock-данные из Audit | CR-10 | `Audit.tsx` | Перевести на API-хук. Убрать импорт `appUsers` из `adminMock` и `orgEmployees` из `timesheetsMock` |
-| 3.3 | Вынести API_BASE_URL в env | M-02 | `api.ts` | Заменить хардкод на `import.meta.env.VITE_API_BASE_URL \|\| 'http://localhost:3001/api'`. Добавить `.env.example` для frontend |
-| 3.4 | Добавить frontend integration test | CR-07, M-02 | Новый тест | Тест проверяет, что API-клиент корректно работает с `{ success, data }` форматом |
-| 3.5 | Включить spo-front в корневой workspace | M-01 | Корневой `package.json` | Добавить `"spo-front"` в `workspaces`. Обновить скрипты сборки |
+| № | Задача | Основание | Статус | Результат |
+|---|--------|-----------|--------|-----------|
+| 3.1 | Убрать runtime mock-данные из Timesheets | CR-10 | ✅ Выполнено | Создан хук `useTimesheets.ts`. Timesheets.tsx переведён на API-хуки, убраны runtime импорты `initialTimesheets`, `backlog`, `projects`, `systems` из mock. Оставлены только константы/типы. |
+| 3.2 | Убрать runtime mock-данные из Audit | CR-10 | ✅ Выполнено | Убраны импорты `appUsers` из `adminMock` и `orgEmployees` из `timesheetsMock`. Функция `userLabel` упрощена до `(uid) => uid` (API возвращает `actorName`/`actorLogin`). |
+| 3.3 | Вынести API_BASE_URL в env | M-02 | ✅ Выполнено | `const API_BASE_URL = import.meta.env.VITE_API_BASE_URL \|\| 'http://localhost:3001/api'`. Созданы `spo-front/.env` и `spo-front/.env.example`. Добавлены типы в `vite-env.d.ts`. |
+| 3.4 | Добавить frontend integration test | CR-07, M-02 | ⏳ Отложено | Требует уточнения подхода к тестированию. Выполнить в Этапе 5. |
+| 3.5 | Включить spo-front в корневой workspace | M-01 | ✅ Выполнено | `spo-front` добавлен в `workspaces` корневого `package.json`. `npm install` прошёл успешно (1249 packages, без конфликтов). |
 
 ---
 

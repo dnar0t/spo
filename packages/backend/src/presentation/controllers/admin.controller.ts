@@ -24,6 +24,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { CreateUserUseCase } from '../../application/administration/use-cases/create-user.use-case';
 import { UpdateUserUseCase } from '../../application/administration/use-cases/update-user.use-case';
 import { DeactivateUserUseCase } from '../../application/administration/use-cases/deactivate-user.use-case';
@@ -93,7 +94,7 @@ export class AdminController {
    * GET /api/admin/users
    */
   @Get('users')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async getUsers(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
@@ -119,7 +120,7 @@ export class AdminController {
    */
   @Post('users')
   @HttpCode(HttpStatus.CREATED)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async createUser(@Body() dto: CreateUserDto, @Req() req?: any) {
     this.logger.log(`Creating user: ${dto.login}`);
 
@@ -138,7 +139,7 @@ export class AdminController {
    * PUT /api/admin/users/:id
    */
   @Put('users/:id')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req?: any) {
     this.logger.log(`Updating user: ${id}`);
 
@@ -161,7 +162,7 @@ export class AdminController {
    */
   @Delete('users/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async deactivateUser(@Param('id') id: string, @Req() req?: any) {
     this.logger.log(`Deactivating user: ${id}`);
 
@@ -183,7 +184,7 @@ export class AdminController {
    */
   @Put('users/:id/roles')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async assignRoles(@Param('id') id: string, @Body() dto: AssignRolesDto, @Req() req?: any) {
     this.logger.log(`Assigning roles to user: ${id}`);
 
@@ -205,7 +206,7 @@ export class AdminController {
    */
   @Put('users/:id/manager')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async assignManager(@Param('id') id: string, @Body() dto: AssignManagerDto, @Req() req?: any) {
     this.logger.log(`Assigning manager to user: ${id}`);
 
@@ -231,7 +232,7 @@ export class AdminController {
    * GET /api/admin/rates/batch?employeeIds=...
    */
   @Get('rates/batch')
-  @Roles('admin', 'director', 'hr')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.HR)
   async getRatesBatch(@Query('employeeIds') employeeIds: string) {
     this.logger.log(`Getting rates batch for employees: ${employeeIds}`);
 
@@ -265,7 +266,7 @@ export class AdminController {
    */
   @Post('rates/:userId')
   @HttpCode(HttpStatus.CREATED)
-  @Roles('admin', 'director', 'hr')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.HR)
   async createRate(@Param('userId') userId: string, @Body() dto: CreateRateDto, @Req() req?: any) {
     this.logger.log(`Creating rate for user: ${userId}`);
 
@@ -300,7 +301,7 @@ export class AdminController {
    */
   @Delete('rates/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles('admin', 'director', 'hr')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.HR)
   async deleteRate(@Param('id') id: string, @Req() req?: any) {
     this.logger.log(`Deleting rate: ${id}`);
 
@@ -331,7 +332,7 @@ export class AdminController {
    * PUT /api/admin/formulas/:id
    */
   @Put('formulas/:id')
-  @Roles('admin', 'director', 'finance')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.FINANCE)
   async updateFormula(@Param('id') id: string, @Body() dto: UpdateFormulaDto, @Req() req?: any) {
     this.logger.log(`Updating formula: ${id}`);
 
@@ -387,7 +388,7 @@ export class AdminController {
    * PUT /api/admin/evaluation-scales/:id
    */
   @Put('evaluation-scales/:id')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async updateEvaluationScale(
     @Param('id') id: string,
     @Body() dto: UpdateEvaluationScaleDto,
@@ -416,7 +417,7 @@ export class AdminController {
    * GET /api/admin/audit-log
    */
   @Get('audit-log')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async getAuditLog(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
@@ -452,7 +453,7 @@ export class AdminController {
    * GET /api/admin/settings/planning
    */
   @Get('settings/planning')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async getPlanningSettings() {
     this.logger.log('Getting planning settings');
     return await this.getPlanningSettingsUseCase.execute();
@@ -464,7 +465,7 @@ export class AdminController {
    * PUT /api/admin/settings/planning
    */
   @Put('settings/planning')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async updatePlanningSettings(@Body() dto: UpdatePlanningSettingsDto, @Req() req?: any) {
     this.logger.log('Updating planning settings');
 
@@ -488,7 +489,7 @@ export class AdminController {
    * GET /api/admin/integrations
    */
   @Get('integrations')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async getIntegrations() {
     this.logger.log('Getting integrations');
 
@@ -501,7 +502,7 @@ export class AdminController {
    * PUT /api/admin/integrations/:id
    */
   @Put('integrations/:id')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async updateIntegration(@Param('id') id: string, @Body() dto: any, @Req() req?: any) {
     this.logger.log(`Updating integration: ${id}`);
 
@@ -519,7 +520,7 @@ export class AdminController {
    * GET /api/admin/sessions
    */
   @Get('sessions')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async getActiveSessions() {
     this.logger.log('Getting active sessions');
 
@@ -532,7 +533,7 @@ export class AdminController {
    * GET /api/admin/sensitive-changes
    */
   @Get('sensitive-changes')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async getSensitiveChanges(
     @Query('page') page?: number,
     @Query('limit') limit?: number,

@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { GetSummaryReportUseCase } from '../../application/reporting/use-cases/get-summary-report.use-case';
 import { GetPersonalReportUseCase } from '../../application/reporting/use-cases/get-personal-report.use-case';
 import { GetPeriodStatisticsUseCase } from '../../application/reporting/use-cases/get-period-statistics.use-case';
@@ -154,7 +155,7 @@ export class ReportingController {
    * Создание оценки руководителя.
    */
   @Post('evaluations/manager')
-  @Roles('manager', 'admin', 'director')
+  @Roles(ROLES.MANAGER, ROLES.ADMIN, ROLES.DIRECTOR)
   async createManagerEvaluation(
     @Body() body: CreateManagerEvaluationRequestDto,
     @Req() req: RequestWithUser,
@@ -176,7 +177,7 @@ export class ReportingController {
    * Обновление оценки руководителя по ID.
    */
   @Put('evaluations/manager/:id')
-  @Roles('manager', 'admin', 'director')
+  @Roles(ROLES.MANAGER, ROLES.ADMIN, ROLES.DIRECTOR)
   async updateManagerEvaluation(
     @Param('id') id: string,
     @Body() body: UpdateManagerEvaluationRequestDto,
@@ -213,7 +214,7 @@ export class ReportingController {
    * Создание бизнес-оценки.
    */
   @Post('evaluations/business')
-  @Roles('business', 'admin', 'director')
+  @Roles(ROLES.BUSINESS, ROLES.ADMIN, ROLES.DIRECTOR)
   async createBusinessEvaluation(
     @Body() body: CreateBusinessEvaluationRequestDto,
     @Req() req: RequestWithUser,
@@ -234,7 +235,7 @@ export class ReportingController {
    * Обновление бизнес-оценки по ID.
    */
   @Put('evaluations/business/:id')
-  @Roles('business', 'admin', 'director')
+  @Roles(ROLES.BUSINESS, ROLES.ADMIN, ROLES.DIRECTOR)
   async updateBusinessEvaluation(
     @Param('id') id: string,
     @Body() body: UpdateBusinessEvaluationRequestDto,
@@ -271,7 +272,7 @@ export class ReportingController {
    * Пересчёт отчётов периода (только ADMIN).
    */
   @Post('periods/:id/recalculate')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async recalculateReports(@Param('id') id: string) {
     const personalResult = await this.generatePersonalReportsUseCase.execute({
       periodId: id,

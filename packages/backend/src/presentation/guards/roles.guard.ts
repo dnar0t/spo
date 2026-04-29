@@ -1,4 +1,11 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger, SetMetadata } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Logger,
+  SetMetadata,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 /**
@@ -7,7 +14,7 @@ import { Reflector } from '@nestjs/core';
  *
  * Использование:
  * ```typescript
- * @Roles('ADMIN', 'DIRECTOR')
+ * @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
  * @Get('some-protected-route')
  * endpoint() { ... }
  * ```
@@ -62,7 +69,7 @@ export class RolesGuard implements CanActivate {
     if (!hasRequiredRole) {
       this.logger.warn(
         `Access denied for user "${user.login ?? user.id}": required roles [${requiredRoles.join(', ')}], ` +
-        `user has [${userRoles.join(', ')}]`,
+          `user has [${userRoles.join(', ')}]`,
       );
       throw new ForbiddenException(
         `Access denied: requires one of roles [${requiredRoles.join(', ')}]`,

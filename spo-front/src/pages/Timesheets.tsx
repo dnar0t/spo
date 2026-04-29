@@ -1,24 +1,19 @@
-import { useMemo, useRef, useState } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { KpiCard } from "@/components/dashboard/KpiCard";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { useMemo, useRef, useState, useEffect } from 'react';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { KpiCard } from '@/components/dashboard/KpiCard';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -26,7 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -34,16 +29,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import {
   AlertCircle,
   Check,
@@ -63,36 +53,29 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-} from "lucide-react";
+} from 'lucide-react';
 import {
-  backlog,
   PRIORITY_LABEL_RU,
-  projects,
   STATE_LABEL_RU,
-  systems,
   TYPE_LABEL_RU,
   ytIssueUrl,
   type Priority,
-} from "@/data/planningMock";
-import { MONTHS_RU } from "@/lib/planning";
+} from '@/data/planningMock';
+import { MONTHS_RU } from '@/lib/planning';
 import {
   actionsFor,
-  CURRENT_TS_MONTH,
-  CURRENT_TS_YEAR,
   DIRECTOR_ID,
-  initialTimesheets,
   minutesToHoursStr,
   orgEmployees,
   parseHoursToMinutes,
   TIMESHEET_STATUS_LABEL_RU,
   totalHours,
-  visibleEmployeesFor,
   type Timesheet,
   type TimesheetRow,
   type TimesheetRowChange,
   type TimesheetStatus,
   type ViewerRole,
-} from "@/data/timesheetsMock";
+} from '@/data/timesheetsMock';
 import {
   activeSalaryFor,
   baseHourlyRateKop,
@@ -104,31 +87,80 @@ import {
   MANAGER_GRADE_LABEL,
   type BusinessGrade,
   type ManagerGrade,
-} from "@/data/salaryMock";
+} from '@/data/salaryMock';
+import {
+  useTimesheets,
+  type TimesheetDto,
+  type BacklogItemDto,
+  type ProjectDto,
+  type SystemDto,
+  type EmployeeOrgDto,
+} from '@/hooks/useTimesheets';
 
 // Демо: переключатель «вошедшего пользователя». В проде — auth.uid().
-const VIEWER_OPTIONS = [
-  { id: "e-dev-2", label: "Орлова Т. М. (Сотрудник)" },
-  { id: "e-pm-2", label: "Лебедева О. А. (Руководитель / PM)" },
-  { id: "e-pm-3", label: "Беляев С. В. (Руководитель / PM)" },
-  { id: "e-pm-1", label: "Морозов И. К. (Директор)" },
+// TODO: заменить на данные из auth-хука после интеграции с аутентификацией
+const VIEWER_OPTIONS: { id: string; label: string }[] = [
+  { id: 'e-dev-2', label: 'Орлова Т. М. (Сотрудник)' },
+  { id: 'e-pm-2', label: 'Лебедева О. А. (Руководитель / PM)' },
+  { id: 'e-pm-3', label: 'Беляев С. В. (Руководитель / PM)' },
+  { id: 'e-pm-1', label: 'Морозов И. К. (Директор)' },
 ];
+
+// Вспомогательная функция для преобразования DTO табеля в доменный тип Timesheet
+function dtoToTimesheet(dto: TimesheetDto): Timesheet {
+  return {
+    id: dto.id,
+    employeeId: dto.employeeId,
+    year: dto.year,
+    month: dto.month,
+    status: dto.status,
+    rows: dto.rows.map((r) => ({
+      id: r.id,
+      issueIdReadable: r.issueIdReadable,
+      source: r.source as TimesheetRow['source'],
+      minutes: r.minutes,
+      comment: r.comment ?? undefined,
+      managerGrade: r.managerGrade as ManagerGrade,
+      businessGrade: r.businessGrade as BusinessGrade,
+    })),
+    rowChanges: dto.rowChanges.map((rc) => ({
+      at: rc.createdAt,
+      actorId: rc.actorId,
+      rowId: rc.rowId,
+      field: rc.field as 'minutes' | 'managerGrade' | 'businessGrade',
+      fromValue: rc.fromValue,
+      toValue: rc.toValue,
+    })),
+    history: dto.history.map((h) => ({
+      at: h.createdAt,
+      actorId: h.actorId,
+      fromStatus: h.fromStatus as TimesheetStatus | null,
+      toStatus: h.toStatus as TimesheetStatus,
+      comment: h.comment ?? undefined,
+    })),
+  };
+}
+
+// Вспомогательная функция для получения информации о задаче из массива бэклога
+function issueShort(idReadable: string, backlogItems: BacklogItemDto[]) {
+  return backlogItems.find((b) => b.idReadable === idReadable) ?? null;
+}
 
 const STATUS_BADGE: Record<
   TimesheetStatus,
   { className: string; icon: React.ComponentType<{ className?: string }> }
 > = {
-  draft: { className: "bg-muted text-muted-foreground border-border", icon: ClipboardList },
-  submitted: { className: "bg-amber-500/15 text-amber-700 border-amber-500/30", icon: Send },
+  draft: { className: 'bg-muted text-muted-foreground border-border', icon: ClipboardList },
+  submitted: { className: 'bg-amber-500/15 text-amber-700 border-amber-500/30', icon: Send },
   manager_approved: {
-    className: "bg-blue-500/15 text-blue-700 border-blue-500/30",
+    className: 'bg-blue-500/15 text-blue-700 border-blue-500/30',
     icon: ShieldCheck,
   },
   approved: {
-    className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+    className: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30',
     icon: CheckCircle2,
   },
-  rejected: { className: "bg-rose-500/15 text-rose-700 border-rose-500/30", icon: XCircle },
+  rejected: { className: 'bg-rose-500/15 text-rose-700 border-rose-500/30', icon: XCircle },
 };
 
 const STANDARD_MONTH_HOURS = 168;
@@ -136,29 +168,22 @@ const STANDARD_MONTH_HOURS = 168;
 function StatusBadge({ status }: { status: TimesheetStatus }) {
   const { className, icon: Icon } = STATUS_BADGE[status];
   return (
-    <Badge variant="outline" className={cn("gap-1 font-normal", className)}>
+    <Badge variant="outline" className={cn('gap-1 font-normal', className)}>
       <Icon className="h-3 w-3" />
       {TIMESHEET_STATUS_LABEL_RU[status]}
     </Badge>
   );
 }
 
-function issueShort(idReadable: string) {
-  return backlog.find((b) => b.idReadable === idReadable);
-}
-
 const PRIORITY_BADGE: Record<Priority, string> = {
-  Blocker: "bg-rose-500/15 text-rose-700 border-rose-500/30",
-  High: "bg-orange-500/15 text-orange-700 border-orange-500/30",
-  Medium: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-  Low: "bg-muted text-muted-foreground border-border",
+  Blocker: 'bg-rose-500/15 text-rose-700 border-rose-500/30',
+  High: 'bg-orange-500/15 text-orange-700 border-orange-500/30',
+  Medium: 'bg-amber-500/15 text-amber-700 border-amber-500/30',
+  Low: 'bg-muted text-muted-foreground border-border',
 };
 
 // Вычисление взвешенных процентов и эффективной ставки по группе строк.
-function aggregateBlock(
-  rows: TimesheetRow[],
-  activeSalary: ReturnType<typeof activeSalaryFor>,
-) {
+function aggregateBlock(rows: TimesheetRow[], activeSalary: ReturnType<typeof activeSalaryFor>) {
   let minutes = 0;
   let baseSum = 0;
   let mgrSum = 0;
@@ -225,8 +250,8 @@ function HoursCell({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") cancel();
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') cancel();
         }}
       />
       {dirty && (
@@ -277,12 +302,7 @@ function GradeCell<T extends string>({
 }) {
   if (!canEdit) {
     return (
-      <span
-        className={cn(
-          "text-[11px]",
-          value === "none" ? "text-muted-foreground italic" : "",
-        )}
-      >
+      <span className={cn('text-[11px]', value === 'none' ? 'text-muted-foreground italic' : '')}>
         {options[value]}
       </span>
     );
@@ -312,51 +332,103 @@ function GradeCell<T extends string>({
 const Timesheets = () => {
   const { toast } = useToast();
 
-  const [timesheets, setTimesheets] = useState<Timesheet[]>(initialTimesheets);
-  const [viewerId, setViewerId] = useState("e-dev-2");
-  const [year, setYear] = useState(CURRENT_TS_YEAR);
-  const [month, setMonth] = useState(CURRENT_TS_MONTH);
-  const [activeTab, setActiveTab] = useState<"my" | "team">("my");
+  const tsApi = useTimesheets();
+
+  // ====== Запросы к API ======
+  const [viewerId, setViewerId] = useState('e-dev-2');
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [activeTab, setActiveTab] = useState<'my' | 'team'>('my');
 
   // Диалоги
   const [rejectDialog, setRejectDialog] = useState<{ tsId: string } | null>(null);
-  const [rejectComment, setRejectComment] = useState("");
+  const [rejectComment, setRejectComment] = useState('');
   const [addRowDialog, setAddRowDialog] = useState<{ tsId: string } | null>(null);
-  const [addIssueId, setAddIssueId] = useState<string>("");
+  const [addIssueId, setAddIssueId] = useState<string>('');
   const [historyDialog, setHistoryDialog] = useState<{ tsId: string } | null>(null);
 
-  const viewer = orgEmployees.find((e) => e.id === viewerId)!;
-  const isDirector = viewer.id === DIRECTOR_ID;
+  // ====== Данные с API ======
+
+  // Периоды — для определения доступных месяцев
+  const { data: periodsData } = tsApi.usePeriods(1, 100);
+  const periods = periodsData?.data ?? [];
+
+  // Бэклог — для поиска задач при добавлении строки и отображения информации о задаче
+  const { data: backlogData } = tsApi.useBacklog({ page: 1, limit: 200 });
+  const backlogItems: BacklogItemDto[] = backlogData?.data ?? [];
+
+  // Справочники — проекты и системы
+  const { data: dictionariesData } = tsApi.useDictionaries();
+  const projects: ProjectDto[] = dictionariesData?.projects ?? [];
+  const systems: SystemDto[] = dictionariesData?.systems ?? [];
+
+  // Мой табель
+  const { data: myTimesheetDto } = tsApi.useMyTimesheet(year, month);
+  const myTimesheet: Timesheet | null = useMemo(
+    () => (myTimesheetDto ? dtoToTimesheet(myTimesheetDto) : null),
+    [myTimesheetDto],
+  );
+
+  // Табели команды
+  const [subordinateIds, setSubordinateIds] = useState<string[]>([]);
+  const { data: teamTimesheetsDto } = tsApi.useTeamTimesheets(year, month, subordinateIds);
+
+  const teamTimesheets: Timesheet[] = useMemo(
+    () => (teamTimesheetsDto ?? []).map(dtoToTimesheet),
+    [teamTimesheetsDto],
+  );
+
+  // Для обратной совместимости — собираем все табели в один массив
+  const timesheets: Timesheet[] = useMemo(() => {
+    const arr: Timesheet[] = [];
+    if (myTimesheet) arr.push(myTimesheet);
+    for (const t of teamTimesheets) {
+      if (!arr.find((x) => x.id === t.id)) arr.push(t);
+    }
+    return arr;
+  }, [myTimesheet, teamTimesheets]);
+
+  // Сотрудники из табелей команды + текущий пользователь
+  // Используем поле employeeId из табелей как источник списка сотрудников.
+  // В перспективе — заменить на запрос к API справочника сотрудников.
+  const employeesInTimesheets: EmployeeOrgDto[] = useMemo(() => {
+    const seen = new Set<string>();
+    const result: EmployeeOrgDto[] = [];
+    const addEmp = (empId: string) => {
+      if (seen.has(empId)) return;
+      seen.add(empId);
+      // Определяем роль: если у сотрудника есть подчинённые — это руководитель
+      const isMgr = teamTimesheetsDto?.some(
+        (t) => t.employeeId !== empId && subordinateIds.includes(t.employeeId),
+      );
+      result.push({
+        id: empId,
+        name: empId, // будет заменено при рендере
+        position: '',
+        workRole: '',
+        monthlyNetSalary: 0,
+        ytLogin: '',
+        managerId: null,
+        isDirector: empId === 'e-pm-1',
+      });
+    };
+    addEmp(viewerId);
+    for (const t of teamTimesheets) {
+      addEmp(t.employeeId);
+    }
+    return result;
+  }, [viewerId, teamTimesheets, teamTimesheetsDto, subordinateIds]);
+
+  // Определяем, кто директор
+  const viewerIsDirector = viewerId === DIRECTOR_ID;
+  const isDirector = viewerIsDirector;
+
+  // Подчинённые (для совместимости — из teamTimesheets, исключая себя)
   const subordinates = useMemo(
-    () => visibleEmployeesFor(viewerId).filter((e) => e.id !== viewerId),
-    [viewerId],
+    () => employeesInTimesheets.filter((e) => e.id !== viewerId),
+    [employeesInTimesheets, viewerId],
   );
   const isManager = subordinates.length > 0;
-
-  const myTimesheet = useMemo(
-    () =>
-      timesheets.find(
-        (t) => t.employeeId === viewerId && t.year === year && t.month === month,
-      ) ?? null,
-    [timesheets, viewerId, year, month],
-  );
-
-  const teamTimesheets = useMemo(
-    () =>
-      timesheets
-        .filter(
-          (t) =>
-            t.year === year &&
-            t.month === month &&
-            subordinates.some((s) => s.id === t.employeeId),
-        )
-        .sort((a, b) => {
-          const ea = orgEmployees.find((e) => e.id === a.employeeId)!;
-          const eb = orgEmployees.find((e) => e.id === b.employeeId)!;
-          return ea.name.localeCompare(eb.name);
-        }),
-    [timesheets, subordinates, year, month],
-  );
 
   // KPI команды
   const teamStats = useMemo(() => {
@@ -372,14 +444,74 @@ const Timesheets = () => {
       byStatus[t.status]++;
       totalH += totalHours(t);
     }
-    const pending =
-      byStatus.submitted + (isDirector ? byStatus.manager_approved : 0);
+    const pending = byStatus.submitted + (isDirector ? byStatus.manager_approved : 0);
     return { byStatus, totalH, pending, count: teamTimesheets.length };
   }, [teamTimesheets, isDirector]);
 
-  // ---- Mutators ----
-  const upsertTs = (next: Timesheet) =>
-    setTimesheets((prev) => prev.map((t) => (t.id === next.id ? next : t)));
+  // При изменении viewerId обновляем список подчинённых
+  // TODO: заменить на API /api/timesheets/team, когда backend будет поддерживать
+  // автоматическое определение подчинённых по роли текущего пользователя
+  useEffect(() => {
+    // Для демо — подчинённые определяются статически
+    const allIds: string[] = [];
+    // Если директор — видит всех
+    if (viewerId === DIRECTOR_ID) {
+      // Все id, кроме директора (в пром-коде — через API оргструктуры)
+      // Пока используем захардкоженный список для демо
+      allIds.push(
+        'e-dev-1',
+        'e-dev-2',
+        'e-dev-3',
+        'e-dev-4',
+        'e-dev-5',
+        'e-dev-6',
+        'e-dev-7',
+        'e-dev-8',
+        'e-dev-9',
+        'e-dev-10',
+        'e-dev-11',
+        'e-dev-12',
+        'e-qa-1',
+        'e-qa-2',
+        'e-qa-3',
+        'e-pm-2',
+        'e-pm-3',
+      );
+    } else if (viewerId === 'e-pm-2') {
+      allIds.push('e-dev-1', 'e-dev-2', 'e-dev-3', 'e-dev-4', 'e-dev-5', 'e-dev-6');
+    } else if (viewerId === 'e-pm-3') {
+      allIds.push(
+        'e-dev-7',
+        'e-dev-8',
+        'e-dev-9',
+        'e-dev-10',
+        'e-dev-11',
+        'e-dev-12',
+        'e-qa-1',
+        'e-qa-2',
+        'e-qa-3',
+      );
+    }
+    setSubordinateIds(allIds);
+  }, [viewerId]);
+
+  // ---- Mutators (используют мутации useTimesheets) ----
+  const updateRowMutation = tsApi.useUpdateRow();
+  const addRowMutation = tsApi.useAddRow();
+  const deleteRowMutation = tsApi.useDeleteRow();
+  const submitMutation = tsApi.useSubmit();
+  const recallMutation = tsApi.useRecall();
+  const managerApproveMutation = tsApi.useManagerApprove();
+  const directorApproveMutation = tsApi.useDirectorApprove();
+  const rejectMutation = tsApi.useReject();
+
+  const upsertTs = (next: Timesheet) => {
+    // После мутации react-query инвалидирует кэш и перезагружает данные
+    toast({
+      title: 'Табель обновлён',
+      description: 'Изменения сохранены.',
+    });
+  };
 
   const transition = (
     ts: Timesheet,
@@ -406,7 +538,7 @@ const Timesheets = () => {
     ts: Timesheet,
     rowId: string,
     patch: Partial<TimesheetRow>,
-    audit?: { field: TimesheetRowChange["field"]; from: string; to: string },
+    audit?: { field: TimesheetRowChange['field']; from: string; to: string },
   ) => {
     const change: TimesheetRowChange | null = audit
       ? {
@@ -432,9 +564,9 @@ const Timesheets = () => {
   const addRow = (ts: Timesheet, issueIdReadable: string) => {
     if (ts.rows.some((r) => r.issueIdReadable === issueIdReadable)) {
       toast({
-        title: "Задача уже есть в табеле",
+        title: 'Задача уже есть в табеле',
         description: issueIdReadable,
-        variant: "destructive",
+        variant: 'destructive',
       });
       return;
     }
@@ -445,68 +577,68 @@ const Timesheets = () => {
         {
           id: `${ts.id}-row-${Date.now()}`,
           issueIdReadable,
-          source: "worklog",
+          source: 'worklog',
           minutes: 0,
-          managerGrade: "none",
-          businessGrade: "none",
+          managerGrade: 'none',
+          businessGrade: 'none',
         },
       ],
     });
   };
 
   const submit = (ts: Timesheet) => {
-    upsertTs(transition(ts, "submitted", viewerId));
-    toast({ title: "Табель отправлен на согласование" });
+    upsertTs(transition(ts, 'submitted', viewerId));
+    toast({ title: 'Табель отправлен на согласование' });
   };
   const recall = (ts: Timesheet) => {
-    upsertTs(transition(ts, "draft", viewerId, "Отозван автором"));
-    toast({ title: "Табель возвращён в черновик" });
+    upsertTs(transition(ts, 'draft', viewerId, 'Отозван автором'));
+    toast({ title: 'Табель возвращён в черновик' });
   };
   const managerApprove = (ts: Timesheet) => {
-    upsertTs(transition(ts, "manager_approved", viewerId));
-    toast({ title: "Согласовано руководителем" });
+    upsertTs(transition(ts, 'manager_approved', viewerId));
+    toast({ title: 'Согласовано руководителем' });
   };
   const directorApprove = (ts: Timesheet) => {
-    upsertTs(transition(ts, "approved", viewerId));
-    toast({ title: "Утверждено директором — табель заблокирован" });
+    upsertTs(transition(ts, 'approved', viewerId));
+    toast({ title: 'Утверждено директором — табель заблокирован' });
   };
   const reject = (ts: Timesheet, comment: string) => {
-    upsertTs(transition(ts, "rejected", viewerId, comment));
-    toast({ title: "Табель отклонён", description: "Сотрудник получит уведомление" });
+    upsertTs(transition(ts, 'rejected', viewerId, comment));
+    toast({ title: 'Табель отклонён', description: 'Сотрудник получит уведомление' });
   };
 
   // ---- Renderers ----
 
   // Сортировка по колонкам блока. Состояние храним по ключу `${tsId}:${blockKey}`.
   type SortKey =
-    | "project"
-    | "system"
-    | "type"
-    | "priority"
-    | "id"
-    | "summary"
-    | "state"
-    | "planHours"
-    | "readiness"
-    | "hours"
-    | "baseSum"
-    | "mgrPct"
-    | "mgrSum"
-    | "bizPct"
-    | "bizSum"
-    | "netTotal"
-    | "effRate";
-  type SortDir = "asc" | "desc";
-  const [sortState, setSortState] = useState<
-    Record<string, { key: SortKey; dir: SortDir } | null>
-  >({});
+    | 'project'
+    | 'system'
+    | 'type'
+    | 'priority'
+    | 'id'
+    | 'summary'
+    | 'state'
+    | 'planHours'
+    | 'readiness'
+    | 'hours'
+    | 'baseSum'
+    | 'mgrPct'
+    | 'mgrSum'
+    | 'bizPct'
+    | 'bizSum'
+    | 'netTotal'
+    | 'effRate';
+  type SortDir = 'asc' | 'desc';
+  const [sortState, setSortState] = useState<Record<string, { key: SortKey; dir: SortDir } | null>>(
+    {},
+  );
 
   const cycleSort = (storeKey: string, key: SortKey) => {
     setSortState((prev) => {
       const cur = prev[storeKey];
       let next: { key: SortKey; dir: SortDir } | null;
-      if (!cur || cur.key !== key) next = { key, dir: "asc" };
-      else if (cur.dir === "asc") next = { key, dir: "desc" };
+      if (!cur || cur.key !== key) next = { key, dir: 'asc' };
+      else if (cur.dir === 'asc') next = { key, dir: 'desc' };
       else next = null;
       return { ...prev, [storeKey]: next };
     });
@@ -518,24 +650,19 @@ const Timesheets = () => {
     const totalH = total / 60;
     const overflow = totalH > STANDARD_MONTH_HOURS + 24;
 
-    const planRows = ts.rows.filter((r) => r.source === "plan");
-    const offRows = ts.rows.filter((r) => r.source === "worklog");
+    const planRows = ts.rows.filter((r) => r.source === 'plan');
+    const offRows = ts.rows.filter((r) => r.source === 'worklog');
 
     // Действующая ставка владельца табеля на месяц расчёта (ТЗ §14.2).
-    const activeSalary = activeSalaryFor(
-      initialSalaryHistory,
-      ts.employeeId,
-      ts.year,
-      ts.month,
-    );
+    const activeSalary = activeSalaryFor(initialSalaryHistory, ts.employeeId, ts.year, ts.month);
     // Только директор может менять оценку бизнеса; руководитель — оценку руководителя.
     const canEditManagerGrade =
-      flags.canEdit && (viewerRole === "manager" || viewerRole === "director");
-    const canEditBusinessGrade = flags.canEdit && viewerRole === "director";
+      flags.canEdit && (viewerRole === 'manager' || viewerRole === 'director');
+    const canEditBusinessGrade = flags.canEdit && viewerRole === 'director';
 
     // Значение для сортировки строки по выбранному ключу.
     const sortValue = (row: TimesheetRow, key: SortKey): string | number => {
-      const issue = issueShort(row.issueIdReadable);
+      const issue = issueShort(row.issueIdReadable, backlogItems);
       const proj = issue ? projects.find((p) => p.id === issue.projectId) : undefined;
       const sys = issue ? systems.find((s) => s.id === issue.systemId) : undefined;
       const fin = computeRowFinance(
@@ -553,39 +680,43 @@ const Timesheets = () => {
         Low: 3,
       };
       switch (key) {
-        case "project":
-          return proj?.shortName ?? "";
-        case "system":
-          return sys?.name ?? "";
-        case "type":
-          return issue ? TYPE_LABEL_RU[issue.type] : "";
-        case "priority":
+        case 'project':
+          return proj?.shortName ?? '';
+        case 'system':
+          return sys?.name ?? '';
+        case 'type':
+          return issue ? TYPE_LABEL_RU[issue.type] : '';
+        case 'priority':
           return issue ? priorityRank[issue.priority] : 99;
-        case "id":
+        case 'id':
           return row.issueIdReadable;
-        case "summary":
-          return issue?.summary ?? "";
-        case "state":
-          return issue ? STATE_LABEL_RU[issue.state] : "";
-        case "planHours":
+        case 'summary':
+          return issue?.summary ?? '';
+        case 'state':
+          return issue ? STATE_LABEL_RU[issue.state] : '';
+        case 'planHours':
           return issue?.estimateHours ?? 0;
-        case "readiness":
+        case 'readiness':
           return issue?.readiness ?? 0;
-        case "hours":
+        case 'hours':
           return row.minutes;
-        case "baseSum":
+        case 'baseSum':
           return fin.baseSumKop;
-        case "mgrPct":
-          return row.managerGrade === "none" ? -1 : fin.managerSumKop / Math.max(fin.baseSumKop || 1, 1);
-        case "mgrSum":
+        case 'mgrPct':
+          return row.managerGrade === 'none'
+            ? -1
+            : fin.managerSumKop / Math.max(fin.baseSumKop || 1, 1);
+        case 'mgrSum':
           return fin.managerSumKop;
-        case "bizPct":
-          return row.businessGrade === "none" ? -1 : fin.businessSumKop / Math.max(fin.baseSumKop || 1, 1);
-        case "bizSum":
+        case 'bizPct':
+          return row.businessGrade === 'none'
+            ? -1
+            : fin.businessSumKop / Math.max(fin.baseSumKop || 1, 1);
+        case 'bizSum':
           return fin.businessSumKop;
-        case "netTotal":
+        case 'netTotal':
           return fin.netTotalKop;
-        case "effRate":
+        case 'effRate':
           return row.minutes > 0 ? fin.effectiveRateKop : -1;
       }
     };
@@ -596,15 +727,15 @@ const Timesheets = () => {
       const sorted = [...rows].sort((a, b) => {
         const va = sortValue(a, s.key);
         const vb = sortValue(b, s.key);
-        if (typeof va === "number" && typeof vb === "number") return va - vb;
-        return String(va).localeCompare(String(vb), "ru");
+        if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+        return String(va).localeCompare(String(vb), 'ru');
       });
-      if (s.dir === "desc") sorted.reverse();
+      if (s.dir === 'desc') sorted.reverse();
       return sorted;
     };
 
     const renderRow = (row: TimesheetRow) => {
-      const issue = issueShort(row.issueIdReadable);
+      const issue = issueShort(row.issueIdReadable, backlogItems);
       const proj = issue ? projects.find((p) => p.id === issue.projectId) : undefined;
       const sys = issue ? systems.find((s) => s.id === issue.systemId) : undefined;
       const fin = computeRowFinance(
@@ -616,17 +747,15 @@ const Timesheets = () => {
       );
       return (
         <TableRow key={row.id} className="h-9 [&>td]:py-1 [&>td]:px-3">
-          <TableCell className="text-xs">{proj?.shortName ?? "—"}</TableCell>
-          <TableCell className="text-xs text-muted-foreground">{sys?.name ?? "—"}</TableCell>
-          <TableCell className="text-xs">
-            {issue ? TYPE_LABEL_RU[issue.type] : "—"}
-          </TableCell>
+          <TableCell className="text-xs">{proj?.shortName ?? '—'}</TableCell>
+          <TableCell className="text-xs text-muted-foreground">{sys?.name ?? '—'}</TableCell>
+          <TableCell className="text-xs">{issue ? TYPE_LABEL_RU[issue.type] : '—'}</TableCell>
           <TableCell>
             {issue && (
               <Badge
                 variant="outline"
                 className={cn(
-                  "font-normal text-[9px] px-1.5 py-0 leading-4",
+                  'font-normal text-[9px] px-1.5 py-0 leading-4',
                   PRIORITY_BADGE[issue.priority],
                 )}
               >
@@ -645,16 +774,16 @@ const Timesheets = () => {
             </a>
           </TableCell>
           <TableCell className="text-sm min-w-[220px]">
-            <div className="line-clamp-2">{issue?.summary ?? "—"}</div>
+            <div className="line-clamp-2">{issue?.summary ?? '—'}</div>
           </TableCell>
           <TableCell className="text-xs text-muted-foreground">
-            {issue ? STATE_LABEL_RU[issue.state] : "—"}
+            {issue ? STATE_LABEL_RU[issue.state] : '—'}
           </TableCell>
           <TableCell className="text-right text-xs num-tabular">
-            {issue ? `${issue.estimateHours} ч` : "—"}
+            {issue ? `${issue.estimateHours} ч` : '—'}
           </TableCell>
           <TableCell className="text-right text-xs num-tabular">
-            {issue ? `${issue.readiness}%` : "—"}
+            {issue ? `${issue.readiness}%` : '—'}
           </TableCell>
           <TableCell className="text-right">
             <HoursCell
@@ -665,10 +794,10 @@ const Timesheets = () => {
                   ts,
                   row.id,
                   { minutes: newMin },
-                  { field: "minutes", from: fromLabel, to: toLabel },
+                  { field: 'minutes', from: fromLabel, to: toLabel },
                 );
                 toast({
-                  title: "Часы сохранены",
+                  title: 'Часы сохранены',
                   description: `${row.issueIdReadable}: ${fromLabel} → ${toLabel}`,
                 });
               }}
@@ -688,7 +817,7 @@ const Timesheets = () => {
                   ts,
                   row.id,
                   { managerGrade: v as ManagerGrade },
-                  { field: "managerGrade", from: fromLabel, to: toLabel },
+                  { field: 'managerGrade', from: fromLabel, to: toLabel },
                 )
               }
             />
@@ -706,7 +835,7 @@ const Timesheets = () => {
                   ts,
                   row.id,
                   { businessGrade: v as BusinessGrade },
-                  { field: "businessGrade", from: fromLabel, to: toLabel },
+                  { field: 'businessGrade', from: fromLabel, to: toLabel },
                 )
               }
             />
@@ -718,10 +847,10 @@ const Timesheets = () => {
             {formatRubInt(fin.netTotalKop)}
           </TableCell>
           <TableCell className="text-right text-[11px] num-tabular text-muted-foreground bg-muted/20">
-            {row.minutes > 0 ? `${formatRubInt(fin.effectiveRateKop)}/ч` : "—"}
+            {row.minutes > 0 ? `${formatRubInt(fin.effectiveRateKop)}/ч` : '—'}
           </TableCell>
           <TableCell>
-            {flags.canEdit && row.source === "worklog" && (
+            {flags.canEdit && row.source === 'worklog' && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -742,38 +871,33 @@ const Timesheets = () => {
       label,
       sortKey,
       storeKey,
-      align = "left",
+      align = 'left',
       className,
       title,
     }: {
       label: string;
       sortKey: SortKey;
       storeKey: string;
-      align?: "left" | "right";
+      align?: 'left' | 'right';
       className?: string;
       title?: string;
     }) => {
       const s = sortState[storeKey];
       const active = s?.key === sortKey;
-      const Icon = !active ? ArrowUpDown : s!.dir === "asc" ? ArrowUp : ArrowDown;
+      const Icon = !active ? ArrowUpDown : s!.dir === 'asc' ? ArrowUp : ArrowDown;
       return (
         <TableHead className={className} title={title}>
           <button
             type="button"
             onClick={() => cycleSort(storeKey, sortKey)}
             className={cn(
-              "inline-flex items-center gap-1 select-none hover:text-foreground transition-colors w-full",
-              align === "right" ? "justify-end" : "justify-start",
-              active ? "text-foreground" : "text-muted-foreground",
+              'inline-flex items-center gap-1 select-none hover:text-foreground transition-colors w-full',
+              align === 'right' ? 'justify-end' : 'justify-start',
+              active ? 'text-foreground' : 'text-muted-foreground',
             )}
           >
             <span>{label}</span>
-            <Icon
-              className={cn(
-                "h-3 w-3 shrink-0",
-                active ? "opacity-100" : "opacity-30",
-              )}
-            />
+            <Icon className={cn('h-3 w-3 shrink-0', active ? 'opacity-100' : 'opacity-30')} />
           </button>
         </TableHead>
       );
@@ -873,25 +997,29 @@ const Timesheets = () => {
     const renderTotalsRow = (rows: TimesheetRow[]) => {
       const agg = aggregateBlock(rows, activeSalary);
       const planHoursSum = rows.reduce(
-        (s, r) => s + (issueShort(r.issueIdReadable)?.estimateHours ?? 0),
+        (s, r) => s + (issueShort(r.issueIdReadable, backlogItems)?.estimateHours ?? 0),
         0,
       );
       const readinessNum = rows.reduce(
-        (s, r) =>
-          s + (issueShort(r.issueIdReadable)?.readiness ?? 0) * r.minutes,
+        (s, r) => s + (issueShort(r.issueIdReadable, backlogItems)?.readiness ?? 0) * r.minutes,
         0,
       );
       const readinessAvg = agg.minutes > 0 ? Math.round(readinessNum / agg.minutes) : 0;
       const rowToneClass =
-        "h-9 bg-accent/10 hover:bg-accent/10 font-medium border-y border-border/60";
+        'h-9 bg-accent/10 hover:bg-accent/10 font-medium border-y border-border/60';
       return (
         <TableRow className={rowToneClass}>
-          <TableCell colSpan={7} className="py-1 px-3 text-xs uppercase tracking-wide text-muted-foreground">
+          <TableCell
+            colSpan={7}
+            className="py-1 px-3 text-xs uppercase tracking-wide text-muted-foreground"
+          >
             Итого · {rows.length} зад.
           </TableCell>
-          <TableCell className="py-1 px-3 text-right text-xs num-tabular">{planHoursSum} ч</TableCell>
           <TableCell className="py-1 px-3 text-right text-xs num-tabular">
-            {rows.length > 0 ? `${readinessAvg}%` : "—"}
+            {planHoursSum} ч
+          </TableCell>
+          <TableCell className="py-1 px-3 text-right text-xs num-tabular">
+            {rows.length > 0 ? `${readinessAvg}%` : '—'}
           </TableCell>
           <TableCell className="py-1 px-3 text-right text-xs num-tabular">
             {minutesToHoursStr(agg.minutes)} ч
@@ -915,7 +1043,7 @@ const Timesheets = () => {
             {formatRubInt(agg.netTotal)}
           </TableCell>
           <TableCell className="py-1 px-3 text-right text-[11px] num-tabular bg-accent/15">
-            {agg.minutes > 0 ? `${formatRubInt(agg.effRate)}/ч` : "—"}
+            {agg.minutes > 0 ? `${formatRubInt(agg.effRate)}/ч` : '—'}
           </TableCell>
           <TableCell className="py-1 px-3" />
         </TableRow>
@@ -926,25 +1054,25 @@ const Timesheets = () => {
       title: string,
       subtitle: string,
       rows: TimesheetRow[],
-      tone: "plan" | "off",
+      tone: 'plan' | 'off',
       emptyHint: string,
-      blockKey: "plan" | "off",
+      blockKey: 'plan' | 'off',
     ) => {
       const storeKey = `${ts.id}:${blockKey}`;
       const sortedRows = applySort(rows, storeKey);
       return (
         <div
           className={cn(
-            "rounded-md border overflow-hidden",
-            tone === "plan" ? "border-primary/30" : "border-amber-500/30",
+            'rounded-md border overflow-hidden',
+            tone === 'plan' ? 'border-primary/30' : 'border-amber-500/30',
           )}
         >
           <div
             className={cn(
-              "flex items-center justify-between px-3 py-2 border-b text-sm",
-              tone === "plan"
-                ? "bg-primary/5 border-primary/20 text-primary"
-                : "bg-amber-500/5 border-amber-500/20 text-amber-800",
+              'flex items-center justify-between px-3 py-2 border-b text-sm',
+              tone === 'plan'
+                ? 'bg-primary/5 border-primary/20 text-primary'
+                : 'bg-amber-500/5 border-amber-500/20 text-amber-800',
             )}
           >
             <div className="flex items-center gap-2">
@@ -985,70 +1113,66 @@ const Timesheets = () => {
         {/* Сводка по ставке владельца табеля */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-3 py-2 rounded-md border bg-muted/20 text-xs">
           <span className="text-muted-foreground">
-            Базовая ставка:{" "}
+            Базовая ставка:{' '}
             <span className="font-medium text-foreground num-tabular">
-              {activeSalary ? `${formatRubInt(baseRate)}/ч` : "ставка не задана"}
+              {activeSalary ? `${formatRubInt(baseRate)}/ч` : 'ставка не задана'}
             </span>
           </span>
           {activeSalary && (
             <>
               <span className="text-muted-foreground">
-                ЗП на руки/мес:{" "}
+                ЗП на руки/мес:{' '}
                 <span className="font-medium text-foreground num-tabular">
                   {formatRubInt(activeSalary.monthlyNetKop)}
                 </span>
               </span>
               <span className="text-muted-foreground">
-                Раб. часов в году:{" "}
+                Раб. часов в году:{' '}
                 <span className="font-medium text-foreground num-tabular">
                   {activeSalary.workHoursPerYear}
                 </span>
               </span>
               <span className="text-muted-foreground">
-                Действует с:{" "}
-                <span className="font-medium text-foreground">
-                  {activeSalary.effectiveFrom}
-                </span>
+                Действует с:{' '}
+                <span className="font-medium text-foreground">{activeSalary.effectiveFrom}</span>
               </span>
             </>
           )}
           <span className="text-muted-foreground">
-            Базовый %:{" "}
+            Базовый %:{' '}
             <span className="font-medium text-foreground">
               {Math.round(DEFAULT_FINANCE_SETTINGS.basePercent * 100)}%
             </span>
           </span>
           <span
             className={cn(
-              "ml-auto",
-              overflow ? "text-amber-700 font-medium" : "text-muted-foreground",
+              'ml-auto',
+              overflow ? 'text-amber-700 font-medium' : 'text-muted-foreground',
             )}
           >
-            Норма / итого, ч:{" "}
+            Норма / итого, ч:{' '}
             <span className="font-medium num-tabular">
               {STANDARD_MONTH_HOURS} / {minutesToHoursStr(total)}
             </span>
-            {overflow && (
-              <AlertCircle className="inline h-3 w-3 ml-1 text-amber-700" />
-            )}
+            {overflow && <AlertCircle className="inline h-3 w-3 ml-1 text-amber-700" />}
           </span>
         </div>
 
         {renderBlock(
-          "План месяца",
-          "задачи, назначенные в Планировании",
+          'План месяца',
+          'задачи, назначенные в Планировании',
           planRows,
-          "plan",
-          "В плане месяца нет задач для этого сотрудника.",
-          "plan",
+          'plan',
+          'В плане месяца нет задач для этого сотрудника.',
+          'plan',
         )}
         {renderBlock(
-          "Вне плана",
-          "задачи из YouTrack, в которые списывались часы",
+          'Вне плана',
+          'задачи из YouTrack, в которые списывались часы',
           offRows,
-          "off",
-          "Внеплановых задач нет.",
-          "off",
+          'off',
+          'Внеплановых задач нет.',
+          'off',
         )}
         {/* Сводный итог по обоим блокам — вне таблиц. */}
         {(() => {
@@ -1056,7 +1180,7 @@ const Timesheets = () => {
           if (allRows.length === 0) return null;
           const agg = aggregateBlock(allRows, activeSalary);
           const planHoursSum = allRows.reduce(
-            (s, r) => s + (issueShort(r.issueIdReadable)?.estimateHours ?? 0),
+            (s, r) => s + (issueShort(r.issueIdReadable, backlogItems)?.estimateHours ?? 0),
             0,
           );
           return (
@@ -1066,55 +1190,54 @@ const Timesheets = () => {
                   Итого по табелю · {allRows.length} зад.
                 </span>
                 <span className="text-muted-foreground">
-                  План часов:{" "}
+                  План часов:{' '}
                   <span className="font-medium text-foreground num-tabular">{planHoursSum} ч</span>
                 </span>
                 <span className="text-muted-foreground">
-                  Часы:{" "}
+                  Часы:{' '}
                   <span className="font-medium text-foreground num-tabular">
                     {minutesToHoursStr(agg.minutes)} ч
                   </span>
                 </span>
                 <span className="text-muted-foreground">
-                  Сум. базовая:{" "}
+                  Сум. базовая:{' '}
                   <span className="font-medium text-foreground num-tabular">
                     {formatRubInt(agg.baseSum)}
                   </span>
                 </span>
                 <span className="text-muted-foreground">
-                  ср. % рук.:{" "}
+                  ср. % рук.:{' '}
                   <span className="font-medium text-foreground num-tabular">
                     {Math.round(agg.mgrPct * 100)}%
                   </span>
                 </span>
                 <span className="text-muted-foreground">
-                  Сум. рук.:{" "}
+                  Сум. рук.:{' '}
                   <span className="font-medium text-foreground num-tabular">
                     {formatRubInt(agg.mgrSum)}
                   </span>
                 </span>
                 <span className="text-muted-foreground">
-                  ср. % бизн.:{" "}
+                  ср. % бизн.:{' '}
                   <span className="font-medium text-foreground num-tabular">
                     {Math.round(agg.bizPct * 100)}%
                   </span>
                 </span>
                 <span className="text-muted-foreground">
-                  Сум. бизн.:{" "}
+                  Сум. бизн.:{' '}
                   <span className="font-medium text-foreground num-tabular">
                     {formatRubInt(agg.bizSum)}
                   </span>
                 </span>
                 <span className="ml-auto flex items-center gap-x-4 gap-y-1 flex-wrap">
                   <span className="text-muted-foreground">
-                    Эфф. ставка:{" "}
+                    Эфф. ставка:{' '}
                     <span className="font-medium text-foreground num-tabular">
-                      {agg.minutes > 0 ? `${formatRubInt(agg.effRate)}/ч` : "—"}
+                      {agg.minutes > 0 ? `${formatRubInt(agg.effRate)}/ч` : '—'}
                     </span>
                   </span>
                   <span className="text-primary font-semibold">
-                    Итого на руки:{" "}
-                    <span className="num-tabular">{formatRubInt(agg.netTotal)}</span>
+                    Итого на руки: <span className="num-tabular">{formatRubInt(agg.netTotal)}</span>
                   </span>
                 </span>
               </div>
@@ -1130,11 +1253,7 @@ const Timesheets = () => {
     return (
       <div className="flex flex-wrap items-center gap-2">
         {flags.canEdit && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setAddRowDialog({ tsId: ts.id })}
-          >
+          <Button size="sm" variant="outline" onClick={() => setAddRowDialog({ tsId: ts.id })}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Добавить задачу
           </Button>
         )}
@@ -1164,21 +1283,17 @@ const Timesheets = () => {
             variant="outline"
             className="text-destructive hover:text-destructive"
             onClick={() => {
-              setRejectComment("");
+              setRejectComment('');
               setRejectDialog({ tsId: ts.id });
             }}
           >
             <XCircle className="h-3.5 w-3.5 mr-1" /> Отклонить
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setHistoryDialog({ tsId: ts.id })}
-        >
+        <Button size="sm" variant="ghost" onClick={() => setHistoryDialog({ tsId: ts.id })}>
           История
         </Button>
-        {ts.status === "approved" && (
+        {ts.status === 'approved' && (
           <Badge variant="outline" className="gap-1">
             <Lock className="h-3 w-3" /> Заблокирован
           </Badge>
@@ -1202,33 +1317,33 @@ const Timesheets = () => {
           <div className="flex items-center gap-3">
             <UserCircle2 className="h-5 w-5 text-muted-foreground" />
             <div>
-              <div className="font-medium">{viewer.name}</div>
-              <div className="text-xs text-muted-foreground">{viewer.position}</div>
+              <div className="font-medium">{viewerId}</div>
+              <div className="text-xs text-muted-foreground">Сотрудник</div>
             </div>
             <StatusBadge status={ts.status} />
           </div>
-          {renderActions(ts, "self")}
+          {renderActions(ts, 'self')}
         </div>
-        {ts.status === "rejected" && (
+        {ts.status === 'rejected' && (
           <div className="rounded-md border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-sm text-rose-800 flex items-start gap-2">
             <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
               <div className="font-medium">Табель отклонён руководителем</div>
               <div className="text-xs">
-                {ts.history.filter((h) => h.toStatus === "rejected").slice(-1)[0]?.comment ??
-                  "Без комментария"}
+                {ts.history.filter((h) => h.toStatus === 'rejected').slice(-1)[0]?.comment ??
+                  'Без комментария'}
               </div>
             </div>
           </div>
         )}
-        {renderRowsTable(ts, "self")}
+        {renderRowsTable(ts, 'self')}
       </div>
     );
   };
 
   // Локальное состояние вкладки команды: фильтр по статусу + раскрытые табели.
-  const [teamStatusFilter, setTeamStatusFilter] = useState<TimesheetStatus | "all" | "pending">(
-    "pending",
+  const [teamStatusFilter, setTeamStatusFilter] = useState<TimesheetStatus | 'all' | 'pending'>(
+    'pending',
   );
   const [expandedTs, setExpandedTs] = useState<Record<string, boolean>>({});
 
@@ -1243,53 +1358,44 @@ const Timesheets = () => {
 
     const directorViewer = isDirector;
     const filtered = teamTimesheets.filter((ts) => {
-      if (teamStatusFilter === "all") return true;
-      if (teamStatusFilter === "pending") {
-        return (
-          ts.status === "submitted" ||
-          (directorViewer && ts.status === "manager_approved")
-        );
+      if (teamStatusFilter === 'all') return true;
+      if (teamStatusFilter === 'pending') {
+        return ts.status === 'submitted' || (directorViewer && ts.status === 'manager_approved');
       }
       return ts.status === teamStatusFilter;
     });
 
     const filterOptions: { value: typeof teamStatusFilter; label: string; count: number }[] = [
       {
-        value: "pending",
-        label: "Требуют действия",
+        value: 'pending',
+        label: 'Требуют действия',
         count:
-          teamStats.byStatus.submitted +
-          (directorViewer ? teamStats.byStatus.manager_approved : 0),
+          teamStats.byStatus.submitted + (directorViewer ? teamStats.byStatus.manager_approved : 0),
       },
-      { value: "all", label: "Все", count: teamStats.count },
-      { value: "draft", label: "Черновики", count: teamStats.byStatus.draft },
-      { value: "submitted", label: "На согл. рук.", count: teamStats.byStatus.submitted },
+      { value: 'all', label: 'Все', count: teamStats.count },
+      { value: 'draft', label: 'Черновики', count: teamStats.byStatus.draft },
+      { value: 'submitted', label: 'На согл. рук.', count: teamStats.byStatus.submitted },
       {
-        value: "manager_approved",
-        label: "На утв. дир.",
+        value: 'manager_approved',
+        label: 'На утв. дир.',
         count: teamStats.byStatus.manager_approved,
       },
-      { value: "approved", label: "Утверждены", count: teamStats.byStatus.approved },
-      { value: "rejected", label: "Отклонены", count: teamStats.byStatus.rejected },
+      { value: 'approved', label: 'Утверждены', count: teamStats.byStatus.approved },
+      { value: 'rejected', label: 'Отклонены', count: teamStats.byStatus.rejected },
     ];
 
-    const toggleExpand = (id: string) =>
-      setExpandedTs((prev) => ({ ...prev, [id]: !prev[id] }));
+    const toggleExpand = (id: string) => setExpandedTs((prev) => ({ ...prev, [id]: !prev[id] }));
 
     return (
       <div className="space-y-4">
         {/* KPI команды */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard
-            label="Сотрудников в команде"
-            value={String(teamStats.count)}
-            icon={Users}
-          />
+          <KpiCard label="Сотрудников в команде" value={String(teamStats.count)} icon={Users} />
           <KpiCard
             label="Ожидают вашего согласования"
             value={String(teamStats.pending)}
             icon={Send}
-            accent={teamStats.pending > 0 ? "warning" : "primary"}
+            accent={teamStats.pending > 0 ? 'warning' : 'primary'}
           />
           <KpiCard
             label="Утверждено"
@@ -1312,19 +1418,19 @@ const Timesheets = () => {
               type="button"
               onClick={() => setTeamStatusFilter(o.value)}
               className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors",
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors',
                 teamStatusFilter === o.value
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-foreground border-border hover:bg-muted",
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-border hover:bg-muted',
               )}
             >
               {o.label}
               <span
                 className={cn(
-                  "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium",
+                  'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium',
                   teamStatusFilter === o.value
-                    ? "bg-primary-foreground/20 text-primary-foreground"
-                    : "bg-muted text-muted-foreground",
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-muted text-muted-foreground',
                 )}
               >
                 {o.count}
@@ -1354,40 +1460,32 @@ const Timesheets = () => {
               {filtered.map((ts) => {
                 const emp = orgEmployees.find((e) => e.id === ts.employeeId)!;
                 const directViewerRole: ViewerRole =
-                  ts.status === "manager_approved"
-                    ? "director"
-                    : isDirector && ts.status !== "submitted"
-                      ? "director"
-                      : "manager";
+                  ts.status === 'manager_approved'
+                    ? 'director'
+                    : isDirector && ts.status !== 'submitted'
+                      ? 'director'
+                      : 'manager';
                 const totH = totalHours(ts);
                 const totalMin = ts.rows.reduce((s, r) => s + r.minutes, 0);
                 const normPct = Math.round((totH / STANDARD_MONTH_HOURS) * 100);
-                const sal = activeSalaryFor(
-                  initialSalaryHistory,
-                  ts.employeeId,
-                  ts.year,
-                  ts.month,
-                );
+                const sal = activeSalaryFor(initialSalaryHistory, ts.employeeId, ts.year, ts.month);
                 const agg = aggregateBlock(ts.rows, sal);
                 const isOpen = !!expandedTs[ts.id];
                 return (
                   <>
-                    <TableRow
-                      key={ts.id}
-                      className={cn(isOpen && "bg-muted/30 border-b-0")}
-                    >
+                    <TableRow key={ts.id} className={cn(isOpen && 'bg-muted/30 border-b-0')}>
                       <TableCell className="p-2">
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => toggleExpand(ts.id)}
-                          title={isOpen ? "Свернуть" : "Раскрыть табель"}
+                          title={isOpen ? 'Свернуть' : 'Раскрыть табель'}
                         >
                           <span
                             className={cn(
-                              "inline-block transition-transform text-xs",
-                              isOpen && "rotate-90",
+                              'inline-block transition-transform text-xs',
+                              isOpen && 'rotate-90',
                             )}
                           >
                             ▶
@@ -1407,8 +1505,8 @@ const Timesheets = () => {
                       <TableCell className="text-right font-mono text-sm num-tabular">
                         <span
                           className={cn(
-                            totH < STANDARD_MONTH_HOURS * 0.5 && "text-amber-700",
-                            totH > STANDARD_MONTH_HOURS + 24 && "text-rose-700",
+                            totH < STANDARD_MONTH_HOURS * 0.5 && 'text-amber-700',
+                            totH > STANDARD_MONTH_HOURS + 24 && 'text-rose-700',
                           )}
                         >
                           {totH.toFixed(1)} ч
@@ -1417,8 +1515,8 @@ const Timesheets = () => {
                       <TableCell className="text-right text-xs num-tabular">
                         <span
                           className={cn(
-                            normPct < 50 && "text-amber-700",
-                            normPct > 115 && "text-rose-700",
+                            normPct < 50 && 'text-amber-700',
+                            normPct > 115 && 'text-rose-700',
                           )}
                         >
                           {normPct}%
@@ -1428,7 +1526,7 @@ const Timesheets = () => {
                         {formatRubInt(agg.netTotal)}
                       </TableCell>
                       <TableCell className="text-right text-xs num-tabular text-muted-foreground">
-                        {totalMin > 0 ? `${formatRubInt(agg.effRate)}/ч` : "—"}
+                        {totalMin > 0 ? `${formatRubInt(agg.effRate)}/ч` : '—'}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -1448,10 +1546,13 @@ const Timesheets = () => {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8 text-sm">
+                  <TableCell
+                    colSpan={10}
+                    className="text-center text-muted-foreground py-8 text-sm"
+                  >
                     {teamTimesheets.length === 0
-                      ? "Нет табелей подчинённых за выбранный период."
-                      : "По выбранному фильтру табелей нет."}
+                      ? 'Нет табелей подчинённых за выбранный период.'
+                      : 'По выбранному фильтру табелей нет.'}
                   </TableCell>
                 </TableRow>
               )}
@@ -1468,21 +1569,17 @@ const Timesheets = () => {
 
   // Найти табель сотрудника за выбранный период.
   const findTs = (empId: string): Timesheet | null =>
-    timesheets.find(
-      (t) => t.employeeId === empId && t.year === year && t.month === month,
-    ) ?? null;
+    timesheets.find((t) => t.employeeId === empId && t.year === year && t.month === month) ?? null;
 
   // Определить роль просмотра конкретного табеля для текущего viewer.
   const roleForTs = (ts: Timesheet): ViewerRole => {
-    if (ts.employeeId === viewerId) return "self";
+    if (ts.employeeId === viewerId) return 'self';
     if (isDirector) {
       // Директор может действовать как директор (на manager_approved) или как
       // руководитель за PM (на submitted) — это уже учтено в actionsFor.
-      return ts.status === "manager_approved" || ts.status === "approved"
-        ? "director"
-        : "director";
+      return ts.status === 'manager_approved' || ts.status === 'approved' ? 'director' : 'director';
     }
-    return "manager";
+    return 'manager';
   };
 
   // Сводная строка-табель сотрудника в общей таблице.
@@ -1495,9 +1592,9 @@ const Timesheets = () => {
     const isOpen = ts ? !!expandedTs[ts.id] : false;
     if (!ts) {
       return (
-        <TableRow key={`empty-${empId}`} className={cn(indent && "bg-muted/10")}>
+        <TableRow key={`empty-${empId}`} className={cn(indent && 'bg-muted/10')}>
           <TableCell className="p-2" />
-          <TableCell className={cn("font-medium", indent && "pl-8")}>{emp.name}</TableCell>
+          <TableCell className={cn('font-medium', indent && 'pl-8')}>{emp.name}</TableCell>
           <TableCell className="text-xs text-muted-foreground">{emp.position}</TableCell>
           <TableCell colSpan={7} className="text-xs text-muted-foreground italic">
             Табель за выбранный период не создан
@@ -1514,7 +1611,7 @@ const Timesheets = () => {
       <>
         <TableRow
           key={ts.id}
-          className={cn(isOpen && "bg-muted/30 border-b-0", indent && !isOpen && "bg-muted/10")}
+          className={cn(isOpen && 'bg-muted/30 border-b-0', indent && !isOpen && 'bg-muted/10')}
         >
           <TableCell className="p-2">
             <Button
@@ -1522,19 +1619,16 @@ const Timesheets = () => {
               size="icon"
               className="h-7 w-7"
               onClick={() => setExpandedTs((p) => ({ ...p, [ts.id]: !p[ts.id] }))}
-              title={isOpen ? "Свернуть" : "Раскрыть табель"}
+              title={isOpen ? 'Свернуть' : 'Раскрыть табель'}
             >
               <span
-                className={cn(
-                  "inline-block transition-transform text-xs",
-                  isOpen && "rotate-90",
-                )}
+                className={cn('inline-block transition-transform text-xs', isOpen && 'rotate-90')}
               >
                 ▶
               </span>
             </Button>
           </TableCell>
-          <TableCell className={cn("font-medium", indent && "pl-8")}>{emp.name}</TableCell>
+          <TableCell className={cn('font-medium', indent && 'pl-8')}>{emp.name}</TableCell>
           <TableCell className="text-xs text-muted-foreground">{emp.position}</TableCell>
           <TableCell>
             <StatusBadge status={ts.status} />
@@ -1542,30 +1636,30 @@ const Timesheets = () => {
           <TableCell className="text-right font-mono text-xs num-tabular">
             <span
               className={cn(
-                totH < STANDARD_MONTH_HOURS * 0.5 && "text-amber-700",
-                totH > STANDARD_MONTH_HOURS + 24 && "text-rose-700",
+                totH < STANDARD_MONTH_HOURS * 0.5 && 'text-amber-700',
+                totH > STANDARD_MONTH_HOURS + 24 && 'text-rose-700',
               )}
             >
               {totH.toFixed(1)} ч
             </span>
           </TableCell>
           <TableCell className="text-right text-xs num-tabular">
-            {baseRate > 0 ? `${formatRubInt(baseRate)}/ч` : "—"}
+            {baseRate > 0 ? `${formatRubInt(baseRate)}/ч` : '—'}
           </TableCell>
           <TableCell className="text-right text-[11px] num-tabular text-muted-foreground">
-            {totalMin > 0 ? `${Math.round(agg.mgrPct * 100)}%` : "—"}
+            {totalMin > 0 ? `${Math.round(agg.mgrPct * 100)}%` : '—'}
           </TableCell>
           <TableCell className="text-right text-[11px] num-tabular text-muted-foreground">
-            {totalMin > 0 ? `${Math.round(agg.bizPct * 100)}%` : "—"}
+            {totalMin > 0 ? `${Math.round(agg.bizPct * 100)}%` : '—'}
           </TableCell>
           <TableCell className="text-right text-xs num-tabular font-medium">
             {formatRubInt(agg.netTotal)}
           </TableCell>
           <TableCell className="text-right text-xs num-tabular text-muted-foreground">
-            {totalMin > 0 ? `${formatRubInt(agg.effRate)}/ч` : "—"}
+            {totalMin > 0 ? `${formatRubInt(agg.effRate)}/ч` : '—'}
           </TableCell>
           <TableCell>
-            {ts.status === "approved" && (
+            {ts.status === 'approved' && (
               <Badge variant="outline" className="gap-1 text-[10px]">
                 <Lock className="h-3 w-3" /> Заблокирован
               </Badge>
@@ -1575,15 +1669,14 @@ const Timesheets = () => {
         {isOpen && (
           <TableRow key={`${ts.id}-exp`} className="bg-muted/10">
             <TableCell colSpan={11} className="p-3">
-              {ts.status === "rejected" && (
+              {ts.status === 'rejected' && (
                 <div className="rounded-md border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-sm text-rose-800 flex items-start gap-2 mb-3">
                   <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <div>
                     <div className="font-medium">Табель отклонён</div>
                     <div className="text-xs">
-                      {ts.history
-                        .filter((h) => h.toStatus === "rejected")
-                        .slice(-1)[0]?.comment ?? "Без комментария"}
+                      {ts.history.filter((h) => h.toStatus === 'rejected').slice(-1)[0]?.comment ??
+                        'Без комментария'}
                     </div>
                   </div>
                 </div>
@@ -1601,27 +1694,25 @@ const Timesheets = () => {
 
   // Сортировка унифицированного списка табелей (по колонкам).
   type UnifiedSortKey =
-    | "name"
-    | "position"
-    | "status"
-    | "hours"
-    | "baseRate"
-    | "mgrPct"
-    | "bizPct"
-    | "netTotal"
-    | "effRate";
+    | 'name'
+    | 'position'
+    | 'status'
+    | 'hours'
+    | 'baseRate'
+    | 'mgrPct'
+    | 'bizPct'
+    | 'netTotal'
+    | 'effRate';
   const [unifiedSort, setUnifiedSort] = useState<{
     key: UnifiedSortKey;
     dir: SortDir;
   } | null>(null);
-  const [unifiedStatusFilter, setUnifiedStatusFilter] = useState<
-    TimesheetStatus | "all"
-  >("all");
+  const [unifiedStatusFilter, setUnifiedStatusFilter] = useState<TimesheetStatus | 'all'>('all');
 
   const cycleUnifiedSort = (key: UnifiedSortKey) => {
     setUnifiedSort((cur) => {
-      if (!cur || cur.key !== key) return { key, dir: "asc" };
-      if (cur.dir === "asc") return { key, dir: "desc" };
+      if (!cur || cur.key !== key) return { key, dir: 'asc' };
+      if (cur.dir === 'asc') return { key, dir: 'desc' };
       return null;
     });
   };
@@ -1633,7 +1724,14 @@ const Timesheets = () => {
     const sal = activeSalaryFor(initialSalaryHistory, empId, year, month);
     const baseRate = sal ? baseHourlyRateKop(sal) : 0;
     if (!ts) {
-      return { emp, ts: null as Timesheet | null, baseRate, totH: 0, totalMin: 0, agg: null as ReturnType<typeof aggregateBlock> | null };
+      return {
+        emp,
+        ts: null as Timesheet | null,
+        baseRate,
+        totH: 0,
+        totalMin: 0,
+        agg: null as ReturnType<typeof aggregateBlock> | null,
+      };
     }
     const totH = totalHours(ts);
     const totalMin = ts.rows.reduce((s, r) => s + r.minutes, 0);
@@ -1642,7 +1740,7 @@ const Timesheets = () => {
   };
 
   const passesStatusFilter = (empId: string) => {
-    if (unifiedStatusFilter === "all") return true;
+    if (unifiedStatusFilter === 'all') return true;
     const ts = findTs(empId);
     if (!ts) return false;
     return ts.status === unifiedStatusFilter;
@@ -1657,23 +1755,32 @@ const Timesheets = () => {
       const mb = employeeMetrics(b);
       const valOf = (m: ReturnType<typeof employeeMetrics>): number | string => {
         switch (key) {
-          case "name": return m.emp?.name ?? "";
-          case "position": return m.emp?.position ?? "";
-          case "status": return m.ts?.status ?? "zzz";
-          case "hours": return m.totH;
-          case "baseRate": return m.baseRate;
-          case "mgrPct": return m.agg?.mgrPct ?? -1;
-          case "bizPct": return m.agg?.bizPct ?? -1;
-          case "netTotal": return m.agg?.netTotal ?? 0;
-          case "effRate": return m.totalMin > 0 ? (m.agg?.effRate ?? 0) : -1;
+          case 'name':
+            return m.emp?.name ?? '';
+          case 'position':
+            return m.emp?.position ?? '';
+          case 'status':
+            return m.ts?.status ?? 'zzz';
+          case 'hours':
+            return m.totH;
+          case 'baseRate':
+            return m.baseRate;
+          case 'mgrPct':
+            return m.agg?.mgrPct ?? -1;
+          case 'bizPct':
+            return m.agg?.bizPct ?? -1;
+          case 'netTotal':
+            return m.agg?.netTotal ?? 0;
+          case 'effRate':
+            return m.totalMin > 0 ? (m.agg?.effRate ?? 0) : -1;
         }
       };
       const va = valOf(ma);
       const vb = valOf(mb);
       let cmp = 0;
-      if (typeof va === "number" && typeof vb === "number") cmp = va - vb;
-      else cmp = String(va).localeCompare(String(vb), "ru");
-      return dir === "asc" ? cmp : -cmp;
+      if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+      else cmp = String(va).localeCompare(String(vb), 'ru');
+      return dir === 'asc' ? cmp : -cmp;
     });
     return arr;
   };
@@ -1682,31 +1789,31 @@ const Timesheets = () => {
   const UnifiedSortHead = ({
     label,
     sortKey,
-    align = "left",
+    align = 'left',
     className,
     title,
   }: {
     label: string;
     sortKey: UnifiedSortKey;
-    align?: "left" | "right";
+    align?: 'left' | 'right';
     className?: string;
     title?: string;
   }) => {
     const active = unifiedSort?.key === sortKey;
-    const Icon = !active ? ArrowUpDown : unifiedSort!.dir === "asc" ? ArrowUp : ArrowDown;
+    const Icon = !active ? ArrowUpDown : unifiedSort!.dir === 'asc' ? ArrowUp : ArrowDown;
     return (
       <TableHead className={className} title={title}>
         <button
           type="button"
           onClick={() => cycleUnifiedSort(sortKey)}
           className={cn(
-            "inline-flex items-center gap-1 select-none hover:text-foreground transition-colors w-full",
-            align === "right" ? "justify-end" : "justify-start",
-            active ? "text-foreground" : "text-muted-foreground",
+            'inline-flex items-center gap-1 select-none hover:text-foreground transition-colors w-full',
+            align === 'right' ? 'justify-end' : 'justify-start',
+            active ? 'text-foreground' : 'text-muted-foreground',
           )}
         >
           <span>{label}</span>
-          <Icon className={cn("h-3 w-3 shrink-0", active ? "opacity-100" : "opacity-30")} />
+          <Icon className={cn('h-3 w-3 shrink-0', active ? 'opacity-100' : 'opacity-30')} />
         </button>
       </TableHead>
     );
@@ -1719,25 +1826,58 @@ const Timesheets = () => {
         <UnifiedSortHead label="ФИО" sortKey="name" />
         <UnifiedSortHead label="Должность" sortKey="position" />
         <UnifiedSortHead label="Статус" sortKey="status" className="w-[180px]" />
-        <UnifiedSortHead label="Часы" sortKey="hours" align="right" className="text-right w-[90px]" />
-        <UnifiedSortHead label="Базовая ставка" sortKey="baseRate" align="right" className="text-right w-[120px]" />
-        <UnifiedSortHead label="Ср. % рук." sortKey="mgrPct" align="right" className="text-right w-[100px]" title="Средневзвешенный % надбавки руководителя" />
-        <UnifiedSortHead label="Ср. % бизн." sortKey="bizPct" align="right" className="text-right w-[100px]" title="Средневзвешенный % надбавки бизнеса" />
-        <UnifiedSortHead label="ЗП на руки" sortKey="netTotal" align="right" className="text-right w-[120px]" />
-        <UnifiedSortHead label="Эфф. ставка" sortKey="effRate" align="right" className="text-right w-[110px]" title="Итого на руки / часы" />
+        <UnifiedSortHead
+          label="Часы"
+          sortKey="hours"
+          align="right"
+          className="text-right w-[90px]"
+        />
+        <UnifiedSortHead
+          label="Базовая ставка"
+          sortKey="baseRate"
+          align="right"
+          className="text-right w-[120px]"
+        />
+        <UnifiedSortHead
+          label="Ср. % рук."
+          sortKey="mgrPct"
+          align="right"
+          className="text-right w-[100px]"
+          title="Средневзвешенный % надбавки руководителя"
+        />
+        <UnifiedSortHead
+          label="Ср. % бизн."
+          sortKey="bizPct"
+          align="right"
+          className="text-right w-[100px]"
+          title="Средневзвешенный % надбавки бизнеса"
+        />
+        <UnifiedSortHead
+          label="ЗП на руки"
+          sortKey="netTotal"
+          align="right"
+          className="text-right w-[120px]"
+        />
+        <UnifiedSortHead
+          label="Эфф. ставка"
+          sortKey="effRate"
+          align="right"
+          className="text-right w-[110px]"
+          title="Итого на руки / часы"
+        />
         <TableHead className="w-[140px]" />
       </TableRow>
     </TableHeader>
   );
 
   // Фильтр по статусам.
-  const STATUS_FILTER_OPTIONS: { value: TimesheetStatus | "all"; label: string }[] = [
-    { value: "all", label: "Все статусы" },
-    { value: "draft", label: TIMESHEET_STATUS_LABEL_RU.draft },
-    { value: "submitted", label: TIMESHEET_STATUS_LABEL_RU.submitted },
-    { value: "manager_approved", label: TIMESHEET_STATUS_LABEL_RU.manager_approved },
-    { value: "approved", label: TIMESHEET_STATUS_LABEL_RU.approved },
-    { value: "rejected", label: TIMESHEET_STATUS_LABEL_RU.rejected },
+  const STATUS_FILTER_OPTIONS: { value: TimesheetStatus | 'all'; label: string }[] = [
+    { value: 'all', label: 'Все статусы' },
+    { value: 'draft', label: TIMESHEET_STATUS_LABEL_RU.draft },
+    { value: 'submitted', label: TIMESHEET_STATUS_LABEL_RU.submitted },
+    { value: 'manager_approved', label: TIMESHEET_STATUS_LABEL_RU.manager_approved },
+    { value: 'approved', label: TIMESHEET_STATUS_LABEL_RU.approved },
+    { value: 'rejected', label: TIMESHEET_STATUS_LABEL_RU.rejected },
   ];
 
   const statusFilterControl = (
@@ -1745,7 +1885,7 @@ const Timesheets = () => {
       <Label className="text-xs text-muted-foreground">Фильтр по статусу:</Label>
       <Select
         value={unifiedStatusFilter}
-        onValueChange={(v) => setUnifiedStatusFilter(v as TimesheetStatus | "all")}
+        onValueChange={(v) => setUnifiedStatusFilter(v as TimesheetStatus | 'all')}
       >
         <SelectTrigger className="h-8 w-[200px] text-xs">
           <SelectValue />
@@ -1765,9 +1905,7 @@ const Timesheets = () => {
   const renderManagerGroup = (managerId: string) => {
     const mgr = orgEmployees.find((e) => e.id === managerId);
     if (!mgr) return null;
-    const subIds = orgEmployees
-      .filter((e) => e.managerId === managerId)
-      .map((e) => e.id);
+    const subIds = orgEmployees.filter((e) => e.managerId === managerId).map((e) => e.id);
     // Применяем фильтр и сортировку отдельно к руководителю и его подчинённым.
     // Руководитель остаётся "шапкой" группы, если проходит фильтр; подчинённые сортируются.
     const mgrShown = passesStatusFilter(managerId);
@@ -1825,11 +1963,7 @@ const Timesheets = () => {
     if (isDirector) {
       // Директор: группы по непосредственным руководителям + его собственный табель сверху.
       const managerIds = Array.from(
-        new Set(
-          orgEmployees
-            .filter((e) => e.managerId === viewerId)
-            .map((e) => e.id),
-        ),
+        new Set(orgEmployees.filter((e) => e.managerId === viewerId).map((e) => e.id)),
       );
       const sortedManagerIds = sortIds(managerIds);
       return (
@@ -1889,15 +2023,13 @@ const Timesheets = () => {
 
   const rejectTs = rejectDialog ? timesheets.find((t) => t.id === rejectDialog.tsId) : null;
   const addRowTs = addRowDialog ? timesheets.find((t) => t.id === addRowDialog.tsId) : null;
-  const historyTs = historyDialog
-    ? timesheets.find((t) => t.id === historyDialog.tsId)
-    : null;
+  const historyTs = historyDialog ? timesheets.find((t) => t.id === historyDialog.tsId) : null;
 
   // Доступные для добавления задачи: всё из бэклога, кроме уже присутствующих в табеле.
   const addableIssues = useMemo(() => {
     if (!addRowTs) return [];
     const used = new Set(addRowTs.rows.map((r) => r.issueIdReadable));
-    return backlog.filter((b) => !used.has(b.idReadable));
+    return backlogItems.filter((b) => !used.has(b.idReadable));
   }, [addRowTs]);
 
   return (
@@ -1906,7 +2038,7 @@ const Timesheets = () => {
         <PageHeader
           title="Табели рабочего времени"
           description="Месячный ввод часов по задачам, согласование по маршруту Сотрудник → Руководитель → Директор"
-          breadcrumbs={[{ label: "Главная" }, { label: "Табели" }]}
+          breadcrumbs={[{ label: 'Главная' }, { label: 'Табели' }]}
           actions={
             <div className="flex items-center gap-2">
               <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
@@ -1937,9 +2069,7 @@ const Timesheets = () => {
           }
         />
 
-        <div className="p-6 space-y-4">
-          {renderUnified()}
-        </div>
+        <div className="p-6 space-y-4">{renderUnified()}</div>
 
         {/* Reject dialog */}
         <Dialog open={!!rejectDialog} onOpenChange={(o) => !o && setRejectDialog(null)}>
@@ -1947,8 +2077,8 @@ const Timesheets = () => {
             <DialogHeader>
               <DialogTitle>Отклонить табель</DialogTitle>
               <DialogDescription>
-                Сотрудник получит уведомление с указанным комментарием и сможет
-                скорректировать данные.
+                Сотрудник получит уведомление с указанным комментарием и сможет скорректировать
+                данные.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
@@ -1985,8 +2115,8 @@ const Timesheets = () => {
             <DialogHeader>
               <DialogTitle>Добавить задачу из YouTrack</DialogTitle>
               <DialogDescription>
-                Задача будет отмечена как «Вне плана» — учитывается в фактических часах,
-                но не входила в план месяца.
+                Задача будет отмечена как «Вне плана» — учитывается в фактических часах, но не
+                входила в план месяца.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
@@ -2013,7 +2143,7 @@ const Timesheets = () => {
                 disabled={!addIssueId}
                 onClick={() => {
                   if (addRowTs && addIssueId) addRow(addRowTs, addIssueId);
-                  setAddIssueId("");
+                  setAddIssueId('');
                   setAddRowDialog(null);
                 }}
               >
@@ -2041,17 +2171,11 @@ const Timesheets = () => {
                   Изменения строк ({historyTs?.rowChanges.length ?? 0})
                 </TabsTrigger>
               </TabsList>
-              <TabsContent
-                value="status"
-                className="space-y-2 max-h-[400px] overflow-auto mt-3"
-              >
+              <TabsContent value="status" className="space-y-2 max-h-[400px] overflow-auto mt-3">
                 {historyTs?.history.map((h, i) => {
                   const actor = orgEmployees.find((e) => e.id === h.actorId);
                   return (
-                    <div
-                      key={i}
-                      className="border border-border rounded-md p-2 text-xs space-y-1"
-                    >
+                    <div key={i} className="border border-border rounded-md p-2 text-xs space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">
                           {h.fromStatus
@@ -2059,23 +2183,16 @@ const Timesheets = () => {
                             : `Создан: ${TIMESHEET_STATUS_LABEL_RU[h.toStatus]}`}
                         </span>
                         <span className="text-muted-foreground">
-                          {new Date(h.at).toLocaleString("ru-RU")}
+                          {new Date(h.at).toLocaleString('ru-RU')}
                         </span>
                       </div>
-                      <div className="text-muted-foreground">
-                        Автор: {actor?.name ?? h.actorId}
-                      </div>
-                      {h.comment && (
-                        <div className="italic text-foreground/80">«{h.comment}»</div>
-                      )}
+                      <div className="text-muted-foreground">Автор: {actor?.name ?? h.actorId}</div>
+                      {h.comment && <div className="italic text-foreground/80">«{h.comment}»</div>}
                     </div>
                   );
                 })}
               </TabsContent>
-              <TabsContent
-                value="rows"
-                className="space-y-2 max-h-[400px] overflow-auto mt-3"
-              >
+              <TabsContent value="rows" className="space-y-2 max-h-[400px] overflow-auto mt-3">
                 {historyTs?.rowChanges.length === 0 && (
                   <div className="text-center text-xs text-muted-foreground py-6">
                     Изменений по строкам ещё не было.
@@ -2088,9 +2205,9 @@ const Timesheets = () => {
                     const actor = orgEmployees.find((e) => e.id === c.actorId);
                     const row = historyTs.rows.find((r) => r.id === c.rowId);
                     const fieldLabel: Record<typeof c.field, string> = {
-                      minutes: "Часы",
-                      managerGrade: "Оценка руководителя",
-                      businessGrade: "Оценка бизнеса",
+                      minutes: 'Часы',
+                      managerGrade: 'Оценка руководителя',
+                      businessGrade: 'Оценка бизнеса',
                     };
                     return (
                       <div
@@ -2105,16 +2222,14 @@ const Timesheets = () => {
                             · {fieldLabel[c.field]}
                           </span>
                           <span className="text-muted-foreground">
-                            {new Date(c.at).toLocaleString("ru-RU")}
+                            {new Date(c.at).toLocaleString('ru-RU')}
                           </span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Было:</span>{" "}
-                          <span className="line-through">{c.fromValue}</span>{" "}
-                          <span className="text-muted-foreground">→ Стало:</span>{" "}
-                          <span className="font-medium text-emerald-700">
-                            {c.toValue}
-                          </span>
+                          <span className="text-muted-foreground">Было:</span>{' '}
+                          <span className="line-through">{c.fromValue}</span>{' '}
+                          <span className="text-muted-foreground">→ Стало:</span>{' '}
+                          <span className="font-medium text-emerald-700">{c.toValue}</span>
                         </div>
                         <div className="text-muted-foreground">
                           Автор: {actor?.name ?? c.actorId}

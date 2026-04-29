@@ -15,6 +15,23 @@ export enum Role {
 }
 
 /**
+ * Роли пользователей (as const — для runtime использования)
+ */
+export const ROLES = {
+  ADMIN: 'admin',
+  DIRECTOR: 'director',
+  MANAGER: 'manager',
+  EMPLOYEE: 'employee',
+  BUSINESS: 'business',
+  ACCOUNTANT: 'accountant',
+  VIEWER: 'viewer',
+  HR: 'hr',
+  FINANCE: 'finance',
+} as const;
+
+export type RoleType = (typeof ROLES)[keyof typeof ROLES];
+
+/**
  * Состояния периода планирования
  */
 export enum PeriodState {
@@ -29,6 +46,20 @@ export enum PeriodState {
   /** Архивный — период завершён */
   ARCHIVED = 'archived',
 }
+
+/**
+ * Состояния периода (as const — для runtime использования)
+ */
+export const PERIOD_STATE = {
+  PLANNING: 'PLANNING',
+  PLAN_FIXED: 'PLAN_FIXED',
+  FACT_LOADED: 'FACT_LOADED',
+  EVALUATIONS_DONE: 'EVALUATIONS_DONE',
+  PERIOD_CLOSED: 'PERIOD_CLOSED',
+  PERIOD_REOPENED: 'PERIOD_REOPENED',
+} as const;
+
+export type PeriodStateType = (typeof PERIOD_STATE)[keyof typeof PERIOD_STATE];
 
 /**
  * Типы рабочих элементов (задач)

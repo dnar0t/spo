@@ -24,6 +24,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { UpdateSmtpConfigUseCase } from '../../application/notifications/use-cases/update-smtp-config.use-case';
 import { GetSmtpConfigUseCase } from '../../application/notifications/use-cases/get-smtp-config.use-case';
 import { CreateNotificationTemplateUseCase } from '../../application/notifications/use-cases/create-notification-template.use-case';
@@ -63,7 +64,7 @@ export class NotificationsController {
    * Список всех шаблонов уведомлений (ADMIN).
    */
   @Get('templates')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   async getTemplates() {
     return await this.getNotificationTemplatesUseCase.execute();
   }
@@ -73,7 +74,7 @@ export class NotificationsController {
    * Создание нового шаблона уведомления (ADMIN).
    */
   @Post('templates')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   async createTemplate(
     @Body() body: { eventName: string; subject: string; body: string; isActive?: boolean },
@@ -97,7 +98,7 @@ export class NotificationsController {
    * Обновление шаблона уведомления (ADMIN).
    */
   @Put('templates/:id')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   async updateTemplate(
     @Param('id') id: string,
     @Body() body: { eventName?: string; subject?: string; body?: string; isActive?: boolean },
@@ -127,7 +128,7 @@ export class NotificationsController {
    * Пароль возвращается в замаскированном виде.
    */
   @Get('smtp')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   async getSmtpConfig() {
     const config = await this.getSmtpConfigUseCase.execute();
     if (!config) {
@@ -141,7 +142,7 @@ export class NotificationsController {
    * Обновление SMTP конфигурации (ADMIN).
    */
   @Put('smtp')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   async updateSmtpConfig(
     @Body()
     body: {
@@ -176,7 +177,7 @@ export class NotificationsController {
    * Тестирование SMTP подключения (ADMIN).
    */
   @Post('smtp/test')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   async testSmtpConnection(@Req() req: RequestWithUser) {
     const config = await this.getSmtpConfigUseCase.execute();
 
@@ -207,7 +208,7 @@ export class NotificationsController {
    * Получение истории отправки уведомлений (ADMIN).
    */
   @Get('history')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   async getHistory(
     @Query('recipientId') recipientId?: string,
     @Query('eventName') eventName?: string,
@@ -256,7 +257,7 @@ export class NotificationsController {
    * Запуск обработки PENDING уведомлений (ADMIN).
    */
   @Post('process-pending')
-  @Roles('admin')
+  @Roles(ROLES.ADMIN)
   @HttpCode(HttpStatus.ACCEPTED)
   async processPending() {
     return {

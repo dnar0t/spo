@@ -14,7 +14,7 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
  * NestJS Guard, который проверяет наличие и валидность JWT в заголовке
  * Authorization: Bearer <token>.
  *
- * После верификации токена извлекает payload (sub, login, sessionId)
+ * После верификации токена извлекает payload (sub, login, sessionId, roles)
  * и сохраняет его в request.user для использования в контроллерах.
  */
 @Injectable()
@@ -42,6 +42,7 @@ export class JwtAuthGuard implements CanActivate {
         id: payload.sub,
         login: payload.login,
         sessionId: payload.sessionId,
+        roles: payload.roles ?? [],
       };
 
       return true;

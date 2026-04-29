@@ -8,6 +8,7 @@
 import { Controller, Get, Post, Param, Query, Body, UseGuards, Req, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { FreezeFinancialsUseCase } from '../../application/finance/use-cases/freeze-financials.use-case';
 import { FreezeFinancialsResponseDto } from '../../application/finance/dto/freeze-financials.dto';
 import { GetPeriodGroupsUseCase } from '../../application/finance/use-cases/get-period-groups.use-case';
@@ -44,7 +45,7 @@ export class FinanceController {
    * Только ADMIN или DIRECTOR.
    */
   @Post('periods/:id/freeze')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async freezeFinancials(
     @Param('id') id: string,
     @Req() req: RequestWithUser,
@@ -63,7 +64,7 @@ export class FinanceController {
    * Группировка финансовых данных по историям (иерархия задач).
    */
   @Get('periods/:id/groups')
-  @Roles('admin', 'director', 'finance')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.FINANCE)
   async getGroups(@Param('id') id: string) {
     return await this.getPeriodGroupsUseCase.execute(id);
   }
@@ -73,7 +74,7 @@ export class FinanceController {
    * Группировка финансовых данных по проектам.
    */
   @Get('periods/:id/by-project')
-  @Roles('admin', 'director', 'finance')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.FINANCE)
   async getByProject(@Param('id') id: string) {
     return await this.getPeriodByProjectUseCase.execute(id);
   }
@@ -83,7 +84,7 @@ export class FinanceController {
    * Группировка финансовых данных по системам.
    */
   @Get('periods/:id/by-system')
-  @Roles('admin', 'director', 'finance')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.FINANCE)
   async getBySystem(@Param('id') id: string) {
     return await this.getPeriodBySystemUseCase.execute(id);
   }
@@ -93,7 +94,7 @@ export class FinanceController {
    * Итоговые финансовые показатели периода.
    */
   @Get('periods/:id/totals')
-  @Roles('admin', 'director', 'finance')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.FINANCE)
   async getTotals(@Param('id') id: string) {
     return await this.getPeriodTotalsUseCase.execute(id);
   }

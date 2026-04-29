@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
+import { ROLES } from '../../application/auth/constants';
 import { GetMyTimesheetUseCase } from '../../application/timesheet/use-cases/get-my-timesheet.use-case';
 import { GetTeamTimesheetsUseCase } from '../../application/timesheet/use-cases/get-team-timesheets.use-case';
 import { UpdateRowUseCase } from '../../application/timesheet/use-cases/update-row.use-case';
@@ -91,14 +92,16 @@ export class TimesheetController {
    * Только admin, director, manager.
    */
   @Get('team')
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async getTeam(
     @Query('year') year: string,
     @Query('month') month: string,
     @Query('employeeIds') employeeIds: string,
     @Req() req: RequestWithUser,
   ): Promise<TimesheetResponseDto[]> {
-    this.logger.log(`Getting team timesheets, year=${year}, month=${month}, employeeIds=${employeeIds}`);
+    this.logger.log(
+      `Getting team timesheets, year=${year}, month=${month}, employeeIds=${employeeIds}`,
+    );
 
     const ids = employeeIds ? employeeIds.split(',') : [];
     const result = await this.getTeamTimesheetsUseCase.execute(
@@ -208,7 +211,7 @@ export class TimesheetController {
    * Только admin, director, manager.
    */
   @Post(':id/manager-approve')
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async managerApprove(
     @Param('id') id: string,
     @Req() req: RequestWithUser,
@@ -227,7 +230,7 @@ export class TimesheetController {
    * Только admin, director.
    */
   @Post(':id/director-approve')
-  @Roles('admin', 'director')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async directorApprove(
     @Param('id') id: string,
     @Req() req: RequestWithUser,
@@ -246,7 +249,7 @@ export class TimesheetController {
    * Только admin, director, manager.
    */
   @Post(':id/reject')
-  @Roles('admin', 'director', 'manager')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER)
   async reject(
     @Param('id') id: string,
     @Body('comment') comment: string,
@@ -265,9 +268,7 @@ export class TimesheetController {
    * Возвращает историю статусных переходов таймшита.
    */
   @Get(':id/history')
-  async getHistory(
-    @Param('id') id: string,
-  ): Promise<TimesheetStatusTransitionResponseDto[]> {
+  async getHistory(@Param('id') id: string): Promise<TimesheetStatusTransitionResponseDto[]> {
     this.logger.log(`Getting history for timesheet ${id}`);
 
     const result = await this.getTimesheetHistoryUseCase.execute(id);

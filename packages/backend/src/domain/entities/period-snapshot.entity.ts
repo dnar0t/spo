@@ -72,35 +72,35 @@ export class PeriodSnapshot {
   }
 
   get employeeRates(): Record<string, unknown> {
-    return { ...this._employeeRates };
+    return JSON.parse(JSON.stringify(this._employeeRates));
   }
 
   get formulas(): Record<string, unknown> {
-    return { ...this._formulas };
+    return JSON.parse(JSON.stringify(this._formulas));
   }
 
   get evaluationScales(): Record<string, unknown> {
-    return { ...this._evaluationScales };
+    return JSON.parse(JSON.stringify(this._evaluationScales));
   }
 
   get workItems(): Record<string, unknown> {
-    return { ...this._workItems };
+    return JSON.parse(JSON.stringify(this._workItems));
   }
 
   get issues(): Record<string, unknown> {
-    return { ...this._issues };
+    return JSON.parse(JSON.stringify(this._issues));
   }
 
   get issueHierarchy(): Record<string, unknown> {
-    return { ...this._issueHierarchy };
+    return JSON.parse(JSON.stringify(this._issueHierarchy));
   }
 
   get reportLines(): Record<string, unknown> {
-    return { ...this._reportLines };
+    return JSON.parse(JSON.stringify(this._reportLines));
   }
 
   get aggregates(): Record<string, unknown> {
-    return { ...this._aggregates };
+    return JSON.parse(JSON.stringify(this._aggregates));
   }
 
   get createdAt(): Date {
@@ -114,14 +114,14 @@ export class PeriodSnapshot {
     return new PeriodSnapshot(
       params.id ?? crypto.randomUUID(),
       params.periodId,
-      params.employeeRates,
-      params.formulas,
-      params.evaluationScales,
-      params.workItems,
-      params.issues,
-      params.issueHierarchy,
-      params.reportLines,
-      params.aggregates,
+      JSON.parse(JSON.stringify(params.employeeRates)),
+      JSON.parse(JSON.stringify(params.formulas)),
+      JSON.parse(JSON.stringify(params.evaluationScales)),
+      JSON.parse(JSON.stringify(params.workItems)),
+      JSON.parse(JSON.stringify(params.issues)),
+      JSON.parse(JSON.stringify(params.issueHierarchy)),
+      JSON.parse(JSON.stringify(params.reportLines)),
+      JSON.parse(JSON.stringify(params.aggregates)),
       new Date(),
     );
   }
@@ -133,14 +133,14 @@ export class PeriodSnapshot {
     return new PeriodSnapshot(
       data.id,
       data.periodId,
-      data.employeeRates,
-      data.formulas,
-      data.evaluationScales,
-      data.workItems,
-      data.issues,
-      data.issueHierarchy,
-      data.reportLines,
-      data.aggregates,
+      JSON.parse(JSON.stringify(data.employeeRates)),
+      JSON.parse(JSON.stringify(data.formulas)),
+      JSON.parse(JSON.stringify(data.evaluationScales)),
+      JSON.parse(JSON.stringify(data.workItems)),
+      JSON.parse(JSON.stringify(data.issues)),
+      JSON.parse(JSON.stringify(data.issueHierarchy)),
+      JSON.parse(JSON.stringify(data.reportLines)),
+      JSON.parse(JSON.stringify(data.aggregates)),
       data.createdAt,
     );
   }

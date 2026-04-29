@@ -13,6 +13,8 @@
  */
 import { Module, Logger } from '@nestjs/common';
 import { PlanningModule } from '../../infrastructure/prisma/planning.module';
+import { PrismaService } from '../../infrastructure/prisma/prisma.service';
+import { OutboxService } from '../../infrastructure/outbox.service';
 import { PrismaReportingPeriodRepository } from '../../infrastructure/prisma/repositories/prisma-reporting-period.repository';
 import { PrismaPlannedTaskRepository } from '../../infrastructure/prisma/repositories/prisma-planned-task.repository';
 import { PrismaSprintPlanRepository } from '../../infrastructure/prisma/repositories/prisma-sprint-plan.repository';
@@ -157,7 +159,8 @@ class EventBusAdapter {
 
     // --- FixPlanUseCase ---
     // Зависимости: ReportingPeriodRepository, SprintPlanRepository,
-    //              PlannedTaskRepository, PeriodTransitionRepository, EventBus
+    //              PlannedTaskRepository, PeriodTransitionRepository,
+    //              EventBusService, PrismaService, OutboxService
     {
       provide: FixPlanUseCase,
       useFactory: (
@@ -165,7 +168,9 @@ class EventBusAdapter {
         sprintPlanRepo: PrismaSprintPlanRepository,
         plannedTaskRepo: PrismaPlannedTaskRepository,
         periodTransitionRepo: PrismaPeriodTransitionRepository,
-        eventBus: EventBusAdapter,
+        eventBus: EventBusService,
+        prisma: PrismaService,
+        outboxService: OutboxService,
       ) =>
         new FixPlanUseCase(
           reportingPeriodRepo,
@@ -173,13 +178,17 @@ class EventBusAdapter {
           plannedTaskRepo,
           periodTransitionRepo,
           eventBus,
+          prisma,
+          outboxService,
         ),
       inject: [
         PrismaReportingPeriodRepository,
         PrismaSprintPlanRepository,
         PrismaPlannedTaskRepository,
         PrismaPeriodTransitionRepository,
-        EventBusAdapter,
+        EventBusService,
+        PrismaService,
+        OutboxService,
       ],
     },
 

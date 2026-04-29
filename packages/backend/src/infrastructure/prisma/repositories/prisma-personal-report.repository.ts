@@ -27,7 +27,7 @@ export class PrismaPersonalReportRepository implements PersonalReportRepository 
       where: { periodId },
       include: { lines: true },
     });
-    return records.map(r => this.toDomain(r, r.lines));
+    return records.map((r) => this.toDomain(r, r.lines));
   }
 
   async findByPeriodAndUserId(periodId: string, userId: string): Promise<PersonalReport[]> {
@@ -35,7 +35,7 @@ export class PrismaPersonalReportRepository implements PersonalReportRepository 
       where: { periodId, userId },
       include: { lines: true },
     });
-    return records.map(r => this.toDomain(r, r.lines));
+    return records.map((r) => this.toDomain(r, r.lines));
   }
 
   async findByPeriodAndIssue(periodId: string, youtrackIssueId: string): Promise<PersonalReport[]> {
@@ -49,7 +49,7 @@ export class PrismaPersonalReportRepository implements PersonalReportRepository 
       },
     });
     // Only return reports that actually have matching lines
-    return records.filter(r => r.lines.length > 0).map(r => this.toDomain(r, r.lines));
+    return records.filter((r) => r.lines.length > 0).map((r) => this.toDomain(r, r.lines));
   }
 
   async save(entity: PersonalReport): Promise<PersonalReport> {
@@ -59,14 +59,14 @@ export class PrismaPersonalReportRepository implements PersonalReportRepository 
         id: persistence.id as string,
         periodId: persistence.period_id as string,
         userId: persistence.user_id as string,
-        totalBaseAmount: persistence.base_amount as number ?? 0,
-        totalManagerAmount: persistence.manager_amount as number ?? 0,
-        totalBusinessAmount: persistence.business_amount as number ?? 0,
-        totalOnHand: persistence.total_on_hand as number ?? 0,
-        totalNdfl: persistence.ndfl as number ?? 0,
-        totalInsurance: persistence.insurance as number ?? 0,
-        totalReserve: persistence.reserve_vacation as number ?? 0,
-        totalWithTax: persistence.total_with_tax as number ?? 0,
+        totalBaseAmount: (persistence.base_amount as number) ?? 0,
+        totalManagerAmount: (persistence.manager_amount as number) ?? 0,
+        totalBusinessAmount: (persistence.business_amount as number) ?? 0,
+        totalOnHand: (persistence.total_on_hand as number) ?? 0,
+        totalNdfl: (persistence.ndfl as number) ?? 0,
+        totalInsurance: (persistence.insurance as number) ?? 0,
+        totalReserve: (persistence.reserve_vacation as number) ?? 0,
+        totalWithTax: (persistence.total_with_tax as number) ?? 0,
         totalMinutes: (persistence.actual_minutes as number) ?? 0,
         isFrozen: false,
         createdAt: persistence.created_at as Date,
@@ -88,19 +88,32 @@ export class PrismaPersonalReportRepository implements PersonalReportRepository 
     const data = await this.prisma.personalReport.update({
       where: { id: entity.id },
       data: {
-        totalBaseAmount: persistence.base_amount as number ?? 0,
-        totalManagerAmount: persistence.manager_amount as number ?? 0,
-        totalBusinessAmount: persistence.business_amount as number ?? 0,
-        totalOnHand: persistence.total_on_hand as number ?? 0,
-        totalNdfl: persistence.ndfl as number ?? 0,
-        totalInsurance: persistence.insurance as number ?? 0,
-        totalReserve: persistence.reserve_vacation as number ?? 0,
-        totalWithTax: persistence.total_with_tax as number ?? 0,
+        totalBaseAmount: (persistence.base_amount as number) ?? 0,
+        totalManagerAmount: (persistence.manager_amount as number) ?? 0,
+        totalBusinessAmount: (persistence.business_amount as number) ?? 0,
+        totalOnHand: (persistence.total_on_hand as number) ?? 0,
+        totalNdfl: (persistence.ndfl as number) ?? 0,
+        totalInsurance: (persistence.insurance as number) ?? 0,
+        totalReserve: (persistence.reserve_vacation as number) ?? 0,
+        totalWithTax: (persistence.total_with_tax as number) ?? 0,
         totalMinutes: (persistence.actual_minutes as number) ?? 0,
       },
       include: { lines: true },
     });
     return this.toDomain(data, data.lines);
+  }
+
+  async updateMany(
+    ids: string[],
+    data: { isFrozen?: boolean; frozenAt?: Date | null },
+  ): Promise<void> {
+    await this.prisma.personalReport.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        ...(data.isFrozen !== undefined && { isFrozen: data.isFrozen }),
+        ...(data.frozenAt !== undefined && { frozenAt: data.frozenAt }),
+      },
+    });
   }
 
   async deleteByPeriodId(periodId: string): Promise<void> {
