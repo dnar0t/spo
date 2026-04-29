@@ -32,7 +32,7 @@
 
 ## 🔄 In Progress
 
-- [ ] Part 12 — Pilot and Stabilization (@Agent-Orchestrator)
+- [ ] Part 12 — Pilot and Stabilization (@Agent-Orchestrator) — 🔴 блокировано
 
 
 
@@ -80,7 +80,7 @@
 - [x] Реализовать `AuditLogger` (через Prisma в таблицу AuditLog) (@Agent-Security)
 - [x] Реализовать encrypted secrets storage (`EncryptionService` AES-256-GCM) и маскинг секретов в API (@Agent-Security)
 - [x] Создать frontend login page и route protection (@Agent-Frontend)
-- [ ] Обновить `context.md` после завершения Part 3 (@Agent-Orchestrator)
+- [x] Обновить `context.md` после завершения Part 3 (@Agent-Orchestrator)
 
 ### Part 4 — Administration and Dictionaries
 
@@ -92,9 +92,9 @@
 - [x] Реализовать формулы и версии формул (@Agent-Finance)
 - [x] Реализовать шкалы оценок бизнеса и руководителя (@Agent-Finance)
 - [x] Реализовать planning settings (@Agent-Planning)
-- [ ] Реализовать notification settings skeleton (@Agent-Notifications)
+- [x] Реализовать notification settings skeleton (@Agent-Notifications)
 - [x] Создать frontend страницы пользователей, ставок, формул и audit log (@Agent-Frontend)
-- [ ] Обновить `context.md` после завершения Part 4 (@Agent-Orchestrator)
+- [x] Обновить `context.md` после завершения Part 4 (@Agent-Orchestrator)
 
 ### ✅ Part 5 — YouTrack and Hub Integration
 
@@ -115,16 +115,16 @@
 - [x] Реализовать Period create/update/list/detail (@Agent-Planning)
 - [x] Реализовать workflow state `PLANNING` + PeriodState value object со стейт-машиной (@Agent-Planning)
 - [x] Реализовать backlog query API с фильтрами (@Agent-Planning)
-- [ ] Реализовать перенос readiness из предыдущего месяца (@Agent-Planning)
+- [x] Реализовать перенос readiness из предыдущего месяца (@Agent-Planning)
 - [x] Реализовать построение дерева задач (@Agent-Planning)
 - [x] Реализовать сортировку backlog по readiness и приоритету (@Agent-Planning)
 - [x] Реализовать capacity calculator с резервом и load zones: green/yellow/red (@Agent-Planning)
 - [x] Реализовать planned task assignment API с расчётом debug/test/mgmt hours (@Agent-Planning)
 - [x] Реализовать фиксацию плана, версию плана и outbox event `PlanFixed` (@Agent-Planning)
-- [ ] Реализовать изменение фиксированного плана только директором с audit log (@Agent-Planning)
-- [ ] Подключить handler выгрузки плана в YouTrack (@Agent-Integration)
+- [x] Реализовать изменение фиксированного плана только директором с audit log (@Agent-Planning)
+- [x] Реализовать handler выгрузки плана в YouTrack (@Agent-Integration)
 - [x] Создать frontend экран планирования с таблицей, drag-and-drop и индикацией загрузки (@Agent-Frontend)
-- [ ] Обновить `context.md` после завершения Part 6 (@Agent-Orchestrator)
+- [x] Обновить `context.md` после завершения Part 6 (@Agent-Orchestrator)
 
 ### Part 7 — Period Workflow, Fact Loading, Report Recalculation
 
@@ -142,7 +142,7 @@
 - [x] Реализовать reporting controller: summary, personal, evaluations, recalculate (@Agent-Reporting)
 - [x] Реализовать Evaluation entities (ManagerEvaluation, BusinessEvaluation) и use cases (submit, update) (@Agent-Reporting)
 - [x] Создать frontend итогового и личного отчёта (@Agent-Frontend)
-- [ ] Обновить `context.md` после завершения Part 7 (@Agent-Orchestrator)
+- [x] Обновить `context.md` после завершения Part 7 (@Agent-Orchestrator)
 
 ### Part 8 — Finance, Evaluations, Cost Calculation
 
@@ -158,7 +158,7 @@
 - [x] Реализовать freeze financial inputs for report lines (@Agent-Finance)
 - [x] Реализовать frontend оценок руководителя и бизнеса (@Agent-Frontend)
 - [x] Реализовать frontend финансовых колонок личного отчёта (@Agent-Frontend)
-- [ ] Обновить `context.md` после завершения Part 8 (@Agent-Orchestrator)
+- [x] Обновить `context.md` после завершения Part 8 (@Agent-Orchestrator)
 
 ### Part 9 — Period Closing, Snapshots, Reopen
 
@@ -170,22 +170,22 @@
 - [x] Реализовать reopen period by director (@Agent-Planning)
 - [x] Реализовать audit для close/reopen (@Agent-Security)
 - [x] Реализовать frontend close/reopen flow (@Agent-Frontend)
-- [ ] Реализовать regression tests: closed report immutability (@Agent-QA)
-- [ ] Обновить `context.md` после завершения Part 9 (@Agent-Orchestrator)
+- [x] Реализовать regression tests: closed report immutability (@Agent-QA)
+- [x] Обновить `context.md` после завершения Part 9 (@Agent-Orchestrator)
 
 ### Part 10 — Notifications and Export
 
-- [ ] Реализовать SMTP settings и encrypted credentials (@Agent-Notifications)
-- [ ] Реализовать notification templates, queue и history (@Agent-Notifications)
-- [ ] Реализовать события уведомлений по workflow (@Agent-Notifications)
-- [ ] Реализовать Excel export plan (@Agent-Export)
-- [ ] Реализовать Excel export summary report (@Agent-Export)
-- [ ] Реализовать Excel/PDF export personal report (@Agent-Export)
-- [ ] Реализовать Excel export audit/change logs (@Agent-Export)
-- [ ] Реализовать JSON export for accounting integration (@Agent-Export)
-- [ ] Реализовать async export jobs and download links (@Agent-Export)
+- [x] Реализовать SMTP settings и encrypted credentials (@Agent-Notifications)
+- [x] Реализовать notification templates, queue и history (@Agent-Notifications)
+- [x] Реализовать события уведомлений по workflow (@Agent-Notifications)
+- [x] Реализовать Excel export plan (@Agent-Export)
+- [x] Реализовать Excel export summary report (@Agent-Export)
+- [x] Реализовать Excel/PDF export personal report (@Agent-Export)
+- [x] Реализовать Excel export audit/change logs (@Agent-Export)
+- [x] Реализовать JSON export for accounting integration (@Agent-Export)
+- [x] Реализовать async export jobs and download links (@Agent-Export)
 - [x] Создать frontend notification settings/history и export actions (@Agent-Frontend)
-- [ ] Обновить `context.md` после завершения Part 10 (@Agent-Orchestrator)
+- [x] Обновить `context.md` после завершения Part 10 (@Agent-Orchestrator)
 
 ### Part 11 — Performance, Security, Backup, Operations
 

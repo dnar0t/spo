@@ -46,6 +46,26 @@ export class PrismaReportingPeriodRepository implements ReportingPeriodRepositor
     return data ? this.toDomain(data) : null;
   }
 
+  async findPreviousPeriod(periodId: string): Promise<ReportingPeriod | null> {
+    const current = await this.findById(periodId);
+    if (!current) return null;
+
+    const { month, year } = current;
+    // Вычисляем предыдущий месяц
+    let prevMonth = month - 1;
+    let prevYear = year;
+    if (prevMonth < 1) {
+      prevMonth = 12;
+      prevYear = year - 1;
+    }
+
+    const data = await this.prisma.reportingPeriod.findFirst({
+      where: { month: prevMonth, year: prevYear },
+      orderBy: { createdAt: 'desc' },
+    });
+    return data ? this.toDomain(data) : null;
+  }
+
   async save(entity: ReportingPeriod): Promise<ReportingPeriod> {
     const persistence = entity.toPersistence();
     const data = await this.prisma.reportingPeriod.create({

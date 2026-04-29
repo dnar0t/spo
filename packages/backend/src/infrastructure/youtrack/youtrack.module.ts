@@ -5,6 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { YouTrackApiClient } from './youtrack-api.client';
 import { YouTrackMapper } from './youtrack-mapper';
 import { SyncEngine } from './sync-engine';
+import { YouTrackExportServiceImpl } from './services/youtrack-export-service.impl';
 import { YouTrackController } from '../../presentation/controllers/youtrack.controller';
 
 @Module({
@@ -17,15 +18,7 @@ import { YouTrackController } from '../../presentation/controllers/youtrack.cont
     PrismaModule,
   ],
   controllers: [YouTrackController],
-  providers: [
-    YouTrackApiClient,
-    YouTrackMapper,
-    SyncEngine,
-  ],
-  exports: [
-    YouTrackApiClient,
-    YouTrackMapper,
-    SyncEngine,
-  ],
+  providers: [YouTrackApiClient, YouTrackMapper, SyncEngine, YouTrackExportServiceImpl],
+  exports: [YouTrackApiClient, YouTrackMapper, SyncEngine, YouTrackExportServiceImpl],
 })
 export class YouTrackModule {}

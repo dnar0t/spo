@@ -37,8 +37,13 @@ export class PeriodTransition {
     private readonly _reason: string | null,
     private readonly _transitionedAt: Date,
   ) {
-    this.validateTransition();
     this.validateUser();
+    // Если fromState === toState, это аудит-запись (не переход),
+    // поэтому validateTransition() не вызываем — стейт-машина не позволяет
+    // переходить в то же состояние.
+    if (this._fromState.value !== this._toState.value) {
+      this.validateTransition();
+    }
   }
 
   // ─── Валидация ───
@@ -111,7 +116,12 @@ export class PeriodTransition {
     return this._toState.value === 'PLAN_FIXED';
   }
 
-  // ─── Фабричный метод ───
+  /** Проверка, был ли это аудит модификации плана (без смены состояния) */
+  isPlanModification(): boolean {
+    return this._fromState.value === this._toState.value;
+  }
+
+  // ─── Фабричные методы ───
 
   /** Создать новую запись о переходе */
   static create(params: PeriodTransitionCreateParams): PeriodTransition {
@@ -123,6 +133,43 @@ export class PeriodTransition {
       params.transitionedByUserId,
       params.reason ?? null,
       params.transitionedAt ?? new Date(),
+    );
+  }
+
+  /**
+   * Создать аудит-запись модификации плана (без смены состояния).
+   * Используется когда план уже зафиксирован, но директор вносит изменения.
+   * В этом случае fromState === toState, что не является переходом,
+   * поэтому валидация стейт-машины не применяется.
+   */
+  static forAudit(params: {
+    id?: string;
+    periodId: string;
+    state: PeriodState;
+    transitionedByUserId: string;
+    reason: string | null;
+    transitionedAt?: Date;
+  }): PeriodTransition {
+    const id = params.id ?? crypto.randomUUID();
+    const transitionedAt = params.transitionedAt ?? new Date();
+
+    if (!params.transitionedByUserId || params.transitionedByUserId.trim().length === 0) {
+      throw new InvalidArgumentError(
+        'transitionedByUserId',
+        'Transition must have a valid user ID',
+      );
+    }
+
+    // Создаём через приватный конструктор, минуя validateTransition(),
+    // так как fromState === toState — это аудит, а не переход.
+    return new PeriodTransition(
+      id,
+      params.periodId,
+      params.state,
+      params.state,
+      params.transitionedByUserId,
+      params.reason,
+      transitionedAt,
     );
   }
 

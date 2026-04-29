@@ -13,6 +13,8 @@ import { PeriodClosingAppModule } from './presentation/controllers/period-closin
 import { ExportAppModule } from './presentation/controllers/export-app.module';
 import { NotificationsAppModule } from './presentation/controllers/notifications-app.module';
 import { TimesheetAppModule } from './presentation/controllers/timesheet-app.module';
+import { IntegrationAppModule } from './presentation/controllers/integration-app.module';
+import { SharedModule } from './infrastructure/shared.module';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { TimesheetAppModule } from './presentation/controllers/timesheet-app.mod
       isGlobal: true,
       envFilePath: ['.env', '../../.env'],
     }),
+    SharedModule,
     PrismaModule,
     YouTrackModule,
     PlanningAppModule,
@@ -32,8 +35,8 @@ import { TimesheetAppModule } from './presentation/controllers/timesheet-app.mod
     NotificationsAppModule,
     TimesheetAppModule,
     DashboardAppModule,
+    IntegrationAppModule,
   ],
   controllers: [HealthController],
-  providers: [],
 })
 export class AppModule {}

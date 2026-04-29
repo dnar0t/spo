@@ -33,10 +33,7 @@
       "@spo/shared": ["../shared/src"],
       "@spo/shared/*": ["../shared/src/*"],
     },
-    "plugins": [
-      { "transform": "tsconfig-paths/lib" }
-    ],
-    },
+    "plugins": [{ "transform": "tsconfig-paths/lib" }],
   },
   "ts-node": {
     "require": ["tsconfig-paths/register"],

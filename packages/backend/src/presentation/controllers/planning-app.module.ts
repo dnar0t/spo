@@ -28,24 +28,34 @@ import { GetCapacityUseCase } from '../../application/planning/use-cases/get-cap
 import { AssignTaskUseCase } from '../../application/planning/use-cases/assign-task.use-case';
 import { UnassignTaskUseCase } from '../../application/planning/use-cases/unassign-task.use-case';
 import { FixPlanUseCase } from '../../application/planning/use-cases/fix-plan.use-case';
+import { ModifyFixedPlanUseCase } from '../../application/planning/use-cases/modify-fixed-plan.use-case';
+import { CarryOverReadinessUseCase } from '../../application/planning/use-cases/carry-over-readiness.use-case';
 import { TransitionPeriodUseCase } from '../../application/planning/use-cases/transition-period.use-case';
 import { DeletePeriodUseCase } from '../../application/planning/use-cases/delete-period.use-case';
 import { UpdateTaskSortUseCase } from '../../application/planning/use-cases/update-task-sort.use-case';
 import { UpdateTaskReadinessUseCase } from '../../application/planning/use-cases/update-task-readiness.use-case';
 import { GetPlanVersionsUseCase } from '../../application/planning/use-cases/get-plan-versions.use-case';
 import { PlanFixedEvent } from '../../domain/events/plan-fixed.event';
+import { PlanModifiedEvent } from '../../domain/events/plan-modified.event';
+import { EventBusService } from '../../infrastructure/event-bus.service';
 
 /**
- * Простая реализация EventBus для FixPlanUseCase.
- * В production будет заменена на полноценный EventBus / Outbox.
+ * EventBus — обёртка над EventBusService, реализующая интерфейсы
+ * EventBus из FixPlanUseCase и ModifyFixedPlanUseCase.
+ * Публикует события в шину для обработки подписчиками (интеграции и др.).
  */
-class ConsoleEventBus {
+class EventBusAdapter {
   private readonly logger = new Logger('EventBus');
 
-  async publish(event: PlanFixedEvent): Promise<void> {
+  constructor(private readonly eventBusService: EventBusService) {}
+
+  async publish(event: PlanFixedEvent | PlanModifiedEvent): Promise<void> {
     this.logger.log(`Publishing event: ${event.eventName}`);
     const payload = event.toJSON();
     this.logger.debug(`Event payload: ${JSON.stringify(payload)}`);
+
+    // Публикуем в общую шину событий для подписчиков (YouTrack export и др.)
+    await this.eventBusService.publish(event);
   }
 }
 
@@ -155,7 +165,7 @@ class ConsoleEventBus {
         sprintPlanRepo: PrismaSprintPlanRepository,
         plannedTaskRepo: PrismaPlannedTaskRepository,
         periodTransitionRepo: PrismaPeriodTransitionRepository,
-        eventBus: ConsoleEventBus,
+        eventBus: EventBusAdapter,
       ) =>
         new FixPlanUseCase(
           reportingPeriodRepo,
@@ -169,7 +179,7 @@ class ConsoleEventBus {
         PrismaSprintPlanRepository,
         PrismaPlannedTaskRepository,
         PrismaPeriodTransitionRepository,
-        ConsoleEventBus,
+        EventBusAdapter,
       ],
     },
 
@@ -224,10 +234,57 @@ class ConsoleEventBus {
       inject: [PrismaReportingPeriodRepository, PrismaSprintPlanRepository],
     },
 
+    // --- ModifyFixedPlanUseCase ---
+    // Зависимости: ReportingPeriodRepository, SprintPlanRepository,
+    //              PlannedTaskRepository, PeriodTransitionRepository, EventBus
+    {
+      provide: ModifyFixedPlanUseCase,
+      useFactory: (
+        reportingPeriodRepo: PrismaReportingPeriodRepository,
+        sprintPlanRepo: PrismaSprintPlanRepository,
+        plannedTaskRepo: PrismaPlannedTaskRepository,
+        periodTransitionRepo: PrismaPeriodTransitionRepository,
+        eventBus: EventBusAdapter,
+      ) =>
+        new ModifyFixedPlanUseCase(
+          reportingPeriodRepo,
+          sprintPlanRepo,
+          plannedTaskRepo,
+          periodTransitionRepo,
+          eventBus,
+        ),
+      inject: [
+        PrismaReportingPeriodRepository,
+        PrismaSprintPlanRepository,
+        PrismaPlannedTaskRepository,
+        PrismaPeriodTransitionRepository,
+        EventBusAdapter,
+      ],
+    },
+
+    // --- CarryOverReadinessUseCase ---
+    // Зависимости: ReportingPeriodRepository, PlannedTaskRepository
+    {
+      provide: CarryOverReadinessUseCase,
+      useFactory: (
+        reportingPeriodRepo: PrismaReportingPeriodRepository,
+        plannedTaskRepo: PrismaPlannedTaskRepository,
+      ) => new CarryOverReadinessUseCase(reportingPeriodRepo, plannedTaskRepo),
+      inject: [PrismaReportingPeriodRepository, PrismaPlannedTaskRepository],
+    },
+
     // ====================================================================
-    // EventBus Implementation
+    // EventBus Adapter
+    //
+    // Связывает EventBusService (из IntegrationAppModule) с use case'ами.
+    // EventBusAdapter реализует интерфейс EventBus из FixPlanUseCase
+    // и делегирует публикацию событий в общую шину EventBusService.
     // ====================================================================
-    ConsoleEventBus,
+    {
+      provide: EventBusAdapter,
+      useFactory: (eventBusService: EventBusService) => new EventBusAdapter(eventBusService),
+      inject: [EventBusService],
+    },
   ],
 })
 export class PlanningAppModule {}

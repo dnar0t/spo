@@ -35,6 +35,11 @@ import { GetCapacityUseCase } from '../../application/planning/use-cases/get-cap
 import { AssignTaskUseCase } from '../../application/planning/use-cases/assign-task.use-case';
 import { UnassignTaskUseCase } from '../../application/planning/use-cases/unassign-task.use-case';
 import { FixPlanUseCase } from '../../application/planning/use-cases/fix-plan.use-case';
+import {
+  ModifyFixedPlanUseCase,
+  ModifyFixedPlanDto,
+} from '../../application/planning/use-cases/modify-fixed-plan.use-case';
+import { CarryOverReadinessUseCase } from '../../application/planning/use-cases/carry-over-readiness.use-case';
 import { TransitionPeriodUseCase } from '../../application/planning/use-cases/transition-period.use-case';
 import { DeletePeriodUseCase } from '../../application/planning/use-cases/delete-period.use-case';
 import { UpdateTaskSortUseCase } from '../../application/planning/use-cases/update-task-sort.use-case';
@@ -61,6 +66,8 @@ export class PlanningController {
     private readonly assignTaskUseCase: AssignTaskUseCase,
     private readonly unassignTaskUseCase: UnassignTaskUseCase,
     private readonly fixPlanUseCase: FixPlanUseCase,
+    private readonly modifyFixedPlanUseCase: ModifyFixedPlanUseCase,
+    private readonly carryOverReadinessUseCase: CarryOverReadinessUseCase,
     private readonly transitionPeriodUseCase: TransitionPeriodUseCase,
     private readonly deletePeriodUseCase: DeletePeriodUseCase,
     private readonly updateTaskSortUseCase: UpdateTaskSortUseCase,
@@ -334,6 +341,47 @@ export class PlanningController {
     this.logger.log(`Fetching plan versions for period: id=${id}`);
 
     const result = await this.getPlanVersionsUseCase.execute(id);
+    return result;
+  }
+
+  // ====================================================================
+  // Carry Over Readiness
+  // ====================================================================
+
+  /**
+   * Перенос процента готовности задач из предыдущего периода в текущий.
+   *
+   * POST /api/planning/periods/:id/carry-over-readiness
+   */
+  @Post('periods/:id/carry-over-readiness')
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'director')
+  async carryOverReadiness(@Param('id') id: string) {
+    this.logger.log(`Carrying over readiness for period: id=${id}`);
+
+    const result = await this.carryOverReadinessUseCase.execute(id);
+    return result;
+  }
+
+  // ====================================================================
+  // Modify Fixed Plan
+  // ====================================================================
+
+  /**
+   * Изменение фиксированного плана спринта директором.
+   * Доступно только для периодов в состоянии PLAN_FIXED, FACT_LOADED или EVALUATIONS_DONE.
+   * Требует обязательного комментария причины изменения.
+   *
+   * PUT /api/planning/periods/:id/modify-fixed-plan
+   */
+  @Put('periods/:id/modify-fixed-plan')
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'director')
+  async modifyFixedPlan(@Param('id') id: string, @Body() dto: ModifyFixedPlanDto) {
+    this.logger.log(`Modifying fixed plan for period: id=${id}, taskId=${dto.taskId}`);
+
+    const userId = 'system';
+    const result = await this.modifyFixedPlanUseCase.execute(id, userId, dto);
     return result;
   }
 

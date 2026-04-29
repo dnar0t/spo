@@ -19,4 +19,11 @@ export interface ReportingPeriodRepository extends BaseRepository<ReportingPerio
 
   /** Найти самый последний (по дате создания) период */
   findLatest(): Promise<ReportingPeriod | null>;
+
+  /**
+   * Найти предыдущий период относительно указанного.
+   * Предыдущим считается период с тем же годом, месяцем на 1 меньше,
+   * или декабрь предыдущего года для января.
+   */
+  findPreviousPeriod(periodId: string): Promise<ReportingPeriod | null>;
 }
