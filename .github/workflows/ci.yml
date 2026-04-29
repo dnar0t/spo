@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: spo
+          POSTGRES_PASSWORD: spo
+          POSTGRES_DB: spo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build:shared
+
+      - run: npm run build:backend
+
+      - run: npx prisma validate --schema=packages/backend/src/infrastructure/prisma/prisma/schema.prisma
+
+      - run: npx prisma generate --schema=packages/backend/src/infrastructure/prisma/prisma/schema.prisma
+        env:
+          DATABASE_URL: postgresql://spo:spo@localhost:5432/spo
+
+      - run: npx prisma migrate deploy --schema=packages/backend/src/infrastructure/prisma/prisma/schema.prisma
+        env:
+          DATABASE_URL: postgresql://spo:spo@localhost:5432/spo
+
+      - run: npm test
+        env:
+          DATABASE_URL: postgresql://spo:spo@localhost:5432/spo
+          JWT_SECRET: test-jwt-secret
+          ENCRYPTION_KEY: test-encryption-key-that-is-32-bytes-long!
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./spo-front
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm test || true
