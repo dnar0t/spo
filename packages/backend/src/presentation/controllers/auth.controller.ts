@@ -15,7 +15,6 @@ import { LoginUseCase } from '../../application/auth/use-cases/login.use-case';
 import { RefreshTokenUseCase } from '../../application/auth/use-cases/refresh-token.use-case';
 import { LogoutUseCase } from '../../application/auth/use-cases/logout.use-case';
 import { GetCurrentUserUseCase } from '../../application/auth/use-cases/get-current-user.use-case';
-import { LoginDto } from '../../application/auth/dto/login.dto';
 import { RefreshTokenDto } from '../../application/auth/dto/refresh-token.dto';
 import { AuthResponseDto } from '../../application/auth/dto/auth-response.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -58,13 +57,13 @@ export class AuthController {
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto> {
+  async login(@Body() body: any, @Req() req: Request): Promise<AuthResponseDto> {
     const ipAddress = req.ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
-    this.logger.debug(`Login attempt for user "${dto.login}" from IP ${ipAddress}`);
+    this.logger.debug(`Login attempt for user "${body.login}" from IP ${ipAddress}`);
 
-    return this.loginUseCase.execute(dto, {
+    return this.loginUseCase.execute(body, {
       ipAddress,
       userAgent,
     });
