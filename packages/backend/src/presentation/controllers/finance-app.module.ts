@@ -19,7 +19,7 @@ import { GetPeriodGroupsUseCase } from '../../application/finance/use-cases/get-
 import { GetPeriodByProjectUseCase } from '../../application/finance/use-cases/get-period-by-project.use-case';
 import { GetPeriodBySystemUseCase } from '../../application/finance/use-cases/get-period-by-system.use-case';
 import { GetPeriodTotalsUseCase } from '../../application/finance/use-cases/get-period-totals.use-case';
-import { IAuditLogger } from '../../application/auth/ports/audit-logger';
+import { AUDIT_LOGGER } from '../../application/auth/ports/audit-logger';
 import {
   IYouTrackIssueRepository,
   YOUTRACK_ISSUE_REPOSITORY,
@@ -55,7 +55,7 @@ import {
         personalReportRepo: PrismaPersonalReportRepository,
         auditLogger: IAuditLogger,
       ) => new FreezeFinancialsUseCase(periodRepo, personalReportRepo, auditLogger),
-      inject: [PrismaReportingPeriodRepository, PrismaPersonalReportRepository, IAuditLogger],
+      inject: [PrismaReportingPeriodRepository, PrismaPersonalReportRepository, AUDIT_LOGGER],
     },
     // ─── Finance Read Use Cases ───
     {

@@ -44,7 +44,7 @@ import { GetIntegrationsUseCase } from '../../application/administration/use-cas
 import { UpdateIntegrationUseCase } from '../../application/administration/use-cases/update-integration.use-case';
 import { GetActiveSessionsUseCase } from '../../application/administration/use-cases/get-active-sessions.use-case';
 import { GetSensitiveChangesUseCase } from '../../application/administration/use-cases/get-sensitive-changes.use-case';
-import { IAuditLogger } from '../../application/auth/ports/audit-logger';
+import { AUDIT_LOGGER } from '../../application/auth/ports/audit-logger';
 
 @Module({
   imports: [AdministrationModule, AuthModule],
@@ -65,7 +65,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: CreateUserUseCase,
       useFactory: (userRepo: PrismaUserRepository, auditLogger: IAuditLogger) =>
         new CreateUserUseCase(userRepo, auditLogger),
-      inject: [PrismaUserRepository, IAuditLogger],
+      inject: [PrismaUserRepository, AUDIT_LOGGER],
     },
 
     // --- UpdateUserUseCase ---
@@ -74,7 +74,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: UpdateUserUseCase,
       useFactory: (userRepo: PrismaUserRepository, auditLogger: IAuditLogger) =>
         new UpdateUserUseCase(userRepo, auditLogger),
-      inject: [PrismaUserRepository, IAuditLogger],
+      inject: [PrismaUserRepository, AUDIT_LOGGER],
     },
 
     // --- DeactivateUserUseCase ---
@@ -83,7 +83,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: DeactivateUserUseCase,
       useFactory: (userRepo: PrismaUserRepository, auditLogger: IAuditLogger) =>
         new DeactivateUserUseCase(userRepo, auditLogger),
-      inject: [PrismaUserRepository, IAuditLogger],
+      inject: [PrismaUserRepository, AUDIT_LOGGER],
     },
 
     // --- AssignRolesUseCase ---
@@ -92,7 +92,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: AssignRolesUseCase,
       useFactory: (userRepo: PrismaUserRepository, auditLogger: IAuditLogger) =>
         new AssignRolesUseCase(userRepo, auditLogger),
-      inject: [PrismaUserRepository, IAuditLogger],
+      inject: [PrismaUserRepository, AUDIT_LOGGER],
     },
 
     // --- AssignManagerUseCase ---
@@ -104,7 +104,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
         employeeProfileRepo: PrismaEmployeeProfileRepository,
         auditLogger: IAuditLogger,
       ) => new AssignManagerUseCase(userRepo, employeeProfileRepo, auditLogger),
-      inject: [PrismaUserRepository, PrismaEmployeeProfileRepository, IAuditLogger],
+      inject: [PrismaUserRepository, PrismaEmployeeProfileRepository, AUDIT_LOGGER],
     },
 
     // --- GetUsersUseCase ---
@@ -121,7 +121,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: CreateRateUseCase,
       useFactory: (rateRepo: PrismaEmployeeRateRepository, auditLogger: IAuditLogger) =>
         new CreateRateUseCase(rateRepo, auditLogger),
-      inject: [PrismaEmployeeRateRepository, IAuditLogger],
+      inject: [PrismaEmployeeRateRepository, AUDIT_LOGGER],
     },
 
     // --- GetRatesUseCase ---
@@ -138,7 +138,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: DeleteRateUseCase,
       useFactory: (rateRepo: PrismaEmployeeRateRepository, auditLogger: IAuditLogger) =>
         new DeleteRateUseCase(rateRepo, auditLogger),
-      inject: [PrismaEmployeeRateRepository, IAuditLogger],
+      inject: [PrismaEmployeeRateRepository, AUDIT_LOGGER],
     },
 
     // --- UpdateFormulaUseCase ---
@@ -147,7 +147,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: UpdateFormulaUseCase,
       useFactory: (formulaRepo: PrismaFormulaConfigRepository, auditLogger: IAuditLogger) =>
         new UpdateFormulaUseCase(formulaRepo, auditLogger),
-      inject: [PrismaFormulaConfigRepository, IAuditLogger],
+      inject: [PrismaFormulaConfigRepository, AUDIT_LOGGER],
     },
 
     // --- GetFormulasUseCase ---
@@ -165,7 +165,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: UpdateEvaluationScaleUseCase,
       useFactory: (scaleRepo: PrismaEvaluationScaleRepository, auditLogger: IAuditLogger) =>
         new UpdateEvaluationScaleUseCase(scaleRepo, auditLogger),
-      inject: [PrismaEvaluationScaleRepository, IAuditLogger],
+      inject: [PrismaEvaluationScaleRepository, AUDIT_LOGGER],
     },
 
     // --- GetEvaluationScalesUseCase ---
@@ -183,7 +183,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: UpdatePlanningSettingsUseCase,
       useFactory: (settingsRepo: PrismaPlanningSettingsRepository, auditLogger: IAuditLogger) =>
         new UpdatePlanningSettingsUseCase(settingsRepo, auditLogger),
-      inject: [PrismaPlanningSettingsRepository, IAuditLogger],
+      inject: [PrismaPlanningSettingsRepository, AUDIT_LOGGER],
     },
 
     // --- GetPlanningSettingsUseCase ---
@@ -212,7 +212,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
     {
       provide: GetAuditLogUseCase,
       useFactory: (auditLogger: IAuditLogger) => new GetAuditLogUseCase(auditLogger),
-      inject: [IAuditLogger],
+      inject: [AUDIT_LOGGER],
     },
 
     // --- GetIntegrationsUseCase ---
@@ -229,7 +229,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
       provide: UpdateIntegrationUseCase,
       useFactory: (prisma: PrismaService, auditLogger: IAuditLogger) =>
         new UpdateIntegrationUseCase(prisma, auditLogger),
-      inject: [PrismaService, IAuditLogger],
+      inject: [PrismaService, AUDIT_LOGGER],
     },
 
     // --- GetActiveSessionsUseCase ---

@@ -26,9 +26,9 @@ import { LoginUseCase } from '../../application/auth/use-cases/login.use-case';
 import { RefreshTokenUseCase } from '../../application/auth/use-cases/refresh-token.use-case';
 import { LogoutUseCase } from '../../application/auth/use-cases/logout.use-case';
 import { GetCurrentUserUseCase } from '../../application/auth/use-cases/get-current-user.use-case';
-import { IJwtService } from '../../application/auth/ports/jwt.service';
-import { ILdapAuthAdapter } from '../../application/auth/ports/ldap-auth.adapter';
-import { IAuditLogger } from '../../application/auth/ports/audit-logger';
+import { JWT_SERVICE } from '../../application/auth/ports/jwt.service';
+import { LDAP_AUTH_ADAPTER } from '../../application/auth/ports/ldap-auth.adapter';
+import { AUDIT_LOGGER } from '../../application/auth/ports/audit-logger';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { JwtService } from '../../infrastructure/auth/jwt.service';
@@ -68,9 +68,9 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
         PrismaUserRepository,
         PrismaRefreshSessionRepository,
         PrismaLoginAttemptRepository,
-        ILdapAuthAdapter,
-        IJwtService,
-        IAuditLogger,
+        LDAP_AUTH_ADAPTER,
+        JWT_SERVICE,
+        AUDIT_LOGGER,
         PrismaService,
       ],
     },
@@ -97,8 +97,8 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
         AuthDomainService,
         PrismaRefreshSessionRepository,
         PrismaUserRepository,
-        IJwtService,
-        IAuditLogger,
+        JWT_SERVICE,
+        AUDIT_LOGGER,
         PrismaService,
       ],
     },
@@ -107,7 +107,7 @@ import { JwtService } from '../../infrastructure/auth/jwt.service';
       provide: LogoutUseCase,
       useFactory: (refreshSessionRepository: RefreshSessionRepository, auditLogger: IAuditLogger) =>
         new LogoutUseCase(refreshSessionRepository, auditLogger),
-      inject: [PrismaRefreshSessionRepository, IAuditLogger],
+      inject: [PrismaRefreshSessionRepository, AUDIT_LOGGER],
     },
 
     {

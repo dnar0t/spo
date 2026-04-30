@@ -28,7 +28,7 @@ import { PrismaFormulaConfigRepository } from '../../infrastructure/prisma/repos
 import { PrismaEvaluationScaleRepository } from '../../infrastructure/prisma/repositories/prisma-evaluation-scale.repository';
 import { PrismaPeriodSnapshotRepository } from '../../infrastructure/prisma/repositories/prisma-period-snapshot.repository';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
-import { IAuditLogger } from '../../application/auth/ports/audit-logger';
+import { AUDIT_LOGGER } from '../../application/auth/ports/audit-logger';
 
 @Module({
   imports: [PlanningModule, ReportingModule, FinanceModule, AuthModule],
@@ -106,7 +106,7 @@ import { IAuditLogger } from '../../application/auth/ports/audit-logger';
         PrismaPersonalReportRepository,
         PrismaSummaryReportRepository,
         CreateSnapshotUseCase,
-        IAuditLogger,
+        AUDIT_LOGGER,
       ],
     },
 

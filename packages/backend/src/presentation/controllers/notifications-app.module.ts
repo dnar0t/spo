@@ -18,9 +18,9 @@ import { PrismaNotificationTemplateRepository } from '../../infrastructure/prism
 import { PrismaNotificationRunRepository } from '../../infrastructure/prisma/repositories/prisma-notification-run.repository';
 import { PrismaSmtpConfigRepository } from '../../infrastructure/prisma/repositories/prisma-smtp-config.repository';
 import { PrismaUserRepository } from '../../infrastructure/prisma/repositories/prisma-user.repository';
-import { IEmailSender } from '../../application/notifications/ports/email-sender';
-import { IEncryptionService } from '../../application/auth/ports/encryption.service';
-import { IAuditLogger } from '../../application/auth/ports/audit-logger';
+import { EMAIL_SENDER } from '../../application/notifications/ports/email-sender';
+import { ENCRYPTION_SERVICE } from '../../application/auth/ports/encryption.service';
+import { AUDIT_LOGGER } from '../../application/auth/ports/audit-logger';
 import { UpdateSmtpConfigUseCase } from '../../application/notifications/use-cases/update-smtp-config.use-case';
 import { GetSmtpConfigUseCase } from '../../application/notifications/use-cases/get-smtp-config.use-case';
 import { CreateNotificationTemplateUseCase } from '../../application/notifications/use-cases/create-notification-template.use-case';
@@ -59,7 +59,7 @@ import { QueueService } from '../../infrastructure/queue/queue.service';
         encryptionService: IEncryptionService,
         auditLogger: IAuditLogger,
       ) => new UpdateSmtpConfigUseCase(smtpConfigRepo, encryptionService, auditLogger),
-      inject: [PrismaSmtpConfigRepository, IEncryptionService, IAuditLogger],
+      inject: [PrismaSmtpConfigRepository, ENCRYPTION_SERVICE, AUDIT_LOGGER],
     },
 
     // --- GetSmtpConfigUseCase ---
@@ -70,29 +70,25 @@ import { QueueService } from '../../infrastructure/queue/queue.service';
         smtpConfigRepo: PrismaSmtpConfigRepository,
         encryptionService: IEncryptionService,
       ) => new GetSmtpConfigUseCase(smtpConfigRepo, encryptionService),
-      inject: [PrismaSmtpConfigRepository, IEncryptionService],
+      inject: [PrismaSmtpConfigRepository, ENCRYPTION_SERVICE],
     },
 
     // --- CreateNotificationTemplateUseCase ---
     // Зависимости: NotificationTemplateRepository, IAuditLogger
     {
       provide: CreateNotificationTemplateUseCase,
-      useFactory: (
-        templateRepo: PrismaNotificationTemplateRepository,
-        auditLogger: IAuditLogger,
-      ) => new CreateNotificationTemplateUseCase(templateRepo, auditLogger),
-      inject: [PrismaNotificationTemplateRepository, IAuditLogger],
+      useFactory: (templateRepo: PrismaNotificationTemplateRepository, auditLogger: IAuditLogger) =>
+        new CreateNotificationTemplateUseCase(templateRepo, auditLogger),
+      inject: [PrismaNotificationTemplateRepository, AUDIT_LOGGER],
     },
 
     // --- UpdateNotificationTemplateUseCase ---
     // Зависимости: NotificationTemplateRepository, IAuditLogger
     {
       provide: UpdateNotificationTemplateUseCase,
-      useFactory: (
-        templateRepo: PrismaNotificationTemplateRepository,
-        auditLogger: IAuditLogger,
-      ) => new UpdateNotificationTemplateUseCase(templateRepo, auditLogger),
-      inject: [PrismaNotificationTemplateRepository, IAuditLogger],
+      useFactory: (templateRepo: PrismaNotificationTemplateRepository, auditLogger: IAuditLogger) =>
+        new UpdateNotificationTemplateUseCase(templateRepo, auditLogger),
+      inject: [PrismaNotificationTemplateRepository, AUDIT_LOGGER],
     },
 
     // --- GetNotificationTemplatesUseCase ---
@@ -117,8 +113,8 @@ import { QueueService } from '../../infrastructure/queue/queue.service';
       inject: [
         PrismaNotificationTemplateRepository,
         PrismaNotificationRunRepository,
-        IEmailSender,
-        IAuditLogger,
+        EMAIL_SENDER,
+        AUDIT_LOGGER,
       ],
     },
 
@@ -140,18 +136,12 @@ import { QueueService } from '../../infrastructure/queue/queue.service';
         templateRepo: PrismaNotificationTemplateRepository,
         emailSender: IEmailSender,
         auditLogger: IAuditLogger,
-      ) =>
-        new ProcessPendingNotificationsUseCase(
-          runRepo,
-          templateRepo,
-          emailSender,
-          auditLogger,
-        ),
+      ) => new ProcessPendingNotificationsUseCase(runRepo, templateRepo, emailSender, auditLogger),
       inject: [
         PrismaNotificationRunRepository,
         PrismaNotificationTemplateRepository,
-        IEmailSender,
-        IAuditLogger,
+        EMAIL_SENDER,
+        AUDIT_LOGGER,
       ],
     },
 
@@ -177,8 +167,8 @@ import { QueueService } from '../../infrastructure/queue/queue.service';
         SendNotificationUseCase,
         PrismaNotificationTemplateRepository,
         PrismaUserRepository,
-        IEmailSender,
-        IAuditLogger,
+        EMAIL_SENDER,
+        AUDIT_LOGGER,
       ],
     },
   ],

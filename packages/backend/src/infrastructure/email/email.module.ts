@@ -9,22 +9,19 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailSenderService } from './email-sender.service';
-import { IEmailSender } from '../../application/notifications/ports/email-sender';
+import { EMAIL_SENDER } from '../../application/notifications/ports/email-sender';
 import { PrismaSmtpConfigRepository } from '../prisma/repositories/prisma-smtp-config.repository';
-import { IEncryptionService } from '../../application/auth/ports/encryption.service';
+import { ENCRYPTION_SERVICE } from '../../application/auth/ports/encryption.service';
 
 @Module({
   imports: [PrismaModule, AuthModule],
   providers: [
     {
-      provide: IEmailSender,
+      provide: EMAIL_SENDER,
       useClass: EmailSenderService,
     },
     EmailSenderService,
   ],
-  exports: [
-    IEmailSender,
-    EmailSenderService,
-  ],
+  exports: [EMAIL_SENDER, EmailSenderService],
 })
 export class EmailModule {}

@@ -1,3 +1,5 @@
+export const AUDIT_LOGGER = Symbol('AUDIT_LOGGER');
+
 export interface IAuditLogger {
   log(params: {
     userId: string;
