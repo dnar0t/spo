@@ -4,8 +4,8 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": false,
-    "builder": "tsc",
-    "typeCheck": true,
+    "builder": "swc",
+    "typeCheck": false,
     "tsConfigPath": "tsconfig.build.json",
     "plugins": []
   }
