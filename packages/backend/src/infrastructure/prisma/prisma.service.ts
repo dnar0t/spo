@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+const { PrismaClient: _PrismaClient } = require('@prisma/client');
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
@@ -8,7 +9,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private readonly _client: PrismaClient;
 
   constructor() {
-    this._client = new PrismaClient({
+    this._client = new _PrismaClient({
       log:
         process.env.NODE_ENV === 'development'
           ? ['query', 'info', 'warn', 'error']
