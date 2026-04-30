@@ -23,6 +23,7 @@ import { PrismaNotificationTemplateRepository } from './repositories/prisma-noti
 import { PrismaNotificationRunRepository } from './repositories/prisma-notification-run.repository';
 import { PrismaSmtpConfigRepository } from './repositories/prisma-smtp-config.repository';
 import { PrismaAuditLogRepository } from './repositories/prisma-audit-log.repository';
+import { PrismaPeriodSnapshotRepository } from './repositories/prisma-period-snapshot.repository';
 
 @Global()
 @Module({
@@ -51,6 +52,7 @@ import { PrismaAuditLogRepository } from './repositories/prisma-audit-log.reposi
     PrismaNotificationRunRepository,
     PrismaSmtpConfigRepository,
     PrismaAuditLogRepository,
+    PrismaPeriodSnapshotRepository,
   ],
   exports: [
     PrismaService,
@@ -77,6 +79,7 @@ import { PrismaAuditLogRepository } from './repositories/prisma-audit-log.reposi
     PrismaNotificationRunRepository,
     PrismaSmtpConfigRepository,
     PrismaAuditLogRepository,
+    PrismaPeriodSnapshotRepository,
   ],
 })
 export class PrismaModule {}
