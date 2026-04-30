@@ -44,7 +44,7 @@ import { GetIntegrationsUseCase } from '../../application/administration/use-cas
 import { UpdateIntegrationUseCase } from '../../application/administration/use-cases/update-integration.use-case';
 import { GetActiveSessionsUseCase } from '../../application/administration/use-cases/get-active-sessions.use-case';
 import { GetSensitiveChangesUseCase } from '../../application/administration/use-cases/get-sensitive-changes.use-case';
-import { AUDIT_LOGGER } from '../../application/auth/ports/audit-logger';
+import { AUDIT_LOGGER, IAuditLogger } from '../../application/auth/ports/audit-logger';
 
 @Module({
   imports: [AdministrationModule, AuthModule],

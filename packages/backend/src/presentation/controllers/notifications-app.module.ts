@@ -18,9 +18,12 @@ import { PrismaNotificationTemplateRepository } from '../../infrastructure/prism
 import { PrismaNotificationRunRepository } from '../../infrastructure/prisma/repositories/prisma-notification-run.repository';
 import { PrismaSmtpConfigRepository } from '../../infrastructure/prisma/repositories/prisma-smtp-config.repository';
 import { PrismaUserRepository } from '../../infrastructure/prisma/repositories/prisma-user.repository';
-import { EMAIL_SENDER } from '../../application/notifications/ports/email-sender';
-import { ENCRYPTION_SERVICE } from '../../application/auth/ports/encryption.service';
-import { AUDIT_LOGGER } from '../../application/auth/ports/audit-logger';
+import { EMAIL_SENDER, IEmailSender } from '../../application/notifications/ports/email-sender';
+import {
+  ENCRYPTION_SERVICE,
+  IEncryptionService,
+} from '../../application/auth/ports/encryption.service';
+import { AUDIT_LOGGER, IAuditLogger } from '../../application/auth/ports/audit-logger';
 import { UpdateSmtpConfigUseCase } from '../../application/notifications/use-cases/update-smtp-config.use-case';
 import { GetSmtpConfigUseCase } from '../../application/notifications/use-cases/get-smtp-config.use-case';
 import { CreateNotificationTemplateUseCase } from '../../application/notifications/use-cases/create-notification-template.use-case';

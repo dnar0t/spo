@@ -26,9 +26,12 @@ import { LoginUseCase } from '../../application/auth/use-cases/login.use-case';
 import { RefreshTokenUseCase } from '../../application/auth/use-cases/refresh-token.use-case';
 import { LogoutUseCase } from '../../application/auth/use-cases/logout.use-case';
 import { GetCurrentUserUseCase } from '../../application/auth/use-cases/get-current-user.use-case';
-import { JWT_SERVICE } from '../../application/auth/ports/jwt.service';
-import { LDAP_AUTH_ADAPTER } from '../../application/auth/ports/ldap-auth.adapter';
-import { AUDIT_LOGGER } from '../../application/auth/ports/audit-logger';
+import { JWT_SERVICE, IJwtService } from '../../application/auth/ports/jwt.service';
+import {
+  LDAP_AUTH_ADAPTER,
+  ILdapAuthAdapter,
+} from '../../application/auth/ports/ldap-auth.adapter';
+import { AUDIT_LOGGER, IAuditLogger } from '../../application/auth/ports/audit-logger';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { JwtService } from '../../infrastructure/auth/jwt.service';
