@@ -1,3 +1,9 @@
+// Polyfill for Symbol.metadata (Stage 3 decorator spec) for Node.js v20
+// SWC generates code that references Symbol.metadata even with legacyDecorator: true
+if (typeof Symbol.metadata === 'undefined') {
+  Object.defineProperty(Symbol, 'metadata', { value: Symbol('metadata') });
+}
+
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
