@@ -11,8 +11,8 @@
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { IEmailSender } from '../../application/notifications/ports/email-sender';
-import { SmtpConfigRepository } from '../../domain/repositories/smtp-config.repository';
-import { IEncryptionService } from '../../application/auth/ports/encryption.service';
+import { PrismaSmtpConfigRepository } from '../prisma/repositories/prisma-smtp-config.repository';
+import { EncryptionService } from '../auth/encryption.service';
 
 // Пытаемся импортировать nodemailer; если не установлен — используем заглушку
 let nodemailer: any = null;
@@ -28,8 +28,8 @@ export class EmailSenderService implements IEmailSender {
   private readonly isDryRun: boolean;
 
   constructor(
-    private readonly smtpConfigRepository: SmtpConfigRepository,
-    private readonly encryptionService: IEncryptionService,
+    private readonly smtpConfigRepository: PrismaSmtpConfigRepository,
+    private readonly encryptionService: EncryptionService,
   ) {
     this.isDryRun = nodemailer === null;
     if (this.isDryRun) {
