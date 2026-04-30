@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ReportingModule } from '../../infrastructure/prisma/reporting.module';
+import { YouTrackModule } from '../../infrastructure/youtrack/youtrack.module';
 import { ReportingController } from './reporting.controller';
 import { WorkflowController } from './workflow.controller';
 import { GetSummaryReportUseCase } from '../../application/reporting/use-cases/get-summary-report.use-case';
@@ -27,7 +28,7 @@ import { PrismaUserRepository } from '../../infrastructure/prisma/repositories/p
 import { SyncEngine } from '../../infrastructure/youtrack/sync-engine';
 
 @Module({
-  imports: [ReportingModule],
+  imports: [ReportingModule, YouTrackModule],
   controllers: [ReportingController, WorkflowController],
   providers: [
     // ─── Use Cases ───
