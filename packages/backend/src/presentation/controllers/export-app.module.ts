@@ -8,7 +8,7 @@ import { ExportAuditLogUseCase } from '../../application/export/use-cases/export
 import { ExportJsonAccountingUseCase } from '../../application/export/use-cases/export-json-accounting.use-case';
 import { GetExportJobsUseCase } from '../../application/export/use-cases/get-export-jobs.use-case';
 import { CleanupExpiredExportsUseCase } from '../../application/export/use-cases/cleanup-expired-exports.use-case';
-import { ExportJobRepository } from '../../domain/repositories/export-job.repository';
+import { EXPORT_JOB_REPOSITORY } from '../../domain/repositories/export-job.repository';
 import { ReportingPeriodRepository } from '../../domain/repositories/reporting-period.repository';
 import { PersonalReportRepository } from '../../domain/repositories/personal-report.repository';
 import { SummaryReportRepository } from '../../domain/repositories/summary-report.repository';
@@ -91,7 +91,7 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
         exportService: IExportService,
         fileStorage: IFileStorage,
       ) => new ExportAuditLogUseCase(exportJobRepo, exportService, fileStorage),
-      inject: [ExportJobRepository, 'IExportService', 'IFileStorage'],
+      inject: [EXPORT_JOB_REPOSITORY, 'IExportService', 'IFileStorage'],
     },
     {
       provide: ExportJsonAccountingUseCase,
@@ -122,17 +122,14 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
     },
     {
       provide: GetExportJobsUseCase,
-      useFactory: (exportJobRepo: ExportJobRepository) =>
-        new GetExportJobsUseCase(exportJobRepo),
-      inject: [ExportJobRepository],
+      useFactory: (exportJobRepo: ExportJobRepository) => new GetExportJobsUseCase(exportJobRepo),
+      inject: [EXPORT_JOB_REPOSITORY],
     },
     {
       provide: CleanupExpiredExportsUseCase,
-      useFactory: (
-        exportJobRepo: ExportJobRepository,
-        fileStorage: IFileStorage,
-      ) => new CleanupExpiredExportsUseCase(exportJobRepo, fileStorage),
-      inject: [ExportJobRepository, 'IFileStorage'],
+      useFactory: (exportJobRepo: ExportJobRepository, fileStorage: IFileStorage) =>
+        new CleanupExpiredExportsUseCase(exportJobRepo, fileStorage),
+      inject: [EXPORT_JOB_REPOSITORY, 'IFileStorage'],
     },
   ],
   exports: [],

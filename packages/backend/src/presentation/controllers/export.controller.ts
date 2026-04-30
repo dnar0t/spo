@@ -14,7 +14,7 @@
  * - GET /api/export/download/:jobId — скачивание файла экспорта
  */
 import { Controller, Get, Post, Param, Query, Req, Logger, HttpStatus, Res } from '@nestjs/common';
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, Inject } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { Roles, RolesGuard } from '../guards/roles.guard';
@@ -26,7 +26,7 @@ import { ExportAuditLogUseCase } from '../../application/export/use-cases/export
 import { ExportJsonAccountingUseCase } from '../../application/export/use-cases/export-json-accounting.use-case';
 import { GetExportJobsUseCase } from '../../application/export/use-cases/get-export-jobs.use-case';
 import { CleanupExpiredExportsUseCase } from '../../application/export/use-cases/cleanup-expired-exports.use-case';
-import { ExportJobRepository } from '../../domain/repositories/export-job.repository';
+import { EXPORT_JOB_REPOSITORY } from '../../domain/repositories/export-job.repository';
 import { IFileStorage } from '../../application/export/ports/file-storage';
 
 import { NotFoundError, DomainStateError } from '../../domain/errors/domain.error';
@@ -53,7 +53,7 @@ export class ExportController {
     private readonly exportJsonAccountingUseCase: ExportJsonAccountingUseCase,
     private readonly getExportJobsUseCase: GetExportJobsUseCase,
     private readonly cleanupExpiredExportsUseCase: CleanupExpiredExportsUseCase,
-    private readonly exportJobRepository: ExportJobRepository,
+    @Inject(EXPORT_JOB_REPOSITORY) private readonly exportJobRepository: any,
     private readonly fileStorage: IFileStorage,
   ) {}
 

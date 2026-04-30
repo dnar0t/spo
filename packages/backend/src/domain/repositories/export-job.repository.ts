@@ -7,6 +7,8 @@
 import { BaseRepository } from './base.repository';
 import { ExportJob } from '../entities/export-job.entity';
 
+export const EXPORT_JOB_REPOSITORY = Symbol('EXPORT_JOB_REPOSITORY');
+
 export interface ExportJobRepository extends BaseRepository<ExportJob, string> {
   /** Найти все задачи пользователя */
   findByUserId(userId: string): Promise<ExportJob[]>;

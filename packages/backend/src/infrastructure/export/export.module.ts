@@ -4,7 +4,7 @@ import { ExcelExportService } from './excel-export.service';
 import { PdfExportService } from './pdf-export.service';
 import { JsonExportService } from './json-export.service';
 import { FileStorageService } from './file-storage.service';
-import { ExportJobRepository } from '../../domain/repositories/export-job.repository';
+import { EXPORT_JOB_REPOSITORY } from '../../domain/repositories/export-job.repository';
 import { JsonExportJobRepository } from './json-export-job.repository';
 
 @Module({
@@ -20,7 +20,7 @@ import { JsonExportJobRepository } from './json-export-job.repository';
       useClass: FileStorageService,
     },
     {
-      provide: ExportJobRepository,
+      provide: EXPORT_JOB_REPOSITORY,
       useClass: JsonExportJobRepository,
     },
 
@@ -34,7 +34,7 @@ import { JsonExportJobRepository } from './json-export-job.repository';
   exports: [
     'IExportService',
     'IFileStorage',
-    ExportJobRepository,
+    EXPORT_JOB_REPOSITORY,
     ExcelExportService,
     PdfExportService,
     JsonExportService,
