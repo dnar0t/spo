@@ -1,5 +1,6 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
 
+// Тип для PrismaClient (без прямого импорта, чтобы избежать SWC extends-бага)
 type PrismaClientType = {
   [key: string]: any;
   $connect(): Promise<void>;
@@ -8,20 +9,35 @@ type PrismaClientType = {
   $queryRaw<T = unknown>(query: any, ...values: any[]): Promise<T>;
 };
 
-@Injectable()
-export class PrismaService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(PrismaService.name);
-  private isConnected = false;
-  private _client!: PrismaClientType;
+export const PRISMA_CLIENT = Symbol('PRISMA_CLIENT');
 
-  constructor() {
-    const { createPrismaClient } = require('./prisma-client-factory');
-    this._client = createPrismaClient({
+/**
+ * Фабрика PrismaClient для регистрации в DI.
+ * Вынесена, так как SWC некорректно обрабатывает require('@prisma/client')
+ * в декорированных классах (генерирует extends-код).
+ */
+export const PrismaClientProvider = {
+  provide: PRISMA_CLIENT,
+  useFactory: () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { PrismaClient } = require('@prisma/client');
+    return new PrismaClient({
       log:
         process.env.NODE_ENV === 'development'
           ? ['query', 'info', 'warn', 'error']
           : ['warn', 'error'],
     });
+  },
+};
+
+@Injectable()
+export class PrismaService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(PrismaService.name);
+  private isConnected = false;
+  private readonly _client: PrismaClientType;
+
+  constructor(@Inject(PRISMA_CLIENT) client: PrismaClientType) {
+    this._client = client;
   }
 
   // ─── Делегирование свойств PrismaClient ───

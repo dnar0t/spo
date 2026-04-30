@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
+import { PrismaService, PrismaClientProvider } from './prisma.service';
 
 import { PrismaUserRepository } from './repositories/prisma-user.repository';
 import { PrismaReportingPeriodRepository } from './repositories/prisma-reporting-period.repository';
@@ -28,6 +28,7 @@ import { PrismaPeriodSnapshotRepository } from './repositories/prisma-period-sna
 @Global()
 @Module({
   providers: [
+    PrismaClientProvider,
     PrismaService,
     PrismaUserRepository,
 
