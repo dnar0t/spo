@@ -58,8 +58,7 @@ export class AuthController {
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() body: Record<string, any>, @Req() req: Request): Promise<AuthResponseDto> {
-    const dto: LoginDto = body as unknown as LoginDto;
+  async login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto> {
     const ipAddress = req.ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers['user-agent'];
 

@@ -26,16 +26,18 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // ---- Global Validation Pipe ----
-  app.useGlobalPipes(
-    new CustomValidationPipe({
-      whitelist: false,
-      forbidNonWhitelisted: false,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
+  // Отключено из-за несовместимости class-validator v0.14+ со SWC-компиляцией
+  // (пустые DTO классы вызывают ошибку "unknown value was passed to the validate function")
+  // app.useGlobalPipes(
+  //   new CustomValidationPipe({
+  //     whitelist: false,
+  //     forbidNonWhitelisted: false,
+  //     transform: true,
+  //     transformOptions: {
+  //       enableImplicitConversion: true,
+  //     },
+  //   }),
+  // );
 
   // ---- Global Exception Filter ----
   app.useGlobalFilters(new GlobalExceptionFilter());
