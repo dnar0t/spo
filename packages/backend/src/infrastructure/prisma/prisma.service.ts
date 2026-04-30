@@ -15,9 +15,8 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private _client!: PrismaClientType;
 
   constructor() {
-    // Динамический require, чтобы избежать SWC extends-бага
-    const { PrismaClient } = require('@prisma/client');
-    this._client = new PrismaClient({
+    const { createPrismaClient } = require('./prisma-client-factory');
+    this._client = createPrismaClient({
       log:
         process.env.NODE_ENV === 'development'
           ? ['query', 'info', 'warn', 'error']
