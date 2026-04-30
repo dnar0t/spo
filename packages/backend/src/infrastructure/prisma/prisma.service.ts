@@ -1,15 +1,23 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import type { PrismaClient } from '@prisma/client';
-const { PrismaClient: _PrismaClient } = require('@prisma/client');
+
+type PrismaClientType = {
+  [key: string]: any;
+  $connect(): Promise<void>;
+  $disconnect(): Promise<void>;
+  $transaction<T>(fn: (tx: any) => Promise<T>, options?: any): Promise<T>;
+  $queryRaw<T = unknown>(query: any, ...values: any[]): Promise<T>;
+};
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
   private isConnected = false;
-  private readonly _client: PrismaClient;
+  private _client!: PrismaClientType;
 
   constructor() {
-    this._client = new _PrismaClient({
+    // Динамический require, чтобы избежать SWC extends-бага
+    const { PrismaClient } = require('@prisma/client');
+    this._client = new PrismaClient({
       log:
         process.env.NODE_ENV === 'development'
           ? ['query', 'info', 'warn', 'error']
@@ -17,10 +25,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Делегирует все неизвестные вызовы PrismaClient.
-   * Позволяет обращаться к prisma.user.findMany(), prisma.reportingPeriod.findUnique() и т.д.
-   */
+  // ─── Делегирование свойств PrismaClient ───
   get user() {
     return this._client.user;
   }
@@ -133,28 +138,15 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this._client.workRoleAssignment;
   }
 
-  /**
-   * Делегирование PrismaClient.$transaction для поддержки транзакций.
-   */
-  $transaction<T>(
-    fn: (tx: any) => Promise<T>,
-    options?: { maxWait?: number; timeout?: number; isolationLevel?: string },
-  ): Promise<T> {
-    return this._client.$transaction(fn, options as any);
+  $transaction<T>(fn: (tx: any) => Promise<T>, options?: any): Promise<T> {
+    return this._client.$transaction(fn, options);
   }
 
-  /**
-   * Делегирование PrismaClient.$queryRaw для сырых SQL-запросов.
-   */
   $queryRaw<T = unknown>(query: any, ...values: any[]): Promise<T> {
-    return this._client.$queryRaw(query as any, ...values);
+    return this._client.$queryRaw(query, ...values);
   }
 
-  /**
-   * Прокси для динамического доступа к любым свойствам PrismaClient,
-   * которые не перечислены выше.
-   */
-  get $client(): PrismaClient {
+  get $client(): PrismaClientType {
     return this._client;
   }
 
