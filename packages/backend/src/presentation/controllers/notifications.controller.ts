@@ -39,6 +39,8 @@ interface RequestWithUser {
     login: string;
     roles?: string[];
   };
+  ip: string;
+  headers: Record<string, string | string[] | undefined>;
 }
 
 @Controller('api/notifications')
