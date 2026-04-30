@@ -6,6 +6,7 @@
  */
 import { Module } from '@nestjs/common';
 import { FinanceModule } from '../../infrastructure/prisma/finance.module';
+import { YouTrackModule } from '../../infrastructure/youtrack/youtrack.module';
 import { FinanceController } from './finance.controller';
 import { PrismaReportingPeriodRepository } from '../../infrastructure/prisma/repositories/prisma-reporting-period.repository';
 import { PrismaPersonalReportRepository } from '../../infrastructure/prisma/repositories/prisma-personal-report.repository';
@@ -26,7 +27,7 @@ import {
 } from '../../application/finance/ports/youtrack-issue-repository';
 
 @Module({
-  imports: [FinanceModule],
+  imports: [FinanceModule, YouTrackModule],
   controllers: [FinanceController],
   providers: [
     // ─── Domain Services ───
