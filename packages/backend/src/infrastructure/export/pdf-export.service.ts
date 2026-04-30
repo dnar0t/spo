@@ -10,12 +10,12 @@
  * - SUMMARY_REPORT: Сводный отчёт с агрегированными данными
  * - PERSONAL_REPORT: Личный отчёт сотрудника
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { IExportService } from '../../application/export/ports/export-service';
-import { ReportingPeriodRepository } from '../../domain/repositories/reporting-period.repository';
-import { PersonalReportRepository } from '../../domain/repositories/personal-report.repository';
-import { SummaryReportRepository } from '../../domain/repositories/summary-report.repository';
-import { PlannedTaskRepository } from '../../domain/repositories/planned-task.repository';
+import { PrismaReportingPeriodRepository } from '../prisma/repositories/prisma-reporting-period.repository';
+import { PrismaPersonalReportRepository } from '../prisma/repositories/prisma-personal-report.repository';
+import { PrismaSummaryReportRepository } from '../prisma/repositories/prisma-summary-report.repository';
+import { PrismaPlannedTaskRepository } from '../prisma/repositories/prisma-planned-task.repository';
 import { NotFoundError } from '../../domain/errors/domain.error';
 
 type PDFDocument = any;
@@ -26,10 +26,10 @@ export class PdfExportService implements IExportService {
   private PDFDocument: new (options?: any) => PDFDocument | null = null;
 
   constructor(
-    private readonly reportingPeriodRepository: ReportingPeriodRepository,
-    private readonly personalReportRepository: PersonalReportRepository,
-    private readonly summaryReportRepository: SummaryReportRepository,
-    private readonly plannedTaskRepository: PlannedTaskRepository,
+    private readonly reportingPeriodRepository: PrismaReportingPeriodRepository,
+    private readonly personalReportRepository: PrismaPersonalReportRepository,
+    private readonly summaryReportRepository: PrismaSummaryReportRepository,
+    private readonly plannedTaskRepository: PrismaPlannedTaskRepository,
   ) {
     this.tryLoadPdfKit();
   }
@@ -47,7 +47,7 @@ export class PdfExportService implements IExportService {
     } catch {
       this.logger.warn(
         'PDFKit is not installed. PDF export will not be available. ' +
-        'Install with: npm install pdfkit @types/pdfkit',
+          'Install with: npm install pdfkit @types/pdfkit',
       );
     }
   }
@@ -59,7 +59,7 @@ export class PdfExportService implements IExportService {
     if (!this.PDFDocument) {
       throw new Error(
         'PDFKit is not installed. PDF export is not available. ' +
-        'Please run: npm install pdfkit @types/pdfkit',
+          'Please run: npm install pdfkit @types/pdfkit',
       );
     }
   }
@@ -274,7 +274,17 @@ export class PdfExportService implements IExportService {
       return this.bufferPromise(doc);
     }
 
-    const headers = ['№', 'Задача', 'Название', 'Исполнитель', 'Dev (ч)', 'Test (ч)', 'Mgmt (ч)', 'Готовность', 'План'];
+    const headers = [
+      '№',
+      'Задача',
+      'Название',
+      'Исполнитель',
+      'Dev (ч)',
+      'Test (ч)',
+      'Mgmt (ч)',
+      'Готовность',
+      'План',
+    ];
     const rows = tasks.map((t, i) => [
       String(i + 1),
       t.issueNumber,
@@ -325,7 +335,18 @@ export class PdfExportService implements IExportService {
       return this.bufferPromise(doc);
     }
 
-    const headers = ['№', 'Задача', 'Название', 'Проект', 'Исполнитель', 'Plan (ч)', 'Fact (ч)', 'Остаток (ч)', 'Plan (₽)', 'Fact (₽)'];
+    const headers = [
+      '№',
+      'Задача',
+      'Название',
+      'Проект',
+      'Исполнитель',
+      'Plan (ч)',
+      'Fact (ч)',
+      'Остаток (ч)',
+      'Plan (₽)',
+      'Fact (₽)',
+    ];
     const rows = lines.map((l, i) => [
       String(i + 1),
       l.issueNumber,
@@ -349,7 +370,7 @@ export class PdfExportService implements IExportService {
     doc.fontSize(9).font('Helvetica-Bold');
     doc.text(
       `Итого: План: ${this.formatKopecks(totalPlannedCost)} | Факт: ${this.formatKopecks(totalActualCost)} | ` +
-      `Запланировано задач: ${lines.filter(l => l.isPlanned).length} из ${lines.length}`,
+        `Запланировано задач: ${lines.filter((l) => l.isPlanned).length} из ${lines.length}`,
     );
 
     return this.bufferPromise(doc);
@@ -377,7 +398,17 @@ export class PdfExportService implements IExportService {
       return this.bufferPromise(doc);
     }
 
-    const headers = ['№', 'Задача', 'Название', 'Plan (ч)', 'Fact (ч)', 'Остаток (ч)', 'База (₽)', 'На руки (₽)', 'С налогами (₽)'];
+    const headers = [
+      '№',
+      'Задача',
+      'Название',
+      'Plan (ч)',
+      'Fact (ч)',
+      'Остаток (ч)',
+      'База (₽)',
+      'На руки (₽)',
+      'С налогами (₽)',
+    ];
     const rows = reports.map((r, i) => [
       String(i + 1),
       r.issueNumber,
@@ -407,9 +438,12 @@ export class PdfExportService implements IExportService {
 
   // ─── Экспорт аудит-лога (не поддерживается в PDF) ───
 
-  async exportAuditLog(
-    _params: { periodId?: string; userId?: string; fromDate?: Date; toDate?: Date },
-  ): Promise<Buffer> {
+  async exportAuditLog(_params: {
+    periodId?: string;
+    userId?: string;
+    fromDate?: Date;
+    toDate?: Date;
+  }): Promise<Buffer> {
     throw new Error('Audit log export is only supported in Excel format.');
   }
 
