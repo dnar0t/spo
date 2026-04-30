@@ -31,13 +31,13 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
       provide: ExportPlanUseCase,
       useFactory: (
         periodRepo: ReportingPeriodRepository,
-        exportJobRepo: ExportJobRepository,
+        exportJobRepo: any,
         exportService: IExportService,
         fileStorage: IFileStorage,
       ) => new ExportPlanUseCase(periodRepo, exportJobRepo, exportService, fileStorage),
       inject: [
         PrismaReportingPeriodRepository,
-        ExportJobRepository,
+        EXPORT_JOB_REPOSITORY,
         'IExportService',
         'IFileStorage',
       ],
@@ -46,13 +46,13 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
       provide: ExportSummaryReportUseCase,
       useFactory: (
         periodRepo: ReportingPeriodRepository,
-        exportJobRepo: ExportJobRepository,
+        exportJobRepo: any,
         exportService: IExportService,
         fileStorage: IFileStorage,
       ) => new ExportSummaryReportUseCase(periodRepo, exportJobRepo, exportService, fileStorage),
       inject: [
         PrismaReportingPeriodRepository,
-        ExportJobRepository,
+        EXPORT_JOB_REPOSITORY,
         'IExportService',
         'IFileStorage',
       ],
@@ -60,7 +60,7 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
     {
       provide: ExportPersonalReportUseCase,
       useFactory: (
-        exportJobRepo: ExportJobRepository,
+        exportJobRepo: any,
         periodRepo: ReportingPeriodRepository,
         personalReportRepo: PersonalReportRepository,
         userRepo: UserRepository,
@@ -76,7 +76,7 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
           fileStorage,
         ),
       inject: [
-        ExportJobRepository,
+        EXPORT_JOB_REPOSITORY,
         PrismaReportingPeriodRepository,
         PrismaPersonalReportRepository,
         PrismaUserRepository,
@@ -86,17 +86,14 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
     },
     {
       provide: ExportAuditLogUseCase,
-      useFactory: (
-        exportJobRepo: ExportJobRepository,
-        exportService: IExportService,
-        fileStorage: IFileStorage,
-      ) => new ExportAuditLogUseCase(exportJobRepo, exportService, fileStorage),
+      useFactory: (exportJobRepo: any, exportService: IExportService, fileStorage: IFileStorage) =>
+        new ExportAuditLogUseCase(exportJobRepo, exportService, fileStorage),
       inject: [EXPORT_JOB_REPOSITORY, 'IExportService', 'IFileStorage'],
     },
     {
       provide: ExportJsonAccountingUseCase,
       useFactory: (
-        exportJobRepo: ExportJobRepository,
+        exportJobRepo: any,
         periodRepo: ReportingPeriodRepository,
         personalReportRepo: PersonalReportRepository,
         summaryReportRepo: SummaryReportRepository,
@@ -112,7 +109,7 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
           fileStorage,
         ),
       inject: [
-        ExportJobRepository,
+        EXPORT_JOB_REPOSITORY,
         PrismaReportingPeriodRepository,
         PrismaPersonalReportRepository,
         PrismaSummaryReportRepository,
@@ -122,12 +119,12 @@ import { IFileStorage } from '../../application/export/ports/file-storage';
     },
     {
       provide: GetExportJobsUseCase,
-      useFactory: (exportJobRepo: ExportJobRepository) => new GetExportJobsUseCase(exportJobRepo),
+      useFactory: (exportJobRepo: any) => new GetExportJobsUseCase(exportJobRepo),
       inject: [EXPORT_JOB_REPOSITORY],
     },
     {
       provide: CleanupExpiredExportsUseCase,
-      useFactory: (exportJobRepo: ExportJobRepository, fileStorage: IFileStorage) =>
+      useFactory: (exportJobRepo: any, fileStorage: IFileStorage) =>
         new CleanupExpiredExportsUseCase(exportJobRepo, fileStorage),
       inject: [EXPORT_JOB_REPOSITORY, 'IFileStorage'],
     },
