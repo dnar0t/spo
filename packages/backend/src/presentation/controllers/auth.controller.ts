@@ -9,6 +9,7 @@ import {
   HttpStatus,
   Logger,
   Inject,
+  ValidationPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { LoginUseCase } from '../../application/auth/use-cases/login.use-case';
@@ -58,7 +59,11 @@ export class AuthController {
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto> {
+  async login(
+    @Body(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false, transform: true }))
+    dto: LoginDto,
+    @Req() req: Request,
+  ): Promise<AuthResponseDto> {
     const ipAddress = req.ip ?? req.socket?.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
