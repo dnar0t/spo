@@ -10,7 +10,7 @@
  * - GET  /api/periods/:id/snapshot       — получить данные снэпшота
  * - GET  /api/periods/:id/snapshot/status — проверить существование снэпшота
  */
-import { Controller, Get, Post, Param, Body, UseGuards, Req, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, Req, Logger, Inject } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
 import { ROLES } from '../../application/auth/constants';
@@ -18,6 +18,7 @@ import { ClosePeriodUseCase } from '../../application/planning/use-cases/close-p
 import { GetPeriodReadinessUseCase } from '../../application/planning/use-cases/get-period-readiness.use-case';
 import { ReopenPeriodUseCase } from '../../application/reporting/use-cases/reopen-period.use-case';
 import { PeriodSnapshotRepository } from '../../domain/repositories/period-snapshot.repository';
+import { PrismaPeriodSnapshotRepository } from '../../infrastructure/prisma/repositories/prisma-period-snapshot.repository';
 import { NotFoundError } from '../../domain/errors/domain.error';
 
 interface RequestWithUser {
@@ -45,6 +46,7 @@ export class PeriodClosingController {
     private readonly closePeriodUseCase: ClosePeriodUseCase,
     private readonly reopenPeriodUseCase: ReopenPeriodUseCase,
     private readonly getPeriodReadinessUseCase: GetPeriodReadinessUseCase,
+    @Inject(PrismaPeriodSnapshotRepository)
     private readonly periodSnapshotRepository: PeriodSnapshotRepository,
   ) {}
 

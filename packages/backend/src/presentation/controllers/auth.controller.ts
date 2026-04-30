@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { LoginUseCase } from '../../application/auth/use-cases/login.use-case';
@@ -20,7 +21,10 @@ import { AuthResponseDto } from '../../application/auth/dto/auth-response.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
 import { ROLES } from '../../application/auth/constants';
-import { ILdapAuthAdapter } from '../../application/auth/ports/ldap-auth.adapter';
+import {
+  ILdapAuthAdapter,
+  LDAP_AUTH_ADAPTER,
+} from '../../application/auth/ports/ldap-auth.adapter';
 
 /**
  * AuthController
@@ -43,7 +47,7 @@ export class AuthController {
     private readonly refreshTokenUseCase: RefreshTokenUseCase,
     private readonly logoutUseCase: LogoutUseCase,
     private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
-    private readonly ldapAuthAdapter: ILdapAuthAdapter,
+    @Inject(LDAP_AUTH_ADAPTER) private readonly ldapAuthAdapter: ILdapAuthAdapter,
   ) {}
 
   /**

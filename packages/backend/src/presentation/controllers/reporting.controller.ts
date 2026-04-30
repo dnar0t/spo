@@ -16,6 +16,7 @@ import {
   UseGuards,
   Req,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../guards/roles.guard';
@@ -35,6 +36,8 @@ import {
 } from '../../application/reporting/dto/evaluation.dto';
 import { ManagerEvaluationRepository } from '../../domain/repositories/manager-evaluation.repository';
 import { BusinessEvaluationRepository } from '../../domain/repositories/business-evaluation.repository';
+import { PrismaManagerEvaluationRepository } from '../../infrastructure/prisma/repositories/prisma-manager-evaluation.repository';
+import { PrismaBusinessEvaluationRepository } from '../../infrastructure/prisma/repositories/prisma-business-evaluation.repository';
 import { Percentage } from '../../domain/value-objects/percentage.vo';
 import { NotFoundError } from '../../domain/errors/domain.error';
 
@@ -59,7 +62,9 @@ export class ReportingController {
     private readonly submitBusinessEvaluationUseCase: SubmitBusinessEvaluationUseCase,
     private readonly generatePersonalReportsUseCase: GeneratePersonalReportsUseCase,
     private readonly generateSummaryReportUseCase: GenerateSummaryReportUseCase,
+    @Inject(PrismaManagerEvaluationRepository)
     private readonly managerEvaluationRepository: ManagerEvaluationRepository,
+    @Inject(PrismaBusinessEvaluationRepository)
     private readonly businessEvaluationRepository: BusinessEvaluationRepository,
   ) {}
 

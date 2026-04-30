@@ -54,7 +54,7 @@ export class ExportController {
     private readonly getExportJobsUseCase: GetExportJobsUseCase,
     private readonly cleanupExpiredExportsUseCase: CleanupExpiredExportsUseCase,
     @Inject(EXPORT_JOB_REPOSITORY) private readonly exportJobRepository: any,
-    private readonly fileStorage: IFileStorage,
+    @Inject('IFileStorage') private readonly fileStorage: IFileStorage,
   ) {}
 
   // ─── Экспорт плана ───
