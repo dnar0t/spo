@@ -135,14 +135,17 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   /**
    * Делегирование PrismaClient.$transaction для поддержки транзакций.
    */
-  \$transaction<T>(fn: (tx: any) => Promise<T>, options?: { maxWait?: number; timeout?: number; isolationLevel?: string }): Promise<T> {
+  $transaction<T>(
+    fn: (tx: any) => Promise<T>,
+    options?: { maxWait?: number; timeout?: number; isolationLevel?: string },
+  ): Promise<T> {
     return this._client.$transaction(fn, options as any);
   }
 
   /**
    * Делегирование PrismaClient.$queryRaw для сырых SQL-запросов.
    */
-  \$queryRaw<T = unknown>(query: string | TemplateStringsArray, ...values: any[]): Promise<T> {
+  $queryRaw<T = unknown>(query: any, ...values: any[]): Promise<T> {
     return this._client.$queryRaw(query as any, ...values);
   }
 
@@ -150,7 +153,9 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
    * Прокси для динамического доступа к любым свойствам PrismaClient,
    * которые не перечислены выше.
    */
-  get $client(): PrismaClient { return this._client; }
+  get $client(): PrismaClient {
+    return this._client;
+  }
 
   async onModuleInit(): Promise<void> {
     await this.connectWithRetry();
