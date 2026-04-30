@@ -8,7 +8,7 @@
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { IExportService } from '../../../application/export/ports/export-service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class JsonExportService implements IExportService {
@@ -37,7 +37,7 @@ export class JsonExportService implements IExportService {
         year: period.year,
         state: period.state,
       },
-      tasks: tasks.map(t => ({
+      tasks: tasks.map((t) => ({
         id: t.id,
         issueNumber: t.issueNumber,
         summary: t.summary,
@@ -79,7 +79,7 @@ export class JsonExportService implements IExportService {
         year: period.year,
         state: period.state,
       },
-      lines: summaryLines.map(l => ({
+      lines: summaryLines.map((l) => ({
         id: l.id,
         issueNumber: l.issueNumber,
         summary: l.summary,
@@ -122,7 +122,7 @@ export class JsonExportService implements IExportService {
       type: 'PERSONAL_REPORT',
       periodId,
       userId,
-      lines: personalReports.map(r => ({
+      lines: personalReports.map((r) => ({
         id: r.id,
         issueNumber: r.issueNumber,
         summary: r.summary,
@@ -159,7 +159,12 @@ export class JsonExportService implements IExportService {
     return Buffer.from(JSON.stringify(data, null, 2), 'utf-8');
   }
 
-  async exportAuditLog(params: { periodId?: string; userId?: string; fromDate?: Date; toDate?: Date }): Promise<Buffer> {
+  async exportAuditLog(params: {
+    periodId?: string;
+    userId?: string;
+    fromDate?: Date;
+    toDate?: Date;
+  }): Promise<Buffer> {
     const where: Record<string, unknown> = {};
 
     if (params.periodId) where['periodId'] = params.periodId;
@@ -178,7 +183,7 @@ export class JsonExportService implements IExportService {
     const data = {
       type: 'AUDIT_LOG',
       filters: params,
-      records: auditLogs.map(a => ({
+      records: auditLogs.map((a) => ({
         id: a.id,
         userId: a.userId,
         action: a.action,
@@ -214,12 +219,12 @@ export class JsonExportService implements IExportService {
     });
 
     // Получаем сотрудников (из личных отчётов уникальные userId)
-    const userIds = [...new Set(personalReports.map(r => r.userId))];
+    const userIds = [...new Set(personalReports.map((r) => r.userId))];
     const employees = await this.prisma.user.findMany({
       where: { id: { in: userIds } },
     });
 
-    const employeeMap = new Map(employees.map(e => [e.id, e]));
+    const employeeMap = new Map(employees.map((e) => [e.id, e]));
 
     const data = {
       type: 'ACCOUNTING_EXPORT',
@@ -230,9 +235,9 @@ export class JsonExportService implements IExportService {
         year: period.year,
         state: period.state,
       },
-      employees: userIds.map(uid => {
+      employees: userIds.map((uid) => {
         const emp = employeeMap.get(uid);
-        const empReports = personalReports.filter(r => r.userId === uid);
+        const empReports = personalReports.filter((r) => r.userId === uid);
 
         return {
           userId: uid,
@@ -246,7 +251,7 @@ export class JsonExportService implements IExportService {
           totalMinutes: empReports.reduce((sum, r) => sum + (r.actualMinutes ?? 0), 0),
         };
       }),
-      tasks: summaryLines.map(l => ({
+      tasks: summaryLines.map((l) => ({
         issueNumber: l.issueNumber,
         summary: l.summary,
         assigneeId: l.assigneeId,
