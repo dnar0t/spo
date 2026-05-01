@@ -78,11 +78,8 @@ export class RefreshTokenUseCase {
     }
 
     // 4. Execute rotation: revoke old + create new session
-    const { rawToken: newRawToken, newSession } = this.authDomainService.rotateRefreshSession(
-      session,
-      context?.userAgent,
-      context?.ipAddress,
-    );
+    const { rawToken: newRawToken, session: newSession } =
+      this.authDomainService.rotateRefreshSession(session, context?.userAgent, context?.ipAddress);
 
     // Save the revoked old session and persist new session
     await (this.refreshSessionRepository as any).update(session);
