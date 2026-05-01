@@ -50,8 +50,11 @@ async function refreshTokensRequest(): Promise<void> {
     throw new ApiError('Refresh token expired', 401);
   }
 
-  const data = await response.json();
-  saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+  const json = await response.json();
+  // Распаковываем обёртку { success, data }
+  const tokens =
+    json && typeof json === 'object' && 'success' in json && 'data' in json ? json.data : json;
+  saveTokens({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
 }
 
 async function request<T = unknown>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -120,7 +123,12 @@ async function request<T = unknown>(endpoint: string, options: RequestOptions = 
     return undefined as T;
   }
 
-  return response.json();
+  const json = await response.json();
+  // Распаковываем обёртку { success, data }
+  if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 export const api = {
