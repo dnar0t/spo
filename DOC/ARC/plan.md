@@ -382,3 +382,23 @@
 | LDAPS adapter | Требует доступа к LDAP-серверу и пакета ldapjs |
 | Frontend integration test | Требует уточнения подхода к тестированию |
 | BullMQ очереди | Заменены in-process + outbox для MVP |
+
+### Известные проблемы (выявлены при развёртывании 30.04-01.05.2026)
+
+| № | Проблема | Статус | Описание |
+|---|----------|--------|----------|
+| D-01 | Backend: `GetIntegrationsUseCase` падает с 500 | 🔴 Баг | Использует `this.prisma.integrationSetting.findMany()`, но имя свойства PrismaClient не совпадает с моделью БД. Нужно проверить Prisma-схему и исправить запрос |
+| D-02 | Backend: `GetDictionariesUseCase` падает с 500 | 🔴 Баг | `this.prisma.youtrackIssue.findMany()` — то же проблема несовпадения имени свойства |
+| D-03 | Backend: SWC v1.15.32 генерирует некорректный код | ⚠️ Баг | `Illegal continue statement` в async-функциях. Обход: отключены sourceMaps в `swc-defaults.js` |
+| D-04 | Backend: `extends PrismaClient` ломается под SWC | ⚠️ Баг | SWC генерирует extends-код для `@Injectable()` классов, если в файле есть `require('@prisma/client')`. Обход: сборка имени модуля через конкатенацию строк |
+| D-05 | Backend: Двойной префикс `/api/` во всех контроллерах | ✅ Исправлено | Глобальный префикс `api/` + `@Controller('api/xxx')` → `api/api/xxx`. Исправлено удалением `api/` из декораторов контроллеров |
+| D-06 | Frontend: Дублирование тостеров | ✅ Исправлено | `<Sonner />` и `<Toaster />` одновременно. Удалён `<Toaster />` |
+| D-07 | Frontend: Не распаковывался `{success, data}` | ✅ Исправлено | `api.ts` не обрабатывал обёртку ответов. Добавлена распаковка `json.data` |
+| D-08 | Frontend: `fetchUser()` ждал `data.user` | ✅ Исправлено | `/api/auth/me` возвращает пользователя напрямую, без обёртки `user` |
+| D-09 | Backend: `refresh-token` падал с 500 | ✅ Исправлено | Неправильная деструктуризация: ожидалось `newSession`, а метод возвращал `session` |
+| D-10 | Backend: `InvalidCredentialsError` не мапился на HTTP 401 | ✅ Исправлено | Ошибка падала в default (500). Добавлена в `GlobalExceptionFilter` |
+| D-11 | Backend: `LoginUseCase` не проверял пароль в mock-режиме | ✅ Исправлено | LDAP mock-адаптер сообщал `isConfigured() = true`, путь mock не выполнялся. Проверка пароля перенесена в `LdapMockAdapter.authenticate()` |
+| D-12 | Backend: Отсутствовал `JsonExportJobRepository` | ✅ Исправлено | Файл был упомянут в `ExportModule`, но не создан |
+| D-13 | Backend: `PrismaPeriodSnapshotRepository` не зарегистрирован в `PrismaModule` | ✅ Исправлено | Не был включён в providers/exports модуля |
+| D-14 | Сервер: отсутствует `Dockerfile` для backend | 📋 Нужно | В `docker/docker-compose.prod.yml` есть сервисы, но нет сборки самого приложения. Для production деплоя нужен Dockerfile |
+| D-15 | Сервер: не установлены `pdfkit`, `exceljs`, `nodemailer` | 📋 Нужно | Опциональные пакеты для PDF/Excel/Nodemailer. Работают в fallback-режиме (CSV, dry-run) |
