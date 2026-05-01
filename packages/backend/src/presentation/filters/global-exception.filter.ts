@@ -27,6 +27,7 @@ import {
   UnauthorizedError,
   ConflictError,
 } from '../../domain/errors/domain.error';
+import { InvalidCredentialsError } from '../../domain/errors/auth.errors';
 
 interface ErrorResponse {
   success: false;
@@ -109,15 +110,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         code = `HTTP_ERROR`;
       }
 
-      this.logger.warn(
-        `[${method}] ${path} -> HTTP ${statusCode}: ${message}`,
-      );
+      this.logger.warn(`[${method}] ${path} -> HTTP ${statusCode}: ${message}`);
 
       this.buildAndSendResponse(response, statusCode, {
         success: false,
         error: {
           code,
-          message: statusCode === HttpStatus.INTERNAL_SERVER_ERROR ? 'Internal server error' : message,
+          message:
+            statusCode === HttpStatus.INTERNAL_SERVER_ERROR ? 'Internal server error' : message,
           details,
           timestamp,
           path: `${method} ${path}`,
@@ -168,6 +168,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         return HttpStatus.FORBIDDEN;
       case error instanceof ConflictError:
         return HttpStatus.CONFLICT;
+      case error instanceof InvalidCredentialsError:
+        return HttpStatus.UNAUTHORIZED;
       default:
         return HttpStatus.INTERNAL_SERVER_ERROR;
     }
@@ -183,11 +185,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   /**
    * Строит и отправляет HTTP-ответ.
    */
-  private buildAndSendResponse(
-    response: Response,
-    statusCode: number,
-    body: ErrorResponse,
-  ): void {
+  private buildAndSendResponse(response: Response, statusCode: number, body: ErrorResponse): void {
     response.status(statusCode).json(body);
   }
 }
