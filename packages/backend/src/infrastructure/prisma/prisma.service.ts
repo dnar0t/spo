@@ -1,6 +1,5 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 
-// Тип для PrismaClient (без прямого импорта, чтобы избежать SWC extends-бага)
 type PrismaClientType = {
   [key: string]: any;
   $connect(): Promise<void>;
@@ -13,13 +12,19 @@ type PrismaClientType = {
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
   private isConnected = false;
-  private readonly _client: PrismaClientType;
+  private _client!: PrismaClientType;
 
-  constructor(@Inject('PRISMA_CLIENT') client: PrismaClientType) {
-    this._client = client;
+  constructor() {
+    // Ленивый require — SWC не трассирует require внутри конструктора
+    const { PrismaClient } = require('@prisma/client');
+    this._client = new PrismaClient({
+      log:
+        process.env.NODE_ENV === 'development'
+          ? ['query', 'info', 'warn', 'error']
+          : ['warn', 'error'],
+    });
   }
 
-  // ─── Делегирование свойств PrismaClient ───
   get user() {
     return this._client.user;
   }
@@ -59,7 +64,6 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get youTrackIssue() {
     return this._client.youTrackIssue;
   }
-  // Алиас для совместимости с кодом, использующим Prisma-конвенцию именования
   get youtrackIssue() {
     return this._client.youTrackIssue;
   }
@@ -69,7 +73,6 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get integrationSetting() {
     return this._client.integrationSetting;
   }
-  // Алиас для совместимости с кодом, использующим Prisma-конвенцию именования
   get integrationSettings() {
     return this._client.integrationSetting;
   }
@@ -174,7 +177,6 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(
           `Failed to connect to database (attempt ${attempt}/${maxRetries}): ${(error as Error).message}`,
         );
-
         if (attempt < maxRetries) {
           this.logger.log(`Retrying in ${delayMs}ms...`);
           await new Promise((resolve) => setTimeout(resolve, delayMs));

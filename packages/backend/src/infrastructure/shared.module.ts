@@ -18,19 +18,10 @@ import { Global, Module } from '@nestjs/common';
 import { EventBusService } from './event-bus.service';
 import { OutboxService } from './outbox.service';
 import { OutboxProcessor } from './outbox.processor';
-import { createPrismaClient } from './prisma/prisma-factory';
 
 @Global()
 @Module({
-  providers: [
-    EventBusService,
-    OutboxService,
-    OutboxProcessor,
-    {
-      provide: 'PRISMA_CLIENT',
-      useFactory: () => createPrismaClient(),
-    },
-  ],
-  exports: [EventBusService, OutboxService, 'PRISMA_CLIENT'],
+  providers: [EventBusService, OutboxService, OutboxProcessor],
+  exports: [EventBusService, OutboxService],
 })
 export class SharedModule {}
