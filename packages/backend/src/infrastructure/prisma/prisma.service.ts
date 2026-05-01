@@ -15,9 +15,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private _client!: PrismaClientType;
 
   constructor() {
-    // Конструируем имя модуля в рантайме, чтобы SWC не смог оттрассировать
-    const moduleName = '@' + 'prisma/client';
-    const { PrismaClient } = require(moduleName);
+    // Собираем имя модуля в рантайме — SWC не может статически проанализировать
+    const parts = ['@' + 'pr', 'isma', '/' + 'cl', 'ient'];
+    const prismaModule = process.env['PRISMA_MODULE'] || parts.join('');
+    const { PrismaClient } = require(prismaModule);
     this._client = new PrismaClient({
       log:
         process.env.NODE_ENV === 'development'
