@@ -39,10 +39,27 @@ export class LdapMockAdapter implements ILdapAuthAdapter {
     password: string,
   ): Promise<{ success: boolean; userDetails?: { dn: string; cn: string; mail: string } }> {
     if (this.isMockMode) {
-      // Mock mode: password must be non-empty
-      if (!password || password.trim().length === 0) {
-        this.logger.warn(`Mock LDAP: authentication failed for login "${login}" — empty password`);
-        return { success: false };
+      // Mock mode: проверяем пароль по известным учётным записям
+      const mockPasswords: Record<string, string> = {
+        admin: 'adminnimda',
+      };
+      const expectedPassword = mockPasswords[login];
+      if (expectedPassword) {
+        // Для известных пользователей — строгая проверка пароля
+        if (password !== expectedPassword) {
+          this.logger.warn(
+            `Mock LDAP: authentication failed for login "${login}" — invalid password`,
+          );
+          return { success: false };
+        }
+      } else {
+        // Для неизвестных пользователей — только проверка на пустой пароль
+        if (!password || password.trim().length === 0) {
+          this.logger.warn(
+            `Mock LDAP: authentication failed for login "${login}" — empty password`,
+          );
+          return { success: false };
+        }
       }
 
       this.logger.debug(`Mock LDAP: authentication successful for login "${login}"`);

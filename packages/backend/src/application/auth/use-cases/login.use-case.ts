@@ -106,32 +106,10 @@ export class LoginUseCase {
         throw new LdapConnectionError(`LDAP authentication failed: ${(error as Error).message}`);
       }
     } else {
-      // Mock mode: проверяем пароль по известным учётным записям
-      const mockPasswords: Record<string, string> = {
-        admin: 'adminnimda',
-      };
-      const expectedPassword = mockPasswords[dto.login];
-      if (expectedPassword) {
-        // Для известных пользователей — строгая проверка пароля
-        if (dto.password !== expectedPassword) {
-          await this.recordFailedAttempt(dto.login, context?.ipAddress, user.id);
-          await this.auditLogger.log({
-            userId: user.id,
-            action: 'LOGIN_FAILED',
-            entityType: 'User',
-            entityId: user.id,
-            details: { reason: 'Invalid password in mock mode' },
-            ipAddress: context?.ipAddress,
-            userAgent: context?.userAgent,
-          });
-          throw new InvalidCredentialsError();
-        }
-      } else {
-        // Для неизвестных пользователей — только проверка на пустой пароль
-        if (!dto.password || dto.password.trim().length === 0) {
-          await this.recordFailedAttempt(dto.login, context?.ipAddress, user.id);
-          throw new InvalidCredentialsError();
-        }
+      // Mock mode: only check password is non-empty
+      if (!dto.password || dto.password.trim().length === 0) {
+        await this.recordFailedAttempt(dto.login, context?.ipAddress, user.id);
+        throw new InvalidCredentialsError();
       }
     }
 
