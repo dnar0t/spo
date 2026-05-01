@@ -42,7 +42,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller('api/timesheets')
+@Controller('timesheets')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class TimesheetController {
   private readonly logger = new Logger(TimesheetController.name);

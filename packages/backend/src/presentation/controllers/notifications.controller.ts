@@ -43,7 +43,7 @@ interface RequestWithUser {
   headers: Record<string, string | string[] | undefined>;
 }
 
-@Controller('api/notifications')
+@Controller('notifications')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class NotificationsController {
   private readonly logger = new Logger(NotificationsController.name);

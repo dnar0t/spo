@@ -24,7 +24,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller('api/finance')
+@Controller('finance')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class FinanceController {
   private readonly logger = new Logger(FinanceController.name);

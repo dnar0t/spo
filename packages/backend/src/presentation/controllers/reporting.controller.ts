@@ -49,7 +49,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller('api/reporting')
+@Controller('reporting')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReportingController {
   private readonly logger = new Logger(ReportingController.name);

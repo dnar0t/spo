@@ -40,7 +40,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller('api/export')
+@Controller('export')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ExportController {
   private readonly logger = new Logger(ExportController.name);

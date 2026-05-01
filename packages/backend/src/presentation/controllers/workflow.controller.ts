@@ -21,7 +21,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller('api/workflow')
+@Controller('workflow')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class WorkflowController {
   private readonly logger = new Logger(WorkflowController.name);

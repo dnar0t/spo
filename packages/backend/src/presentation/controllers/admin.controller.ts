@@ -55,7 +55,7 @@ import { UpdateFormulaDto } from '../../application/administration/dto/update-fo
 import { UpdateEvaluationScaleDto } from '../../application/administration/dto/update-evaluation-scale.dto';
 import { UpdatePlanningSettingsDto } from '../../application/administration/dto/update-planning-settings.dto';
 
-@Controller('api/admin')
+@Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);

@@ -13,7 +13,7 @@ import { ROLES } from '../../application/auth/constants';
 import { RetentionCronService } from '../../infrastructure/retention/retention-cron.service';
 import { RetentionService } from '../../infrastructure/retention/retention.service';
 
-@Controller('api/admin/retention')
+@Controller('admin/retention')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class RetentionController {
   private readonly logger = new Logger(RetentionController.name);

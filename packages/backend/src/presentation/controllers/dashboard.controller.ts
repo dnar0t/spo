@@ -17,14 +17,12 @@ interface RequestWithUser {
   };
 }
 
-@Controller('api/dashboard')
+@Controller('dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DashboardController {
   private readonly logger = new Logger(DashboardController.name);
 
-  constructor(
-    private readonly getDashboardStatsUseCase: GetDashboardStatsUseCase,
-  ) {}
+  constructor(private readonly getDashboardStatsUseCase: GetDashboardStatsUseCase) {}
 
   /**
    * GET /api/dashboard/stats
@@ -35,9 +33,6 @@ export class DashboardController {
    */
   @Get('stats')
   async getStats(@Req() req: RequestWithUser) {
-    return await this.getDashboardStatsUseCase.execute(
-      req.user.id,
-      req.user.roles ?? [],
-    );
+    return await this.getDashboardStatsUseCase.execute(req.user.id, req.user.roles ?? []);
   }
 }

@@ -37,7 +37,7 @@ class ReopenPeriodBody {
   reason: string;
 }
 
-@Controller('api/periods')
+@Controller('periods')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PeriodClosingController {
   private readonly logger = new Logger(PeriodClosingController.name);
