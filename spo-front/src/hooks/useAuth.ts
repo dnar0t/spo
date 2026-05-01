@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { api, ApiError, setTokens, clearTokens } from "@/lib/api";
-import { getAccessToken, getRefreshToken, hasTokens } from "@/lib/auth";
-import type { UserDto } from "@/lib/auth";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api, ApiError, setTokens, clearTokens } from '@/lib/api';
+import { getAccessToken, getRefreshToken, hasTokens } from '@/lib/auth';
+import type { UserDto } from '@/lib/auth';
 
 interface AuthState {
   user: UserDto | null;
@@ -32,8 +32,9 @@ function notifyListeners() {
 
 async function fetchUser(): Promise<UserDto | null> {
   try {
-    const data = await api.get<{ user: UserDto }>("/auth/me");
-    return data.user;
+    // Ответ /auth/me возвращает данные пользователя напрямую (без обёртки user)
+    const user = await api.get<UserDto>('/auth/me');
+    return user;
   } catch {
     return null;
   }
@@ -83,33 +84,26 @@ export function useAuth(): UseAuthReturn {
     });
   }, []);
 
-  const login = useCallback(
-    async (loginValue: string, password: string): Promise<void> => {
-      const data = await api.post<{
-        accessToken: string;
-        refreshToken: string;
-        user: UserDto;
-      }>(
-        "/auth/login",
-        { login: loginValue, password },
-        { skipAuth: true }
-      );
+  const login = useCallback(async (loginValue: string, password: string): Promise<void> => {
+    const data = await api.post<{
+      accessToken: string;
+      refreshToken: string;
+      user: UserDto;
+    }>('/auth/login', { login: loginValue, password }, { skipAuth: true });
 
-      setTokens(data.accessToken, data.refreshToken);
+    setTokens(data.accessToken, data.refreshToken);
 
-      globalAuthState = {
-        user: data.user,
-        isAuthenticated: true,
-        isLoading: false,
-      };
-      notifyListeners();
-    },
-    []
-  );
+    globalAuthState = {
+      user: data.user,
+      isAuthenticated: true,
+      isLoading: false,
+    };
+    notifyListeners();
+  }, []);
 
   const logout = useCallback(async (): Promise<void> => {
     try {
-      await api.post("/auth/logout");
+      await api.post('/auth/logout');
     } catch {
       // Игнорируем ошибки при логауте
     }
@@ -123,7 +117,7 @@ export function useAuth(): UseAuthReturn {
     };
     notifyListeners();
 
-    navigate("/login", { replace: true });
+    navigate('/login', { replace: true });
   }, [navigate]);
 
   return {
