@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
-import { PRISMA_CLIENT } from './prisma-client.provider';
 
 // Тип для PrismaClient (без прямого импорта, чтобы избежать SWC extends-бага)
 type PrismaClientType = {
@@ -16,7 +15,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private isConnected = false;
   private readonly _client: PrismaClientType;
 
-  constructor(@Inject(PRISMA_CLIENT) client: PrismaClientType) {
+  constructor(@Inject('PRISMA_CLIENT') client: PrismaClientType) {
     this._client = client;
   }
 

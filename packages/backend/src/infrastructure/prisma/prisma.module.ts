@@ -1,6 +1,5 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
-import { PrismaClientProvider } from './prisma-client.provider';
 
 import { PrismaUserRepository } from './repositories/prisma-user.repository';
 import { PrismaReportingPeriodRepository } from './repositories/prisma-reporting-period.repository';
@@ -29,7 +28,19 @@ import { PrismaPeriodSnapshotRepository } from './repositories/prisma-period-sna
 @Global()
 @Module({
   providers: [
-    PrismaClientProvider,
+    {
+      provide: 'PRISMA_CLIENT',
+      useFactory: () => {
+        // Динамический require для избежания SWC static analysis extends-бага
+        const { PrismaClient } = require('@prisma/client');
+        return new PrismaClient({
+          log:
+            process.env.NODE_ENV === 'development'
+              ? ['query', 'info', 'warn', 'error']
+              : ['warn', 'error'],
+        });
+      },
+    },
     PrismaService,
     PrismaUserRepository,
 
