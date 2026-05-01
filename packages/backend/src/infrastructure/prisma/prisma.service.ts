@@ -59,10 +59,18 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get youTrackIssue() {
     return this._client.youTrackIssue;
   }
+  // Алиас для совместимости с кодом, использующим Prisma-конвенцию именования
+  get youtrackIssue() {
+    return this._client.youTrackIssue;
+  }
   get workItem() {
     return this._client.workItem;
   }
   get integrationSetting() {
+    return this._client.integrationSetting;
+  }
+  // Алиас для совместимости с кодом, использующим Prisma-конвенцию именования
+  get integrationSettings() {
     return this._client.integrationSetting;
   }
   get syncRun() {

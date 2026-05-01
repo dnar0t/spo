@@ -86,7 +86,7 @@ export class FinanceController {
   @Get('periods/:id/by-system')
   @Roles(ROLES.ADMIN, ROLES.DIRECTOR, ROLES.FINANCE)
   async getBySystem(@Param('id') id: string) {
-    return await this.getPeriodBySystemUseCase.execute(id);
+    return await this.getPeriodBySystemUseCase.execute({ periodId: id });
   }
 
   /**
