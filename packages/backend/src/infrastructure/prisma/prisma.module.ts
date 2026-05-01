@@ -28,19 +28,6 @@ import { PrismaPeriodSnapshotRepository } from './repositories/prisma-period-sna
 @Global()
 @Module({
   providers: [
-    {
-      provide: 'PRISMA_CLIENT',
-      useFactory: () => {
-        // Динамический require для избежания SWC static analysis extends-бага
-        const { PrismaClient } = require('@prisma/client');
-        return new PrismaClient({
-          log:
-            process.env.NODE_ENV === 'development'
-              ? ['query', 'info', 'warn', 'error']
-              : ['warn', 'error'],
-        });
-      },
-    },
     PrismaService,
     PrismaUserRepository,
 
