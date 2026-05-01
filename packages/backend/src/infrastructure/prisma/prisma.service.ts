@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
+import { PRISMA_CLIENT } from './prisma-client.provider';
 
 // Тип для PrismaClient (без прямого импорта, чтобы избежать SWC extends-бага)
 type PrismaClientType = {
@@ -7,27 +8,6 @@ type PrismaClientType = {
   $disconnect(): Promise<void>;
   $transaction<T>(fn: (tx: any) => Promise<T>, options?: any): Promise<T>;
   $queryRaw<T = unknown>(query: any, ...values: any[]): Promise<T>;
-};
-
-export const PRISMA_CLIENT = Symbol('PRISMA_CLIENT');
-
-/**
- * Фабрика PrismaClient для регистрации в DI.
- * Вынесена, так как SWC некорректно обрабатывает require('@prisma/client')
- * в декорированных классах (генерирует extends-код).
- */
-export const PrismaClientProvider = {
-  provide: PRISMA_CLIENT,
-  useFactory: () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { PrismaClient } = require('@prisma/client');
-    return new PrismaClient({
-      log:
-        process.env.NODE_ENV === 'development'
-          ? ['query', 'info', 'warn', 'error']
-          : ['warn', 'error'],
-    });
-  },
 };
 
 @Injectable()

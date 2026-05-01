@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import { PrismaService, PrismaClientProvider } from './prisma.service';
+import { PrismaService } from './prisma.service';
+import { PrismaClientProvider } from './prisma-client.provider';
 
 import { PrismaUserRepository } from './repositories/prisma-user.repository';
 import { PrismaReportingPeriodRepository } from './repositories/prisma-reporting-period.repository';
