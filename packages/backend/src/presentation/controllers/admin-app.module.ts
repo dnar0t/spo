@@ -22,6 +22,7 @@ import { PrismaWorkRoleRepository } from '../../infrastructure/prisma/repositori
 import { PrismaPlanningSettingsRepository } from '../../infrastructure/prisma/repositories/prisma-planning-settings.repository';
 import { PrismaUserRepository } from '../../infrastructure/prisma/repositories/prisma-user.repository';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
+import { YouTrackModule } from '../../infrastructure/youtrack/youtrack.module';
 import { AdminController } from './admin.controller';
 import { CreateUserUseCase } from '../../application/administration/use-cases/create-user.use-case';
 import { UpdateUserUseCase } from '../../application/administration/use-cases/update-user.use-case';
@@ -47,7 +48,7 @@ import { GetSensitiveChangesUseCase } from '../../application/administration/use
 import { AUDIT_LOGGER, IAuditLogger } from '../../application/auth/ports/audit-logger';
 
 @Module({
-  imports: [AdministrationModule, AuthModule],
+  imports: [AdministrationModule, AuthModule, YouTrackModule],
   controllers: [AdminController],
   providers: [
     // ====================================================================

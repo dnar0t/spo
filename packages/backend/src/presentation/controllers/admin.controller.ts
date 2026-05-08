@@ -44,6 +44,7 @@ import { GetDictionariesUseCase } from '../../application/administration/use-cas
 import { GetAuditLogUseCase } from '../../application/administration/use-cases/get-audit-log.use-case';
 import { GetIntegrationsUseCase } from '../../application/administration/use-cases/get-integrations.use-case';
 import { UpdateIntegrationUseCase } from '../../application/administration/use-cases/update-integration.use-case';
+import { YouTrackApiClient } from '../../infrastructure/youtrack/youtrack-api.client';
 import { GetActiveSessionsUseCase } from '../../application/administration/use-cases/get-active-sessions.use-case';
 import { GetSensitiveChangesUseCase } from '../../application/administration/use-cases/get-sensitive-changes.use-case';
 import { CreateUserDto } from '../../application/administration/dto/create-user.dto';
@@ -82,6 +83,7 @@ export class AdminController {
     private readonly getActiveSessionsUseCase: GetActiveSessionsUseCase,
     private readonly getSensitiveChangesUseCase: GetSensitiveChangesUseCase,
     private readonly getPlanningSettingsUseCase: GetPlanningSettingsUseCase,
+    private readonly youtrackApiClient: YouTrackApiClient,
   ) {}
 
   // ====================================================================
@@ -507,11 +509,16 @@ export class AdminController {
     this.logger.log(`Updating integration: ${id}`);
 
     const userId = req?.user?.id ?? 'system';
-    return await this.updateIntegrationUseCase.execute(id, dto, {
+    const result = await this.updateIntegrationUseCase.execute(id, dto, {
       userId,
       ipAddress: req?.ip,
       userAgent: req?.headers?.['user-agent'],
     });
+
+    // После обновления настроек перезагружаем конфигурацию YouTrack API клиента из БД
+    await this.youtrackApiClient.reloadConfig();
+
+    return result;
   }
 
   /**
