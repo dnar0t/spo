@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { getAccessToken } from '@/lib/auth';
 import { useAdmin, type PlanningSettingsDto, type IntegrationDto } from '@/hooks/useAdmin';
+import { SyncDialog } from '@/components/SyncDialog';
 import { DEFAULT_SPRINT_SETTINGS, MONTHS_RU, type SprintSettings } from '@/lib/planning';
 import type { AdminDictionariesDto } from '@/hooks/useAdmin';
 
@@ -173,6 +174,9 @@ const Settings = () => {
     refetch: refetchDictionaries,
   } = useDictionaries();
 
+  // --- Состояние диалога синхронизации ---
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+
   // --- Локальные состояния для диалогов интеграций ---
   const [integrationDialog, setIntegrationDialog] = useState<{
     id: string;
@@ -228,29 +232,8 @@ const Settings = () => {
     }
   };
 
-  const forceSync = async (i: IntegrationDto) => {
-    try {
-      const resp = await fetch('/api/youtrack/sync', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + getAccessToken() },
-      });
-      const data = await resp.json();
-      if (data.success) {
-        toast({ title: `Синхронизация · ${i.name}`, description: 'Синхронизация запущена.' });
-      } else {
-        toast({
-          title: `Ошибка · ${i.name}`,
-          description: data.error?.message || 'Не удалось запустить синхронизацию',
-          variant: 'destructive',
-        });
-      }
-    } catch (e) {
-      toast({
-        title: `Ошибка · ${i.name}`,
-        description: 'Сервер недоступен',
-        variant: 'destructive',
-      });
-    }
+  const forceSync = () => {
+    setSyncDialogOpen(true);
   };
 
   return (
@@ -440,7 +423,7 @@ const Settings = () => {
                     key={i.id}
                     integration={i}
                     onResync={() => reSync(i)}
-                    onForceSync={() => forceSync(i)}
+                    onForceSync={forceSync}
                     onSave={() => openIntegrationDialog(i)}
                     dialog={integrationDialog?.id === i.id ? integrationDialog : null}
                     onDialogChange={(updates) =>
@@ -469,6 +452,9 @@ const Settings = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Диалог синхронизации с YouTrack */}
+      <SyncDialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen} />
     </>
   );
 };
