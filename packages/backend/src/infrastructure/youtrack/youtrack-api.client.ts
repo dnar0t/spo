@@ -18,9 +18,9 @@ export class YouTrackApiClient {
   private readonly logger = new Logger(YouTrackApiClient.name);
   private baseUrl = '';
   private token = '';
-  private readonly defaultTimeout: number;
-  private readonly maxRetries: number;
-  private readonly pageSize: number;
+  private defaultTimeout = 30000;
+  private maxRetries = 3;
+  private pageSize = 50;
 
   /** Rate limiting: timestamp последнего запроса */
   private lastRequestTime = 0;
@@ -32,12 +32,7 @@ export class YouTrackApiClient {
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
-  ) {
-    // Значения по умолчанию из env (как fallback)
-    this.defaultTimeout = 30000;
-    this.maxRetries = 3;
-    this.pageSize = 50;
-  }
+  ) {}
 
   /**
    * Загрузить настройки из БД (таблица IntegrationSettings)
@@ -49,11 +44,10 @@ export class YouTrackApiClient {
         if (settings.baseUrl) this.baseUrl = settings.baseUrl;
         if (settings.apiTokenEncrypted) this.token = settings.apiTokenEncrypted;
         if (settings.requestTimeout) {
-          // поле requestTimeout может быть строкой или числом
-          (this as any).defaultTimeout = Number(settings.requestTimeout) || 30000;
+          this.defaultTimeout = Number(settings.requestTimeout) || 30000;
         }
         if (settings.retryCount !== null && settings.retryCount !== undefined) {
-          (this as any).maxRetries = Number(settings.retryCount) || 3;
+          this.maxRetries = Number(settings.retryCount) || 3;
         }
         this.configLoaded = true;
         this.logger.log(`YouTrack API client configured: ${settings.baseUrl}`);
