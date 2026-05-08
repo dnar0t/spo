@@ -28,17 +28,17 @@ export class PrismaPlanningSettingsRepository implements PlanningSettingsReposit
     const data = await this.prisma.planningSettings.create({
       data: {
         id: p.id as string,
-        work_hours_per_month: p.work_hours_per_month as number | null,
-        reserve_percent: p.reserve_percent as number | null,
-        test_percent: p.test_percent as number | null,
-        debug_percent: p.debug_percent as number | null,
-        mgmt_percent: p.mgmt_percent as number | null,
-        yellow_threshold: p.yellow_threshold as number | null,
-        red_threshold: p.red_threshold as number | null,
-        business_grouping_level: p.business_grouping_level as string | null,
-        updated_by: p.updated_by as string,
-        created_at: p.created_at as Date,
-        updated_at: p.updated_at as Date,
+        workHoursPerMonth: p.workHoursPerMonth as number | null,
+        reservePercent: p.reservePercent as number | null,
+        testPercent: p.testPercent as number | null,
+        debugPercent: p.debugPercent as number | null,
+        mgmtPercent: p.mgmtPercent as number | null,
+        yellowThreshold: p.yellowThreshold as number | null,
+        redThreshold: p.redThreshold as number | null,
+        businessGroupingLevel: p.businessGroupingLevel as string | null,
+        updatedBy: p.updatedBy as string,
+        createdAt: p.createdAt as Date,
+        updatedAt: p.updatedAt as Date,
       },
     });
     return PlanningSettings.fromPersistence(data);
@@ -49,16 +49,16 @@ export class PrismaPlanningSettingsRepository implements PlanningSettingsReposit
     const data = await this.prisma.planningSettings.update({
       where: { id: entity.id },
       data: {
-        work_hours_per_month: p.work_hours_per_month as number | null,
-        reserve_percent: p.reserve_percent as number | null,
-        test_percent: p.test_percent as number | null,
-        debug_percent: p.debug_percent as number | null,
-        mgmt_percent: p.mgmt_percent as number | null,
-        yellow_threshold: p.yellow_threshold as number | null,
-        red_threshold: p.red_threshold as number | null,
-        business_grouping_level: p.business_grouping_level as string | null,
-        updated_by: p.updated_by as string,
-        updated_at: p.updated_at as Date,
+        workHoursPerMonth: p.workHoursPerMonth as number | null,
+        reservePercent: p.reservePercent as number | null,
+        testPercent: p.testPercent as number | null,
+        debugPercent: p.debugPercent as number | null,
+        mgmtPercent: p.mgmtPercent as number | null,
+        yellowThreshold: p.yellowThreshold as number | null,
+        redThreshold: p.redThreshold as number | null,
+        businessGroupingLevel: p.businessGroupingLevel as string | null,
+        updatedBy: p.updatedBy as string,
+        updatedAt: p.updatedAt as Date,
       },
     });
     return PlanningSettings.fromPersistence(data);
@@ -70,7 +70,7 @@ export class PrismaPlanningSettingsRepository implements PlanningSettingsReposit
 
   async findLatest(): Promise<PlanningSettings | null> {
     const data = await this.prisma.planningSettings.findFirst({
-      orderBy: { created_at: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
     return data ? PlanningSettings.fromPersistence(data) : null;
   }

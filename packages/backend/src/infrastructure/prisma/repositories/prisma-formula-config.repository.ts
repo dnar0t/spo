@@ -20,7 +20,7 @@ export class PrismaFormulaConfigRepository implements FormulaConfigRepository {
 
   async findAll(): Promise<FormulaConfig[]> {
     const records = await this.prisma.formulaConfiguration.findMany({
-      orderBy: [{ formula_type: 'asc' }, { name: 'asc' }],
+      orderBy: [{ formulaType: 'asc' }, { name: 'asc' }],
     });
     return records.map(FormulaConfig.fromPersistence);
   }
@@ -31,13 +31,13 @@ export class PrismaFormulaConfigRepository implements FormulaConfigRepository {
       data: {
         id: p.id as string,
         name: p.name as string,
-        formula_type: p.formula_type as string,
+        formulaType: p.formulaType as string,
         value: p.value as number,
-        is_active: p.is_active as boolean,
+        isActive: p.isActive as boolean,
         description: (p.description as string | null) ?? null,
-        created_by_id: 'system', // будет заменено на реального пользователя
-        created_at: p.created_at as Date,
-        updated_at: p.updated_at as Date,
+        createdById: 'system', // будет заменено на реального пользователя
+        createdAt: p.createdAt as Date,
+        updatedAt: p.updatedAt as Date,
       },
     });
     return FormulaConfig.fromPersistence(data);
@@ -49,11 +49,11 @@ export class PrismaFormulaConfigRepository implements FormulaConfigRepository {
       where: { id: entity.id },
       data: {
         name: p.name as string,
-        formula_type: p.formula_type as string,
+        formulaType: p.formulaType as string,
         value: p.value as number,
-        is_active: p.is_active as boolean,
+        isActive: p.isActive as boolean,
         description: (p.description as string | null) ?? null,
-        updated_at: p.updated_at as Date,
+        updatedAt: p.updatedAt as Date,
       },
     });
     return FormulaConfig.fromPersistence(data);
@@ -65,7 +65,7 @@ export class PrismaFormulaConfigRepository implements FormulaConfigRepository {
 
   async findByType(formulaType: string): Promise<FormulaConfig[]> {
     const records = await this.prisma.formulaConfiguration.findMany({
-      where: { formula_type: formulaType },
+      where: { formulaType: formulaType },
       orderBy: { name: 'asc' },
     });
     return records.map(FormulaConfig.fromPersistence);
@@ -74,8 +74,8 @@ export class PrismaFormulaConfigRepository implements FormulaConfigRepository {
   async findActiveByType(formulaType: string): Promise<FormulaConfig | null> {
     const data = await this.prisma.formulaConfiguration.findFirst({
       where: {
-        formula_type: formulaType,
-        is_active: true,
+        formulaType: formulaType,
+        isActive: true,
       },
     });
     return data ? FormulaConfig.fromPersistence(data) : null;
@@ -83,8 +83,8 @@ export class PrismaFormulaConfigRepository implements FormulaConfigRepository {
 
   async findActiveAll(): Promise<FormulaConfig[]> {
     const records = await this.prisma.formulaConfiguration.findMany({
-      where: { is_active: true },
-      orderBy: [{ formula_type: 'asc' }, { name: 'asc' }],
+      where: { isActive: true },
+      orderBy: [{ formulaType: 'asc' }, { name: 'asc' }],
     });
     return records.map(FormulaConfig.fromPersistence);
   }

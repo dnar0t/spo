@@ -24,17 +24,17 @@ export class PrismaUserRepository implements UserRepository {
         id: persistence.id as string,
         login: persistence.login as string,
         email: persistence.email as string | null,
-        full_name: persistence.full_name as string | null,
-        youtrack_login: persistence.youtrack_login as string | null,
-        youtrack_user_id: persistence.youtrack_user_id as string | null,
-        ad_login: persistence.ad_login as string | null,
-        is_active: persistence.is_active as boolean,
-        is_blocked: persistence.is_blocked as boolean,
-        employment_date: persistence.employment_date as Date | null,
-        termination_date: persistence.termination_date as Date | null,
-        created_at: persistence.created_at as Date,
-        updated_at: persistence.updated_at as Date,
-        deleted_at: persistence.deleted_at as Date | null,
+        fullName: persistence.fullName as string | null,
+        youtrackLogin: persistence.youtrackLogin as string | null,
+        youtrackUserId: persistence.youtrackUserId as string | null,
+        adLogin: persistence.adLogin as string | null,
+        isActive: persistence.isActive as boolean,
+        isBlocked: persistence.isBlocked as boolean,
+        employmentDate: persistence.employmentDate as Date | null,
+        terminationDate: persistence.terminationDate as Date | null,
+        createdAt: persistence.createdAt as Date,
+        updatedAt: persistence.updatedAt as Date,
+        deletedAt: persistence.deletedAt as Date | null,
         extensions: persistence.extensions as Record<string, unknown> | null,
       },
     });
@@ -48,16 +48,16 @@ export class PrismaUserRepository implements UserRepository {
       data: {
         login: persistence.login as string,
         email: persistence.email as string | null,
-        full_name: persistence.full_name as string | null,
-        youtrack_login: persistence.youtrack_login as string | null,
-        youtrack_user_id: persistence.youtrack_user_id as string | null,
-        ad_login: persistence.ad_login as string | null,
-        is_active: persistence.is_active as boolean,
-        is_blocked: persistence.is_blocked as boolean,
-        employment_date: persistence.employment_date as Date | null,
-        termination_date: persistence.termination_date as Date | null,
-        updated_at: persistence.updated_at as Date,
-        deleted_at: persistence.deleted_at as Date | null,
+        fullName: persistence.fullName as string | null,
+        youtrackLogin: persistence.youtrackLogin as string | null,
+        youtrackUserId: persistence.youtrackUserId as string | null,
+        adLogin: persistence.adLogin as string | null,
+        isActive: persistence.isActive as boolean,
+        isBlocked: persistence.isBlocked as boolean,
+        employmentDate: persistence.employmentDate as Date | null,
+        terminationDate: persistence.terminationDate as Date | null,
+        updatedAt: persistence.updatedAt as Date,
+        deletedAt: persistence.deletedAt as Date | null,
         extensions: persistence.extensions as Record<string, unknown> | null,
       },
     });
@@ -68,8 +68,8 @@ export class PrismaUserRepository implements UserRepository {
     await this.prisma.user.update({
       where: { id },
       data: {
-        is_active: false,
-        deleted_at: new Date(),
+        isActive: false,
+        deletedAt: new Date(),
       },
     });
   }
@@ -86,21 +86,21 @@ export class PrismaUserRepository implements UserRepository {
 
   async findByYouTrackUserId(youtrackUserId: string): Promise<User | null> {
     const data = await this.prisma.user.findFirst({
-      where: { youtrack_user_id: youtrackUserId },
+      where: { youtrackUserId: youtrackUserId },
     });
     return data ? User.fromPersistence(data) : null;
   }
 
   async findByAdLogin(adLogin: string): Promise<User | null> {
     const data = await this.prisma.user.findFirst({
-      where: { ad_login: adLogin },
+      where: { adLogin: adLogin },
     });
     return data ? User.fromPersistence(data) : null;
   }
 
   async findAllActive(): Promise<User[]> {
     const records = await this.prisma.user.findMany({
-      where: { is_active: true, deleted_at: null },
+      where: { isActive: true, deletedAt: null },
     });
     return records.map(User.fromPersistence);
   }
@@ -108,8 +108,8 @@ export class PrismaUserRepository implements UserRepository {
   async findByRole(roleName: string): Promise<User[]> {
     const records = await this.prisma.user.findMany({
       where: {
-        is_active: true,
-        deleted_at: null,
+        isActive: true,
+        deletedAt: null,
         roles: {
           some: {
             role: { name: roleName },
@@ -123,10 +123,10 @@ export class PrismaUserRepository implements UserRepository {
   async findSubordinatesByManagerId(managerId: string): Promise<User[]> {
     const records = await this.prisma.user.findMany({
       where: {
-        is_active: true,
-        deleted_at: null,
+        isActive: true,
+        deletedAt: null,
         employeeProfile: {
-          manager_id: managerId,
+          managerId: managerId,
         },
       },
     });

@@ -20,7 +20,7 @@ export class PrismaEvaluationScaleRepository implements EvaluationScaleRepositor
 
   async findAll(): Promise<EvaluationScale[]> {
     const records = await this.prisma.evaluationScale.findMany({
-      orderBy: [{ scale_type: 'asc' }, { sort_order: 'asc' }],
+      orderBy: [{ scaleType: 'asc' }, { sortOrder: 'asc' }],
     });
     return records.map(EvaluationScale.fromPersistence);
   }
@@ -30,13 +30,13 @@ export class PrismaEvaluationScaleRepository implements EvaluationScaleRepositor
     const data = await this.prisma.evaluationScale.create({
       data: {
         id: p.id as string,
-        scale_type: p.scale_type as string,
+        scaleType: p.scaleType as string,
         name: p.name as string,
         percent: p.percent as number,
-        is_default: p.is_default as boolean,
-        sort_order: p.sort_order as number,
-        created_at: p.created_at as Date,
-        updated_at: p.updated_at as Date,
+        isDefault: p.isDefault as boolean,
+        sortOrder: p.sortOrder as number,
+        createdAt: p.createdAt as Date,
+        updatedAt: p.updatedAt as Date,
       },
     });
     return EvaluationScale.fromPersistence(data);
@@ -47,12 +47,12 @@ export class PrismaEvaluationScaleRepository implements EvaluationScaleRepositor
     const data = await this.prisma.evaluationScale.update({
       where: { id: entity.id },
       data: {
-        scale_type: p.scale_type as string,
+        scaleType: p.scaleType as string,
         name: p.name as string,
         percent: p.percent as number,
-        is_default: p.is_default as boolean,
-        sort_order: p.sort_order as number,
-        updated_at: p.updated_at as Date,
+        isDefault: p.isDefault as boolean,
+        sortOrder: p.sortOrder as number,
+        updatedAt: p.updatedAt as Date,
       },
     });
     return EvaluationScale.fromPersistence(data);
@@ -64,8 +64,8 @@ export class PrismaEvaluationScaleRepository implements EvaluationScaleRepositor
 
   async findByScaleType(scaleType: string): Promise<EvaluationScale[]> {
     const records = await this.prisma.evaluationScale.findMany({
-      where: { scale_type: scaleType },
-      orderBy: { sort_order: 'asc' },
+      where: { scaleType: scaleType },
+      orderBy: { sortOrder: 'asc' },
     });
     return records.map(EvaluationScale.fromPersistence);
   }
@@ -73,8 +73,8 @@ export class PrismaEvaluationScaleRepository implements EvaluationScaleRepositor
   async findDefaultByType(scaleType: string): Promise<EvaluationScale | null> {
     const data = await this.prisma.evaluationScale.findFirst({
       where: {
-        scale_type: scaleType,
-        is_default: true,
+        scaleType: scaleType,
+        isDefault: true,
       },
     });
     return data ? EvaluationScale.fromPersistence(data) : null;

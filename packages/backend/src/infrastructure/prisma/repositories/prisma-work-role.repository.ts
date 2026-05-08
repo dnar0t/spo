@@ -32,8 +32,8 @@ export class PrismaWorkRoleRepository implements WorkRoleRepository {
         id: p.id as string,
         name: p.name as string,
         description: p.description as string | null,
-        created_at: p.created_at as Date,
-        updated_at: p.updated_at as Date,
+        createdAt: p.createdAt as Date,
+        updatedAt: p.updatedAt as Date,
       },
     });
     return WorkRole.fromPersistence(data);
@@ -46,7 +46,7 @@ export class PrismaWorkRoleRepository implements WorkRoleRepository {
       data: {
         name: p.name as string,
         description: p.description as string | null,
-        updated_at: p.updated_at as Date,
+        updatedAt: p.updatedAt as Date,
       },
     });
     return WorkRole.fromPersistence(data);

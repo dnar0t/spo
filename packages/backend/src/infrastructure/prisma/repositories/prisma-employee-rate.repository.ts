@@ -28,15 +28,15 @@ export class PrismaEmployeeRateRepository implements EmployeeRateRepository {
     const data = await this.prisma.employeeRateHistory.create({
       data: {
         id: p.id as string,
-        user_id: p.user_id as string,
-        monthly_salary: p.monthly_salary as number,
-        annual_minutes: p.annual_minutes as number,
-        hourly_rate: p.hourly_rate as number,
-        effective_from: p.effective_from as Date,
-        effective_to: p.effective_to as Date | null,
-        changed_by_id: p.changed_by_id as string,
-        change_reason: p.change_reason as string | null,
-        created_at: p.created_at as Date,
+        userId: p.userId as string,
+        monthlySalary: p.monthlySalary as number,
+        annualMinutes: p.annualMinutes as number,
+        hourlyRate: p.hourlyRate as number,
+        effectiveFrom: p.effectiveFrom as Date,
+        effectiveTo: p.effectiveTo as Date | null,
+        changedById: p.changedById as string,
+        changeReason: p.changeReason as string | null,
+        createdAt: p.createdAt as Date,
       },
     });
     return EmployeeRate.fromPersistence(data);
@@ -47,14 +47,14 @@ export class PrismaEmployeeRateRepository implements EmployeeRateRepository {
     const data = await this.prisma.employeeRateHistory.update({
       where: { id: entity.id },
       data: {
-        user_id: p.user_id as string,
-        monthly_salary: p.monthly_salary as number,
-        annual_minutes: p.annual_minutes as number,
-        hourly_rate: p.hourly_rate as number,
-        effective_from: p.effective_from as Date,
-        effective_to: p.effective_to as Date | null,
-        changed_by_id: p.changed_by_id as string,
-        change_reason: p.change_reason as string | null,
+        userId: p.userId as string,
+        monthlySalary: p.monthlySalary as number,
+        annualMinutes: p.annualMinutes as number,
+        hourlyRate: p.hourlyRate as number,
+        effectiveFrom: p.effectiveFrom as Date,
+        effectiveTo: p.effectiveTo as Date | null,
+        changedById: p.changedById as string,
+        changeReason: p.changeReason as string | null,
       },
     });
     return EmployeeRate.fromPersistence(data);
@@ -66,8 +66,8 @@ export class PrismaEmployeeRateRepository implements EmployeeRateRepository {
 
   async findByUserId(userId: string): Promise<EmployeeRate[]> {
     const records = await this.prisma.employeeRateHistory.findMany({
-      where: { user_id: userId },
-      orderBy: { effective_from: 'desc' },
+      where: { userId: userId },
+      orderBy: { effectiveFrom: 'desc' },
     });
     return records.map(EmployeeRate.fromPersistence);
   }
@@ -78,22 +78,19 @@ export class PrismaEmployeeRateRepository implements EmployeeRateRepository {
 
     const data = await this.prisma.employeeRateHistory.findFirst({
       where: {
-        user_id: userId,
-        effective_from: { lte: normalizedDate },
-        OR: [
-          { effective_to: null },
-          { effective_to: { gte: normalizedDate } },
-        ],
+        userId: userId,
+        effectiveFrom: { lte: normalizedDate },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: normalizedDate } }],
       },
-      orderBy: { effective_from: 'desc' },
+      orderBy: { effectiveFrom: 'desc' },
     });
     return data ? EmployeeRate.fromPersistence(data) : null;
   }
 
   async findHistoryByUserId(userId: string): Promise<EmployeeRate[]> {
     const records = await this.prisma.employeeRateHistory.findMany({
-      where: { user_id: userId },
-      orderBy: { effective_from: 'desc' },
+      where: { userId: userId },
+      orderBy: { effectiveFrom: 'desc' },
     });
     return records.map(EmployeeRate.fromPersistence);
   }
@@ -104,13 +101,10 @@ export class PrismaEmployeeRateRepository implements EmployeeRateRepository {
 
     const records = await this.prisma.employeeRateHistory.findMany({
       where: {
-        effective_from: { lte: now },
-        OR: [
-          { effective_to: null },
-          { effective_to: { gte: now } },
-        ],
+        effectiveFrom: { lte: now },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
       },
-      orderBy: { effective_from: 'desc' },
+      orderBy: { effectiveFrom: 'desc' },
     });
     return records.map(EmployeeRate.fromPersistence);
   }
