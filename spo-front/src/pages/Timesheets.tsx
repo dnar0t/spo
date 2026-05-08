@@ -2033,221 +2033,212 @@ const Timesheets = () => {
   }, [addRowTs]);
 
   return (
-    <AppLayout>
-      <TooltipProvider delayDuration={150}>
-        <PageHeader
-          title="Табели рабочего времени"
-          description="Месячный ввод часов по задачам, согласование по маршруту Сотрудник → Руководитель → Директор"
-          breadcrumbs={[{ label: 'Главная' }, { label: 'Табели' }]}
-          actions={
-            <div className="flex items-center gap-2">
-              <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-                <SelectTrigger className="h-8 w-[140px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS_RU.map((m, i) => (
-                    <SelectItem key={i} value={String(i + 1)} className="text-xs">
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-                <SelectTrigger className="h-8 w-[90px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2025, 2026, 2027].map((y) => (
-                    <SelectItem key={y} value={String(y)} className="text-xs">
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          }
-        />
+    <TooltipProvider delayDuration={150}>
+      <PageHeader
+        title="Табели рабочего времени"
+        description="Месячный ввод часов по задачам, согласование по маршруту Сотрудник → Руководитель → Директор"
+        breadcrumbs={[{ label: 'Главная' }, { label: 'Табели' }]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS_RU.map((m, i) => (
+                  <SelectItem key={i} value={String(i + 1)} className="text-xs">
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+              <SelectTrigger className="h-8 w-[90px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[2025, 2026, 2027].map((y) => (
+                  <SelectItem key={y} value={String(y)} className="text-xs">
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
 
-        <div className="p-6 space-y-4">{renderUnified()}</div>
+      <div className="p-6 space-y-4">{renderUnified()}</div>
 
-        {/* Reject dialog */}
-        <Dialog open={!!rejectDialog} onOpenChange={(o) => !o && setRejectDialog(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Отклонить табель</DialogTitle>
-              <DialogDescription>
-                Сотрудник получит уведомление с указанным комментарием и сможет скорректировать
-                данные.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor="reject-comment">Комментарий (обязательно)</Label>
-              <Textarea
-                id="reject-comment"
-                rows={4}
-                value={rejectComment}
-                onChange={(e) => setRejectComment(e.target.value)}
-                placeholder="Например: уточните распределение часов между ERP-201 и ERP-204"
-              />
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRejectDialog(null)}>
-                Отмена
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={rejectComment.trim().length < 3}
-                onClick={() => {
-                  if (rejectTs) reject(rejectTs, rejectComment.trim());
-                  setRejectDialog(null);
-                }}
-              >
-                Отклонить
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* Reject dialog */}
+      <Dialog open={!!rejectDialog} onOpenChange={(o) => !o && setRejectDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Отклонить табель</DialogTitle>
+            <DialogDescription>
+              Сотрудник получит уведомление с указанным комментарием и сможет скорректировать
+              данные.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reject-comment">Комментарий (обязательно)</Label>
+            <Textarea
+              id="reject-comment"
+              rows={4}
+              value={rejectComment}
+              onChange={(e) => setRejectComment(e.target.value)}
+              placeholder="Например: уточните распределение часов между ERP-201 и ERP-204"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialog(null)}>
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={rejectComment.trim().length < 3}
+              onClick={() => {
+                if (rejectTs) reject(rejectTs, rejectComment.trim());
+                setRejectDialog(null);
+              }}
+            >
+              Отклонить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* Add row dialog */}
-        <Dialog open={!!addRowDialog} onOpenChange={(o) => !o && setAddRowDialog(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Добавить задачу из YouTrack</DialogTitle>
-              <DialogDescription>
-                Задача будет отмечена как «Вне плана» — учитывается в фактических часах, но не
-                входила в план месяца.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2">
-              <Label>Задача</Label>
-              <Select value={addIssueId} onValueChange={setAddIssueId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите задачу..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {addableIssues.map((b) => (
-                    <SelectItem key={b.idReadable} value={b.idReadable}>
-                      <span className="font-mono text-xs mr-2">{b.idReadable}</span>
-                      <span className="text-xs">{b.summary}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setAddRowDialog(null)}>
-                Отмена
-              </Button>
-              <Button
-                disabled={!addIssueId}
-                onClick={() => {
-                  if (addRowTs && addIssueId) addRow(addRowTs, addIssueId);
-                  setAddIssueId('');
-                  setAddRowDialog(null);
-                }}
-              >
-                Добавить
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* Add row dialog */}
+      <Dialog open={!!addRowDialog} onOpenChange={(o) => !o && setAddRowDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Добавить задачу из YouTrack</DialogTitle>
+            <DialogDescription>
+              Задача будет отмечена как «Вне плана» — учитывается в фактических часах, но не входила
+              в план месяца.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Задача</Label>
+            <Select value={addIssueId} onValueChange={setAddIssueId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите задачу..." />
+              </SelectTrigger>
+              <SelectContent>
+                {addableIssues.map((b) => (
+                  <SelectItem key={b.idReadable} value={b.idReadable}>
+                    <span className="font-mono text-xs mr-2">{b.idReadable}</span>
+                    <span className="text-xs">{b.summary}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddRowDialog(null)}>
+              Отмена
+            </Button>
+            <Button
+              disabled={!addIssueId}
+              onClick={() => {
+                if (addRowTs && addIssueId) addRow(addRowTs, addIssueId);
+                setAddIssueId('');
+                setAddRowDialog(null);
+              }}
+            >
+              Добавить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* History dialog */}
-        <Dialog open={!!historyDialog} onOpenChange={(o) => !o && setHistoryDialog(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>История табеля</DialogTitle>
-              <DialogDescription>
-                Аудит переходов статусов и изменений строк (часы, оценки) с автором и временем.
-              </DialogDescription>
-            </DialogHeader>
-            <Tabs defaultValue="status">
-              <TabsList>
-                <TabsTrigger value="status">
-                  Согласование ({historyTs?.history.length ?? 0})
-                </TabsTrigger>
-                <TabsTrigger value="rows">
-                  Изменения строк ({historyTs?.rowChanges.length ?? 0})
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="status" className="space-y-2 max-h-[400px] overflow-auto mt-3">
-                {historyTs?.history.map((h, i) => {
-                  const actor = orgEmployees.find((e) => e.id === h.actorId);
+      {/* History dialog */}
+      <Dialog open={!!historyDialog} onOpenChange={(o) => !o && setHistoryDialog(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>История табеля</DialogTitle>
+            <DialogDescription>
+              Аудит переходов статусов и изменений строк (часы, оценки) с автором и временем.
+            </DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="status">
+            <TabsList>
+              <TabsTrigger value="status">
+                Согласование ({historyTs?.history.length ?? 0})
+              </TabsTrigger>
+              <TabsTrigger value="rows">
+                Изменения строк ({historyTs?.rowChanges.length ?? 0})
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="status" className="space-y-2 max-h-[400px] overflow-auto mt-3">
+              {historyTs?.history.map((h, i) => {
+                const actor = orgEmployees.find((e) => e.id === h.actorId);
+                return (
+                  <div key={i} className="border border-border rounded-md p-2 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">
+                        {h.fromStatus
+                          ? `${TIMESHEET_STATUS_LABEL_RU[h.fromStatus]} → ${TIMESHEET_STATUS_LABEL_RU[h.toStatus]}`
+                          : `Создан: ${TIMESHEET_STATUS_LABEL_RU[h.toStatus]}`}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {new Date(h.at).toLocaleString('ru-RU')}
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground">Автор: {actor?.name ?? h.actorId}</div>
+                    {h.comment && <div className="italic text-foreground/80">«{h.comment}»</div>}
+                  </div>
+                );
+              })}
+            </TabsContent>
+            <TabsContent value="rows" className="space-y-2 max-h-[400px] overflow-auto mt-3">
+              {historyTs?.rowChanges.length === 0 && (
+                <div className="text-center text-xs text-muted-foreground py-6">
+                  Изменений по строкам ещё не было.
+                </div>
+              )}
+              {historyTs?.rowChanges
+                .slice()
+                .reverse()
+                .map((c, i) => {
+                  const actor = orgEmployees.find((e) => e.id === c.actorId);
+                  const row = historyTs.rows.find((r) => r.id === c.rowId);
+                  const fieldLabel: Record<typeof c.field, string> = {
+                    minutes: 'Часы',
+                    managerGrade: 'Оценка руководителя',
+                    businessGrade: 'Оценка бизнеса',
+                  };
                   return (
                     <div key={i} className="border border-border rounded-md p-2 text-xs space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">
-                          {h.fromStatus
-                            ? `${TIMESHEET_STATUS_LABEL_RU[h.fromStatus]} → ${TIMESHEET_STATUS_LABEL_RU[h.toStatus]}`
-                            : `Создан: ${TIMESHEET_STATUS_LABEL_RU[h.toStatus]}`}
+                          <span className="font-mono mr-1">{row?.issueIdReadable ?? c.rowId}</span>·{' '}
+                          {fieldLabel[c.field]}
                         </span>
                         <span className="text-muted-foreground">
-                          {new Date(h.at).toLocaleString('ru-RU')}
+                          {new Date(c.at).toLocaleString('ru-RU')}
                         </span>
                       </div>
-                      <div className="text-muted-foreground">Автор: {actor?.name ?? h.actorId}</div>
-                      {h.comment && <div className="italic text-foreground/80">«{h.comment}»</div>}
+                      <div>
+                        <span className="text-muted-foreground">Было:</span>{' '}
+                        <span className="line-through">{c.fromValue}</span>{' '}
+                        <span className="text-muted-foreground">→ Стало:</span>{' '}
+                        <span className="font-medium text-emerald-700">{c.toValue}</span>
+                      </div>
+                      <div className="text-muted-foreground">Автор: {actor?.name ?? c.actorId}</div>
                     </div>
                   );
                 })}
-              </TabsContent>
-              <TabsContent value="rows" className="space-y-2 max-h-[400px] overflow-auto mt-3">
-                {historyTs?.rowChanges.length === 0 && (
-                  <div className="text-center text-xs text-muted-foreground py-6">
-                    Изменений по строкам ещё не было.
-                  </div>
-                )}
-                {historyTs?.rowChanges
-                  .slice()
-                  .reverse()
-                  .map((c, i) => {
-                    const actor = orgEmployees.find((e) => e.id === c.actorId);
-                    const row = historyTs.rows.find((r) => r.id === c.rowId);
-                    const fieldLabel: Record<typeof c.field, string> = {
-                      minutes: 'Часы',
-                      managerGrade: 'Оценка руководителя',
-                      businessGrade: 'Оценка бизнеса',
-                    };
-                    return (
-                      <div
-                        key={i}
-                        className="border border-border rounded-md p-2 text-xs space-y-1"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">
-                            <span className="font-mono mr-1">
-                              {row?.issueIdReadable ?? c.rowId}
-                            </span>
-                            · {fieldLabel[c.field]}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {new Date(c.at).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Было:</span>{' '}
-                          <span className="line-through">{c.fromValue}</span>{' '}
-                          <span className="text-muted-foreground">→ Стало:</span>{' '}
-                          <span className="font-medium text-emerald-700">{c.toValue}</span>
-                        </div>
-                        <div className="text-muted-foreground">
-                          Автор: {actor?.name ?? c.actorId}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </TabsContent>
-            </Tabs>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setHistoryDialog(null)}>
-                Закрыть
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </TooltipProvider>
-    </AppLayout>
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryDialog(null)}>
+              Закрыть
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   );
 };
 
