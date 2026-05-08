@@ -205,33 +205,56 @@ const Settings = () => {
 
   const reSync = async (i: IntegrationDto) => {
     try {
-      const resp = await fetch('/api/youtrack/test-connection', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getAccessToken() } });
+      const resp = await fetch('/api/youtrack/test-connection', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + getAccessToken() },
+      });
       const data = await resp.json();
       if (data.success) {
         toast({ title: `Проверка соединения · ${i.name}`, description: 'Соединение установлено.' });
       } else {
-        toast({ title: `Ошибка · ${i.name}`, description: data.error?.message || 'Не удалось подключиться', variant: 'destructive' });
+        toast({
+          title: `Ошибка · ${i.name}`,
+          description: data.error?.message || 'Не удалось подключиться',
+          variant: 'destructive',
+        });
       }
     } catch (e) {
-      toast({ title: `Ошибка · ${i.name}`, description: 'Сервер недоступен', variant: 'destructive' });
+      toast({
+        title: `Ошибка · ${i.name}`,
+        description: 'Сервер недоступен',
+        variant: 'destructive',
+      });
     }
   };
 
   const forceSync = async (i: IntegrationDto) => {
     try {
-      const resp = await fetch('/api/youtrack/sync', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getAccessToken() } });
+      const resp = await fetch('/api/youtrack/sync', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + getAccessToken() },
+      });
       const data = await resp.json();
       if (data.success) {
         toast({ title: `Синхронизация · ${i.name}`, description: 'Синхронизация запущена.' });
       } else {
-        toast({ title: `Ошибка · ${i.name}`, description: data.error?.message || 'Не удалось запустить синхронизацию', variant: 'destructive' });
+        toast({
+          title: `Ошибка · ${i.name}`,
+          description: data.error?.message || 'Не удалось запустить синхронизацию',
+          variant: 'destructive',
+        });
       }
     } catch (e) {
-      toast({ title: `Ошибка · ${i.name}`, description: 'Сервер недоступен', variant: 'destructive' });
+      toast({
+        title: `Ошибка · ${i.name}`,
+        description: 'Сервер недоступен',
+        variant: 'destructive',
+      });
     }
   };
 
   return (
+    <>
       <PageHeader
         title="Настройки системы"
         description="Параметры расчёта спринта, внешние интеграции и справочники СПО (ТЗ §8)."
@@ -446,6 +469,7 @@ const Settings = () => {
           </TabsContent>
         </Tabs>
       </div>
+    </>
   );
 };
 
