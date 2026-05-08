@@ -94,11 +94,17 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
     abortRef.current = abort;
 
     try {
+      // Таймаут 30 секунд на запуск синхронизации
+      const timeoutId = setTimeout(() => abort.abort(), 30000);
       const resp = await fetch('/api/youtrack/sync', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + getAccessToken(), 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: 'Bearer ' + getAccessToken(),
+          'Content-Type': 'application/json',
+        },
         signal: abort.signal,
       });
+      clearTimeout(timeoutId);
       const data = await resp.json();
       if (!data.success) {
         setError(data.error?.message || 'Не удалось запустить синхронизацию');
@@ -118,7 +124,7 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
       pollingRef.current = setInterval(async () => {
         try {
           const r = await fetch('/api/youtrack/sync-runs/' + runId, {
-            headers: { 'Authorization': 'Bearer ' + getAccessToken() },
+            headers: { Authorization: 'Bearer ' + getAccessToken() },
             signal: abort.signal,
           });
           const d = await r.json();
@@ -135,9 +141,24 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
         }
       }, 2000);
     } catch (e: any) {
-      if (e.name !== 'AbortError') {
-        setError(e.message || 'Ошибка соединения');
+      if (e.name === 'AbortError') {
+        setError('Сервер не отвечает. Проверьте, настроена ли интеграция с YouTrack.');
+      } else {
+        setError(e.message || 'Ошибка соединения с сервером.');
       }
+      setStatus({
+        id: '',
+        triggerType: '',
+        status: 'FAILED',
+        totalIssues: 0,
+        createdCount: 0,
+        updatedCount: 0,
+        errorCount: 0,
+        startedAt: '',
+        completedAt: null,
+        duration: null,
+        errors: null,
+      });
       setLoading(false);
     }
   }, []);
@@ -164,12 +185,20 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
     onOpenChange(false);
   };
 
-  const progressPercent = status && status.totalIssues > 0
-    ? Math.min(100, Math.round((totalProcessed / Math.max(status.totalIssues, 1)) * 100))
-    : status?.status === 'COMPLETED' ? 100 : 0;
+  const progressPercent =
+    status && status.totalIssues > 0
+      ? Math.min(100, Math.round((totalProcessed / Math.max(status.totalIssues, 1)) * 100))
+      : status?.status === 'COMPLETED'
+        ? 100
+        : 0;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o && !isRunning) onOpenChange(o); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o && !isRunning) onOpenChange(o);
+      }}
+    >
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -193,12 +222,15 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
             const isActive = i === stageIdx && isRunning;
             const isPast = i < stageIdx || (i === stageIdx && (isDone || isFailed));
             return (
-              <div key={s.id} className={cn(
-                'flex items-center gap-2 text-sm px-2 py-1 rounded',
-                isActive && 'bg-primary/10 text-primary font-medium',
-                isPast && 'text-muted-foreground',
-                !isPast && !isActive && 'text-muted-foreground/60',
-              )}>
+              <div
+                key={s.id}
+                className={cn(
+                  'flex items-center gap-2 text-sm px-2 py-1 rounded',
+                  isActive && 'bg-primary/10 text-primary font-medium',
+                  isPast && 'text-muted-foreground',
+                  !isPast && !isActive && 'text-muted-foreground/60',
+                )}
+              >
                 {isActive ? (
                   <Loader2 className="h-4 w-4 animate-spin shrink-0 text-primary" />
                 ) : isPast ? (
@@ -208,7 +240,10 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
                 )}
                 <span>{s.label}</span>
                 {isPast && s.id === 'done' && (
-                  <Badge variant="outline" className="ml-auto text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                  <Badge
+                    variant="outline"
+                    className="ml-auto text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200"
+                  >
                     {status?.totalIssues || 0} задач, {totalProcessed} обработано
                   </Badge>
                 )}
@@ -221,7 +256,9 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
         {isRunning && status && status.totalIssues > 0 && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Обработано: {totalProcessed} из {status.totalIssues} задач</span>
+              <span>
+                Обработано: {totalProcessed} из {status.totalIssues} задач
+              </span>
               <span>{progressPercent}%</span>
             </div>
             <Progress value={progressPercent} className="h-2" />
@@ -234,10 +271,10 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             <div>
               <p className="font-medium">Ошибка синхронизации</p>
-              <p className="text-xs mt-0.5">{error || status?.errors ? JSON.stringify(status?.errors) : 'Неизвестная ошибка'}</p>
-              {totalErrors > 0 && (
-                <p className="text-xs mt-1">Количество ошибок: {totalErrors}</p>
-              )}
+              <p className="text-xs mt-0.5">
+                {error || status?.errors ? JSON.stringify(status?.errors) : 'Неизвестная ошибка'}
+              </p>
+              {totalErrors > 0 && <p className="text-xs mt-1">Количество ошибок: {totalErrors}</p>}
             </div>
           </div>
         )}
