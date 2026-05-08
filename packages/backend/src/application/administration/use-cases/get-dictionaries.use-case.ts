@@ -44,22 +44,22 @@ export class GetDictionariesUseCase {
         this.workRoleRepository.findAll(),
         this.evaluationScaleRepository.findAll(),
         this.prisma.youtrackIssue.findMany({
-          where: { project_name: { not: null } },
-          distinct: ['project_name'],
-          select: { project_name: true },
-          orderBy: { project_name: 'asc' },
+          where: { projectName: { not: null } },
+          distinct: ['projectName'],
+          select: { projectName: true },
+          orderBy: { projectName: 'asc' },
         }),
         this.prisma.youtrackIssue.findMany({
-          where: { system_name: { not: null } },
-          distinct: ['system_name'],
-          select: { system_name: true },
-          orderBy: { system_name: 'asc' },
+          where: { systemName: { not: null } },
+          distinct: ['systemName'],
+          select: { systemName: true },
+          orderBy: { systemName: 'asc' },
         }),
         this.prisma.workItem.findMany({
-          where: { work_type_name: { not: null } },
-          distinct: ['work_type_name'],
-          select: { work_type_name: true },
-          orderBy: { work_type_name: 'asc' },
+          where: { workTypeName: { not: null } },
+          distinct: ['workTypeName'],
+          select: { workTypeName: true },
+          orderBy: { workTypeName: 'asc' },
         }),
       ]);
 
@@ -89,13 +89,13 @@ export class GetDictionariesUseCase {
         sortOrder: scale.sortOrder,
       })),
       projects: projectsResult
-        .map((r) => r.project_name)
+        .map((r) => r.projectName)
         .filter((name): name is string => name !== null),
       systems: systemsResult
-        .map((r) => r.system_name)
+        .map((r) => r.systemName)
         .filter((name): name is string => name !== null),
       workTypes: workTypesResult
-        .map((r) => r.work_type_name)
+        .map((r) => r.workTypeName)
         .filter((name): name is string => name !== null),
     };
   }

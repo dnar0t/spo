@@ -72,11 +72,8 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get workItem() {
     return this._client.workItem;
   }
-  get integrationSetting() {
-    return this._client.integrationSetting;
-  }
   get integrationSettings() {
-    return this._client.integrationSetting;
+    return this._client.integrationSettings;
   }
   get syncRun() {
     return this._client.syncRun;
