@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WorkflowStatus = exports.ReportStatus = exports.ReportType = exports.WorkItemType = exports.PeriodState = exports.Role = void 0;
+exports.WorkflowStatus = exports.ReportStatus = exports.ReportType = exports.WorkItemType = exports.PERIOD_STATE = exports.PeriodState = exports.ROLES = exports.Role = void 0;
 var Role;
 (function (Role) {
     Role["ADMIN"] = "admin";
@@ -9,6 +9,17 @@ var Role;
     Role["EMPLOYEE"] = "employee";
     Role["VIEWER"] = "viewer";
 })(Role || (exports.Role = Role = {}));
+exports.ROLES = {
+    ADMIN: 'admin',
+    DIRECTOR: 'director',
+    MANAGER: 'manager',
+    EMPLOYEE: 'employee',
+    BUSINESS: 'business',
+    ACCOUNTANT: 'accountant',
+    VIEWER: 'viewer',
+    HR: 'hr',
+    FINANCE: 'finance',
+};
 var PeriodState;
 (function (PeriodState) {
     PeriodState["DRAFT"] = "draft";
@@ -17,6 +28,14 @@ var PeriodState;
     PeriodState["APPROVED"] = "approved";
     PeriodState["ARCHIVED"] = "archived";
 })(PeriodState || (exports.PeriodState = PeriodState = {}));
+exports.PERIOD_STATE = {
+    PLANNING: 'PLANNING',
+    PLAN_FIXED: 'PLAN_FIXED',
+    FACT_LOADED: 'FACT_LOADED',
+    EVALUATIONS_DONE: 'EVALUATIONS_DONE',
+    PERIOD_CLOSED: 'PERIOD_CLOSED',
+    PERIOD_REOPENED: 'PERIOD_REOPENED',
+};
 var WorkItemType;
 (function (WorkItemType) {
     WorkItemType["TASK"] = "task";

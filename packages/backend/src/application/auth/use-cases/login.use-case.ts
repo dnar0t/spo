@@ -138,7 +138,7 @@ export class LoginUseCase {
       where: { userId: user.id },
       include: { role: true },
     });
-    const roles: string[] = userRoles.map((ur) => ur.role.name);
+    const roles: string[] = userRoles.map((ur: { role: { name: string } }) => ur.role.name);
 
     // 9. Generate access token with roles
     const accessToken = this.jwtService.generateAccessToken({

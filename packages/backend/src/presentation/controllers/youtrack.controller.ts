@@ -37,8 +37,8 @@ import {
   SyncRunFilter,
   IssueFilter,
 } from '../../application/integration/ports/youtrack-repository';
+import { YouTrackApiClient } from '../../infrastructure/youtrack/youtrack-api.client';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('youtrack')
 export class YouTrackController {
   private readonly logger = new Logger(YouTrackController.name);
@@ -51,11 +51,13 @@ export class YouTrackController {
     private readonly getSyncRunDetailUseCase: GetSyncRunDetailUseCase,
     private readonly getIssuesUseCase: GetYouTrackIssuesUseCase,
     private readonly getStatsUseCase: GetYouTrackStatsUseCase,
+    private readonly apiClient: YouTrackApiClient,
   ) {}
 
   /**
    * Проверка статуса подключения к YouTrack
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'director', 'manager', 'viewer')
   @Get('status')
   async getStatus() {
@@ -65,6 +67,7 @@ export class YouTrackController {
   /**
    * Тест подключения к YouTrack API
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'director')
   @Post('test-connection')
   @HttpCode(HttpStatus.OK)
@@ -75,6 +78,7 @@ export class YouTrackController {
   /**
    * Запуск полной синхронизации
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'director')
   @Post('sync')
   @HttpCode(HttpStatus.ACCEPTED)
@@ -86,6 +90,7 @@ export class YouTrackController {
   /**
    * История синхронизаций
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'director', 'manager', 'viewer')
   @Get('sync-runs')
   async getSyncRuns(@Query('limit') limit: string = '10', @Query('offset') offset: string = '0') {
@@ -96,6 +101,7 @@ export class YouTrackController {
   /**
    * Детали конкретной синхронизации с логами
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'director', 'manager')
   @Get('sync-runs/:id')
   async getSyncRunDetail(@Param('id') id: string) {
@@ -103,8 +109,56 @@ export class YouTrackController {
   }
 
   /**
+   * Публичный endpoint для опроса статуса синхронизации (без JWT).
+   * Используется SyncDialog для отслеживания прогресса.
+   * Возвращает только базовый статус, без логов и деталей.
+   * Этот endpoint НЕ защищён JwtAuthGuard/RolesGuard.
+   */
+  @Get('sync-runs/:id/status')
+  async getSyncRunPublicStatus(@Param('id') id: string) {
+    try {
+      const detail = await this.getSyncRunDetailUseCase.execute(id);
+      if (!detail) return { status: 'UNKNOWN' };
+      return {
+        id: detail.id,
+        status: detail.status,
+        totalIssues: detail.totalIssues,
+        createdCount: detail.createdCount,
+        updatedCount: detail.updatedCount,
+        errorCount: detail.errorCount,
+        startedAt: detail.startedAt,
+        completedAt: detail.completedAt,
+        duration: detail.duration,
+        currentStage: detail.currentStage,
+        stageDetails: detail.stageDetails,
+        currentStage: detail.currentStage,
+        stageDetails: detail.stageDetails,
+      };
+    } catch {
+      return { status: 'ERROR' };
+    }
+  }
+
+  /**
+   * DEBUG: проверить что клиент YouTrack API реально работает
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'director')
+  @Get('debug-ping')
+  async debugPing() {
+    await this.apiClient.reloadConfig();
+    try {
+      const me = await this.apiClient.get<any>('/users/me', { fields: 'id,login,fullName' });
+      return { success: true, user: me.login, configured: this.apiClient.isConfigured };
+    } catch (err: any) {
+      return { success: false, error: err.message, configured: this.apiClient.isConfigured };
+    }
+  }
+
+  /**
    * Список синхронизированных задач с фильтрацией
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'director', 'manager', 'viewer')
   @Get('issues')
   async getIssues(
@@ -132,6 +186,7 @@ export class YouTrackController {
   /**
    * Статистика по интеграции
    */
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'director', 'manager', 'viewer')
   @Get('stats')
   async getStats() {

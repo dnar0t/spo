@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from './auth';
 
@@ -62,6 +62,9 @@ async function request<T = unknown>(endpoint: string, options: RequestOptions = 
 
   const requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    Pragma: 'no-cache',
+    Expires: '0',
     ...headers,
   };
 
@@ -123,6 +126,12 @@ async function request<T = unknown>(endpoint: string, options: RequestOptions = 
     return undefined as T;
   }
 
+  // Check if response body is empty - some endpoints return 200 with empty body
+  const contentLength = response.headers.get('content-length');
+  if (contentLength === '0') {
+    return undefined as T;
+  }
+
   const json = await response.json();
   // Распаковываем обёртку { success, data }
   if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
@@ -167,3 +176,6 @@ export const api = {
 
 export { ApiError };
 export type { RequestOptions };
+
+// Export request for direct use
+export { request };

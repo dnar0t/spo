@@ -27,11 +27,8 @@ export abstract class DomainError extends Error {
  */
 export class NotFoundError extends DomainError {
   constructor(entityName: string, id: string | number, details?: Record<string, unknown>) {
-    super(
-      `${entityName} with id "${id}" not found`,
-      'NOT_FOUND',
-      { entityName, id, ...details },
-    );
+    const extra = Object.assign({ entityName, id }, details || {});
+    super(`${entityName} with id "${id}" not found`, 'NOT_FOUND', extra);
   }
 }
 
@@ -58,11 +55,8 @@ export class BusinessRuleError extends DomainError {
  */
 export class InvalidArgumentError extends DomainError {
   constructor(argumentName: string, reason: string, details?: Record<string, unknown>) {
-    super(
-      `Invalid argument "${argumentName}": ${reason}`,
-      'INVALID_ARGUMENT',
-      { argumentName, reason, ...details },
-    );
+    const extra = Object.assign({ argumentName, reason }, details || {});
+    super(`Invalid argument "${argumentName}": ${reason}`, 'INVALID_ARGUMENT', extra);
   }
 }
 

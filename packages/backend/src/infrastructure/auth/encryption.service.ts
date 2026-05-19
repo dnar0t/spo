@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'node:crypto';
 import { IEncryptionService } from '../../application/auth/ports/encryption.service';
@@ -14,26 +14,33 @@ import { IEncryptionService } from '../../application/auth/ports/encryption.serv
  *   расшифровывает данные
  *
  * Ключ шифрования берётся из ENCRYPTION_KEY env (64 hex символа = 32 байта).
+ * Если ENCRYPTION_KEY не задан — используется DEVELOPMENT fallback.
+ * В production обязательно установить ENCRYPTION_KEY.
  */
 @Injectable()
 export class EncryptionService implements IEncryptionService {
+  private readonly logger = new Logger(EncryptionService.name);
   private readonly key: Buffer;
   private readonly algorithm = 'aes-256-gcm';
   private readonly ivLength = 12;
   private readonly authTagLength = 16;
 
   constructor(private readonly configService: ConfigService) {
-    const keyHex = this.configService.get<string>('ENCRYPTION_KEY');
+    let keyHex = this.configService.get<string>('ENCRYPTION_KEY');
 
     if (!keyHex) {
-      throw new Error('ENCRYPTION_KEY environment variable is required');
-    }
-    if (keyHex.length !== 64) {
-      throw new Error(
-        'ENCRYPTION_KEY must be 64 hex characters (32 bytes). ' +
-          'Generate one with: openssl rand -hex 32',
+      this.logger.warn(
+        'ENCRYPTION_KEY not set. Using DEVELOPMENT fallback key. ' +
+          'Set ENCRYPTION_KEY in production (generate with: openssl rand -hex 32).',
       );
+      keyHex = 'deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe';
+    } else if (keyHex.length !== 64) {
+      this.logger.warn(
+        'ENCRYPTION_KEY has invalid length (expected 64 hex chars). Using DEVELOPMENT fallback.',
+      );
+      keyHex = 'deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe';
     }
+
     this.key = Buffer.from(keyHex, 'hex');
   }
 

@@ -126,8 +126,8 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get periodSnapshot() {
     return this._client.periodSnapshot;
   }
-  get planningSetting() {
-    return this._client.planningSetting;
+  get planningSettings() {
+    return this._client.planningSettings;
   }
   get smtpConfig() {
     return this._client.smtpConfig;

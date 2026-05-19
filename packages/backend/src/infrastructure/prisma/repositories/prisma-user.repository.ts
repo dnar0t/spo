@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma.service';
 import { UserRepository } from '../../../domain/repositories/user.repository';
 import { User } from '../../../domain/entities/user.entity';
@@ -18,47 +19,45 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async save(entity: User): Promise<User> {
-    const persistence = entity.toPersistence();
     const data = await this.prisma.user.create({
       data: {
-        id: persistence.id as string,
-        login: persistence.login as string,
-        email: persistence.email as string | null,
-        fullName: persistence.fullName as string | null,
-        youtrackLogin: persistence.youtrackLogin as string | null,
-        youtrackUserId: persistence.youtrackUserId as string | null,
-        adLogin: persistence.adLogin as string | null,
-        isActive: persistence.isActive as boolean,
-        isBlocked: persistence.isBlocked as boolean,
-        employmentDate: persistence.employmentDate as Date | null,
-        terminationDate: persistence.terminationDate as Date | null,
-        createdAt: persistence.createdAt as Date,
-        updatedAt: persistence.updatedAt as Date,
-        deletedAt: persistence.deletedAt as Date | null,
-        extensions: persistence.extensions as Record<string, unknown> | null,
+        id: entity.id,
+        login: entity.login,
+        email: entity.email,
+        fullName: entity.fullName,
+        youtrackLogin: entity.youtrackLogin,
+        youtrackUserId: entity.youtrackUserId,
+        adLogin: entity.adLogin,
+        isActive: entity.isActive,
+        isBlocked: entity.isBlocked,
+        employmentDate: entity.employmentDate,
+        terminationDate: entity.terminationDate,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+        deletedAt: entity.deletedAt,
+        extensions: entity.extensions,
       },
     });
     return User.fromPersistence(data);
   }
 
   async update(entity: User): Promise<User> {
-    const persistence = entity.toPersistence();
     const data = await this.prisma.user.update({
       where: { id: entity.id },
       data: {
-        login: persistence.login as string,
-        email: persistence.email as string | null,
-        fullName: persistence.fullName as string | null,
-        youtrackLogin: persistence.youtrackLogin as string | null,
-        youtrackUserId: persistence.youtrackUserId as string | null,
-        adLogin: persistence.adLogin as string | null,
-        isActive: persistence.isActive as boolean,
-        isBlocked: persistence.isBlocked as boolean,
-        employmentDate: persistence.employmentDate as Date | null,
-        terminationDate: persistence.terminationDate as Date | null,
-        updatedAt: persistence.updatedAt as Date,
-        deletedAt: persistence.deletedAt as Date | null,
-        extensions: persistence.extensions as Record<string, unknown> | null,
+        login: entity.login,
+        email: entity.email,
+        fullName: entity.fullName,
+        youtrackLogin: entity.youtrackLogin,
+        youtrackUserId: entity.youtrackUserId,
+        adLogin: entity.adLogin,
+        isActive: entity.isActive,
+        isBlocked: entity.isBlocked,
+        employmentDate: entity.employmentDate,
+        terminationDate: entity.terminationDate,
+        updatedAt: entity.updatedAt,
+        deletedAt: entity.deletedAt,
+        extensions: entity.extensions,
       },
     });
     return User.fromPersistence(data);
@@ -131,5 +130,26 @@ export class PrismaUserRepository implements UserRepository {
       },
     });
     return records.map(User.fromPersistence);
+  }
+
+  async findUserRoleNames(userId: string): Promise<string[]> {
+    const roles = await this.prisma.userRole.findMany({
+      where: { userId },
+      include: { role: true },
+    });
+    return roles.map((ur) => ur.role.name);
+  }
+
+  async syncRoles(userId: string, roleIds: string[]): Promise<void> {
+    await this.prisma.userRole.deleteMany({ where: { userId } });
+    if (roleIds.length > 0) {
+      await this.prisma.userRole.createMany({
+        data: roleIds.map((roleId) => ({
+          id: uuidv4(),
+          userId,
+          roleId,
+        })),
+      });
+    }
   }
 }

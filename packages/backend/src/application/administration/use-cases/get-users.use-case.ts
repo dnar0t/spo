@@ -15,7 +15,7 @@ export interface GetUsersQuery {
 }
 
 export interface PaginatedResult<T> {
-  items: T[];
+  data: T[];
   total: number;
   page: number;
   limit: number;
@@ -57,23 +57,30 @@ export class GetUsersUseCase {
     const startIndex = (page - 1) * limit;
     const paginatedItems = filtered.slice(startIndex, startIndex + limit);
 
+    const items = await Promise.all(
+      paginatedItems.map(async (user) => {
+        const userRoles = await this.userRepository.findUserRoleNames(user.id);
+        return {
+          id: user.id,
+          login: user.login,
+          email: user.email,
+          fullName: user.fullName,
+          roles: userRoles,
+          canPlan: (user.extensions && (user.extensions as any).canPlan === true) || false,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          abacProjects: [],
+          abacSystems: [],
+          abacRoles: [],
+          twoFactorEnabled: false,
+          source: 'manual',
+        };
+      }),
+    );
+
     return {
-      items: paginatedItems.map((user) => ({
-        id: user.id,
-        login: user.login,
-        email: user.email,
-        fullName: user.fullName,
-        roles: [],
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        // ABAC-атрибуты — заглушки (БД пока не содержит эти поля)
-        abacProjects: [],
-        abacSystems: [],
-        abacRoles: [],
-        twoFactorEnabled: false,
-        source: 'manual',
-      })),
+      data: items,
       total,
       page,
       limit,

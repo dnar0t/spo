@@ -2,7 +2,7 @@ import { Controller, Get, HttpException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 
 @Controller('health')
-export class HealthController {
+export class SysHealthController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()

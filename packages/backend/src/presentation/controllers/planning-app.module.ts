@@ -20,6 +20,7 @@ import { PrismaPlannedTaskRepository } from '../../infrastructure/prisma/reposit
 import { PrismaSprintPlanRepository } from '../../infrastructure/prisma/repositories/prisma-sprint-plan.repository';
 import { PrismaPeriodTransitionRepository } from '../../infrastructure/prisma/repositories/prisma-period-transition.repository';
 import { PrismaUserRepository } from '../../infrastructure/prisma/repositories/prisma-user.repository';
+import { PrismaPlanningSettingsRepository } from '../../infrastructure/prisma/repositories/prisma-planning-settings.repository';
 import { PlanningController } from './planning.controller';
 import { CreatePeriodUseCase } from '../../application/planning/use-cases/create-period.use-case';
 import { UpdatePeriodUseCase } from '../../application/planning/use-cases/update-period.use-case';
@@ -113,16 +114,16 @@ class EventBusAdapter {
     },
 
     // --- GetBacklogUseCase ---
-    // Зависимости: ReportingPeriodRepository, PlannedTaskRepository
+    // Зависимости: ReportingPeriodRepository, PlannedTaskRepository, PrismaService
     {
       provide: GetBacklogUseCase,
       useFactory: (
         reportingPeriodRepo: PrismaReportingPeriodRepository,
         plannedTaskRepo: PrismaPlannedTaskRepository,
-      ) => new GetBacklogUseCase(reportingPeriodRepo, plannedTaskRepo),
-      inject: [PrismaReportingPeriodRepository, PrismaPlannedTaskRepository],
+        prisma: PrismaService,
+      ) => new GetBacklogUseCase(reportingPeriodRepo, plannedTaskRepo, prisma),
+      inject: [PrismaReportingPeriodRepository, PrismaPlannedTaskRepository, PrismaService],
     },
-
     // --- GetCapacityUseCase ---
     // Зависимости: ReportingPeriodRepository, PlannedTaskRepository, UserRepository
     {
@@ -131,8 +132,9 @@ class EventBusAdapter {
         reportingPeriodRepo: PrismaReportingPeriodRepository,
         plannedTaskRepo: PrismaPlannedTaskRepository,
         userRepo: PrismaUserRepository,
-      ) => new GetCapacityUseCase(reportingPeriodRepo, plannedTaskRepo, userRepo),
-      inject: [PrismaReportingPeriodRepository, PrismaPlannedTaskRepository, PrismaUserRepository],
+        planningSettingsRepo: PrismaPlanningSettingsRepository,
+      ) => new GetCapacityUseCase(reportingPeriodRepo, plannedTaskRepo, userRepo, planningSettingsRepo),
+      inject: [PrismaReportingPeriodRepository, PrismaPlannedTaskRepository, PrismaUserRepository, PrismaPlanningSettingsRepository],
     },
 
     // --- AssignTaskUseCase ---

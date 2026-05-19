@@ -16,6 +16,7 @@ export class PlanningSettings {
     private _yellowThreshold: number | null, // basis points
     private _redThreshold: number | null, // basis points
     private _businessGroupingLevel: string | null,
+    private _extensions: Record<string, unknown> | null,
     private _updatedBy: string,
     private readonly _createdAt: Date = new Date(),
     private _updatedAt: Date = new Date(),
@@ -59,6 +60,10 @@ export class PlanningSettings {
     return this._businessGroupingLevel;
   }
 
+  get extensions(): Record<string, unknown> | null {
+    return this._extensions;
+  }
+
   get updatedBy(): string {
     return this._updatedBy;
   }
@@ -83,6 +88,7 @@ export class PlanningSettings {
     yellowThreshold?: number | null;
     redThreshold?: number | null;
     businessGroupingLevel?: string | null;
+    extensions?: Record<string, unknown> | null;
     updatedBy: string;
   }): void {
     if (params.workHoursPerMonth !== undefined) {
@@ -138,6 +144,10 @@ export class PlanningSettings {
       this._businessGroupingLevel = params.businessGroupingLevel;
     }
 
+    if (params.extensions !== undefined) {
+      this._extensions = params.extensions;
+    }
+
     this._updatedBy = params.updatedBy;
     this._updatedAt = new Date();
   }
@@ -154,6 +164,7 @@ export class PlanningSettings {
     yellowThreshold?: number | null;
     redThreshold?: number | null;
     businessGroupingLevel?: string | null;
+    extensions?: Record<string, unknown> | null;
     updatedBy: string;
   }): PlanningSettings {
     return new PlanningSettings(
@@ -166,6 +177,7 @@ export class PlanningSettings {
       params.yellowThreshold ?? null,
       params.redThreshold ?? null,
       params.businessGroupingLevel ?? null,
+      params.extensions ?? null,
       params.updatedBy,
       new Date(),
       new Date(),
@@ -184,6 +196,7 @@ export class PlanningSettings {
     yellowThreshold: number | null;
     redThreshold: number | null;
     businessGroupingLevel: string | null;
+    extensions: Record<string, unknown> | null;
     updatedBy: string;
     createdAt: Date;
     updatedAt: Date;
@@ -198,6 +211,7 @@ export class PlanningSettings {
       data.yellowThreshold,
       data.redThreshold,
       data.businessGroupingLevel,
+      data.extensions,
       data.updatedBy,
       data.createdAt,
       data.updatedAt,
@@ -207,17 +221,18 @@ export class PlanningSettings {
   toPersistence(): Record<string, unknown> {
     return {
       id: this._id,
-      work_hours_per_month: this._workHoursPerMonth,
-      reserve_percent: this._reservePercent,
-      test_percent: this._testPercent,
-      debug_percent: this._debugPercent,
-      mgmt_percent: this._mgmtPercent,
-      yellow_threshold: this._yellowThreshold,
-      red_threshold: this._redThreshold,
-      business_grouping_level: this._businessGroupingLevel,
-      updated_by: this._updatedBy,
-      created_at: this._createdAt,
-      updated_at: this._updatedAt,
+      workHoursPerMonth: this._workHoursPerMonth,
+      reservePercent: this._reservePercent,
+      testPercent: this._testPercent,
+      debugPercent: this._debugPercent,
+      mgmtPercent: this._mgmtPercent,
+      yellowThreshold: this._yellowThreshold,
+      redThreshold: this._redThreshold,
+      businessGroupingLevel: this._businessGroupingLevel,
+      extensions: this._extensions,
+      updatedBy: this._updatedBy,
+      createdAt: this._createdAt,
+      updatedAt: this._updatedAt,
     };
   }
 }

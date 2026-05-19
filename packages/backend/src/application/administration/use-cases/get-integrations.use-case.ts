@@ -3,6 +3,10 @@
  *
  * Use case для получения списка интеграций.
  * Возвращает данные в формате IntegrationDto, ожидаемом фронтендом.
+ *
+ * Поддерживаемые интеграции:
+ * - YouTrack (id: 'integration-default') — синхронизация задач
+ * - LDAP / AD (id: 'ldap') — аутентификация через корпоративный каталог
  */
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
@@ -50,15 +54,51 @@ export class GetIntegrationsUseCase {
     }
 
     // Маппим существующие настройки в IntegrationDto
-    return settings.map((s) => ({
-      id: s.id,
-      name: s.id === 'integration-default' ? 'YouTrack' : 'Интеграция',
-      description: 'Интеграция с внешней системой для синхронизации данных.',
-      status: s.isActive ? 'connected' : 'disconnected',
-      baseUrl: s.baseUrl || null,
-      secretMask: s.apiTokenEncrypted ? '••••••••' : null,
-      lastSyncAt: null, // В модели IntegrationSettings нет поля lastSync
-      notes: s.projects?.length ? `Проекты: ${s.projects.join(', ')}` : null,
-    }));
+    return settings.map(
+      (s: {
+        id: string;
+        baseUrl: string;
+        apiTokenEncrypted: string;
+        isActive: boolean;
+        updatedAt: Date | null;
+        extensions: unknown;
+        projects: unknown;
+      }) => {
+        const extensions =
+          typeof s.extensions === 'object' && s.extensions !== null
+            ? (s.extensions as Record<string, unknown>)
+            : {};
+
+        // Определяем имя и описание по ID записи
+        let name: string;
+        let description: string;
+        let baseUrl: string | null;
+        let secretMask: string | null;
+
+        if (s.id === 'ldap') {
+          name = 'LDAP / AD';
+          description = 'Подключение к корпоративному каталогу для аутентификации пользователей.';
+          baseUrl = extensions.host ? `${extensions.host}:${extensions.port || 389}` : null;
+          secretMask = extensions.bindPassword ? '••••••••' : null;
+        } else {
+          name = 'YouTrack';
+          description =
+            'Интеграция с YouTrack для синхронизации задач, work items и пользователей.';
+          baseUrl = s.baseUrl || null;
+          secretMask = s.apiTokenEncrypted ? '••••••••' : null;
+        }
+
+        return {
+          id: s.id,
+          name,
+          description,
+          status: s.isActive ? 'connected' : 'disconnected',
+          baseUrl,
+          secretMask,
+          lastSyncAt: s.updatedAt ? new Date(s.updatedAt).toISOString() : null,
+          notes: (extensions.notes as string) || null,
+        };
+      },
+    );
   }
 }

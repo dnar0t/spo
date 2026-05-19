@@ -62,20 +62,78 @@ export class SyncEngine {
 
     try {
       // Этап 1: Синхронизация пользователей
+      await this.updateStage(syncRun.id, 'users');
       const usersResult = await this.syncUsers(syncRun.id);
       await this.logSyncInfo(syncRun.id, 'Users synced', `Created: ${usersResult.created}, Updated: ${usersResult.updated}`);
+      await this.prisma.syncRun.update({
+        where: { id: syncRun.id },
+        data: {
+          createdCount: usersResult.created,
+          updatedCount: usersResult.updated,
+          stageDetails: {
+            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
+            projects: null,
+            issues: null,
+            workItems: null,
+          },
+        },
+      });
 
       // Этап 2: Синхронизация проектов
+      await this.updateStage(syncRun.id, 'projects');
       const projectsResult = await this.syncProjects(syncRun.id);
       await this.logSyncInfo(syncRun.id, 'Projects synced', `Created: ${projectsResult.created}, Updated: ${projectsResult.updated}`);
+      await this.prisma.syncRun.update({
+        where: { id: syncRun.id },
+        data: {
+          createdCount: usersResult.created + projectsResult.created,
+          updatedCount: usersResult.updated + projectsResult.updated,
+          stageDetails: {
+            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
+            projects: { processed: projectsResult.created + projectsResult.updated, changes: { created: projectsResult.created, updated: projectsResult.updated }, errors: projectsResult.errors.length },
+            issues: null,
+            workItems: null,
+          },
+        },
+      });
 
       // Этап 3: Синхронизация задач
+      await this.updateStage(syncRun.id, 'issues');
       const issuesResult = await this.syncIssues(syncRun.id);
+      const issuesTotal = issuesResult.created + issuesResult.updated;
       await this.logSyncInfo(syncRun.id, 'Issues synced', `Created: ${issuesResult.created}, Updated: ${issuesResult.updated}`);
+      await this.prisma.syncRun.update({
+        where: { id: syncRun.id },
+        data: {
+          totalIssues: issuesTotal,
+          createdCount: usersResult.created + projectsResult.created + issuesResult.created,
+          updatedCount: usersResult.updated + projectsResult.updated + issuesResult.updated,
+          stageDetails: {
+            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
+            projects: { processed: projectsResult.created + projectsResult.updated, changes: { created: projectsResult.created, updated: projectsResult.updated }, errors: projectsResult.errors.length },
+            issues: { processed: issuesResult.created + issuesResult.updated, changes: { created: issuesResult.created, updated: issuesResult.updated }, errors: issuesResult.errors.length },
+            workItems: null,
+          },
+        },
+      });
 
       // Этап 4: Синхронизация work items
+      await this.updateStage(syncRun.id, 'workItems');
       const workItemsResult = await this.syncWorkItems(syncRun.id);
       await this.logSyncInfo(syncRun.id, 'Work items synced', `Created: ${workItemsResult.created}, Updated: ${workItemsResult.updated}`);
+      await this.prisma.syncRun.update({
+        where: { id: syncRun.id },
+        data: {
+          createdCount: usersResult.created + projectsResult.created + issuesResult.created + workItemsResult.created,
+          updatedCount: usersResult.updated + projectsResult.updated + issuesResult.updated + workItemsResult.updated,
+          stageDetails: {
+            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
+            projects: { processed: projectsResult.created + projectsResult.updated, changes: { created: projectsResult.created, updated: projectsResult.updated }, errors: projectsResult.errors.length },
+            issues: { processed: issuesResult.created + issuesResult.updated, changes: { created: issuesResult.created, updated: issuesResult.updated }, errors: issuesResult.errors.length },
+            workItems: { processed: workItemsResult.created + workItemsResult.updated, changes: { created: workItemsResult.created, updated: workItemsResult.updated }, errors: workItemsResult.errors.length },
+          },
+        },
+      });
 
       const completedAt = new Date();
       const duration = Math.round((completedAt.getTime() - startedAt.getTime()) / 1000);
@@ -109,6 +167,12 @@ export class SyncEngine {
             : null,
           completedAt,
           duration,
+          stageDetails: {
+            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
+            projects: { processed: projectsResult.created + projectsResult.updated, changes: { created: projectsResult.created, updated: projectsResult.updated }, errors: projectsResult.errors.length },
+            issues: { processed: issuesResult.created + issuesResult.updated, changes: { created: issuesResult.created, updated: issuesResult.updated }, errors: issuesResult.errors.length },
+            workItems: { processed: workItemsResult.created + workItemsResult.updated, changes: { created: workItemsResult.created, updated: workItemsResult.updated }, errors: workItemsResult.errors.length },
+          },
         },
       });
 
@@ -183,9 +247,9 @@ export class SyncEngine {
 
           const userData = this.mapper.mapUser(ytUser);
 
-          // Проверяем, существует ли пользователь по youtrack_user_id
+          // Проверяем, существует ли пользователь по youtrackUserId
           const existingUser = await this.prisma.user.findFirst({
-            where: { youtrack_user_id: ytUser.id },
+            where: { youtrackUserId: ytUser.id },
           });
 
           if (existingUser) {
@@ -194,9 +258,9 @@ export class SyncEngine {
               where: { id: existingUser.id },
               data: {
                 email: userData.email ?? existingUser.email,
-                full_name: userData.fullName ?? existingUser.fullName,
-                youtrack_login: userData.youtrackLogin,
-                youtrack_user_id: userData.youtrackUserId,
+                fullName: userData.fullName ?? existingUser.fullName,
+                youtrackLogin: userData.youtrackLogin,
+                youtrackUserId: userData.youtrackUserId,
                 isActive: true,
               },
             });
@@ -213,9 +277,9 @@ export class SyncEngine {
                 where: { id: existingByLogin.id },
                 data: {
                   email: userData.email ?? existingByLogin.email,
-                  full_name: userData.fullName ?? existingByLogin.fullName,
-                  youtrack_login: userData.youtrackLogin,
-                  youtrack_user_id: userData.youtrackUserId,
+                  fullName: userData.fullName ?? existingByLogin.fullName,
+                  youtrackLogin: userData.youtrackLogin,
+                  youtrackUserId: userData.youtrackUserId,
                   isActive: true,
                 },
               });
@@ -227,9 +291,9 @@ export class SyncEngine {
                   id: uuidv4(),
                   login: userData.login,
                   email: userData.email,
-                  full_name: userData.fullName,
-                  youtrack_login: userData.youtrackLogin,
-                  youtrack_user_id: userData.youtrackUserId,
+                  fullName: userData.fullName,
+                  youtrackLogin: userData.youtrackLogin,
+                  youtrackUserId: userData.youtrackUserId,
                   isActive: true,
                 },
               });
@@ -305,13 +369,13 @@ export class SyncEngine {
 
           // Проверяем существование
           const existingIssue = await this.prisma.youtrackIssue.findUnique({
-            where: { youtrack_id: ytIssue.id },
+            where: { youtrackId: ytIssue.id },
           });
 
           let assigneeId: string | null = null;
           if (ytIssue.assignee) {
             const assignee = await this.prisma.user.findFirst({
-              where: { youtrack_user_id: ytIssue.assignee.id },
+              where: { youtrackUserId: ytIssue.assignee.id },
             });
             assigneeId = assignee?.id || null;
           }
@@ -322,44 +386,44 @@ export class SyncEngine {
               data: {
                 summary: issueData.summary,
                 description: issueData.description,
-                project_name: issueData.projectName,
-                system_name: issueData.systemName,
-                sprint_name: issueData.sprintName,
-                type_name: issueData.typeName,
-                priority_name: issueData.priorityName,
-                state_name: issueData.stateName,
-                is_resolved: issueData.isResolved,
-                assignee_id: assigneeId,
-                estimation_minutes: issueData.estimationMinutes,
-                parent_yt_id: issueData.parentYtId,
-                last_sync_at: new Date(),
-                updated_at: new Date(),
+                projectName: issueData.projectName,
+                systemName: issueData.systemName,
+                sprintName: issueData.sprintName,
+                typeName: issueData.typeName,
+                priorityName: issueData.priorityName,
+                stateName: issueData.stateName,
+                isResolved: issueData.isResolved,
+                assigneeId: assigneeId,
+                estimationMinutes: issueData.estimationMinutes,
+                parentYtId: issueData.parentYtId,
+                lastSyncAt: new Date(),
+                updatedAt: new Date(),
               },
             });
-            issueMap.set(existingIssue.youtrack_id, existingIssue.id);
+            issueMap.set(existingIssue.youtrackId, existingIssue.id);
             result.updated++;
           } else {
             const newIssue = await this.prisma.youtrackIssue.create({
               data: {
                 id: uuidv4(),
-                youtrack_id: issueData.youtrackId,
-                issue_number: issueData.issueNumber,
+                youtrackId: issueData.youtrackId,
+                issueNumber: issueData.issueNumber,
                 summary: issueData.summary,
                 description: issueData.description,
-                project_name: issueData.projectName,
-                system_name: issueData.systemName,
-                sprint_name: issueData.sprintName,
-                type_name: issueData.typeName,
-                priority_name: issueData.priorityName,
-                state_name: issueData.stateName,
-                is_resolved: issueData.isResolved,
-                assignee_id: assigneeId,
-                estimation_minutes: issueData.estimationMinutes,
-                parent_yt_id: issueData.parentYtId,
-                last_sync_at: new Date(),
+                projectName: issueData.projectName,
+                systemName: issueData.systemName,
+                sprintName: issueData.sprintName,
+                typeName: issueData.typeName,
+                priorityName: issueData.priorityName,
+                stateName: issueData.stateName,
+                isResolved: issueData.isResolved,
+                assigneeId: assigneeId,
+                estimationMinutes: issueData.estimationMinutes,
+                parentYtId: issueData.parentYtId,
+                lastSyncAt: new Date(),
               },
             });
-            issueMap.set(newIssue.youtrack_id, newIssue.id);
+            issueMap.set(newIssue.youtrackId, newIssue.id);
             result.created++;
           }
         } catch (error) {
@@ -381,7 +445,7 @@ export class SyncEngine {
           await this.prisma.youtrackIssue.update({
             where: { id: childId },
             data: {
-              parent_issue_id: parentId,
+              parentIssueId: parentId,
             },
           });
         }
@@ -404,7 +468,7 @@ export class SyncEngine {
     try {
       // Получаем все задачи, для которых нужно загрузить work items
       const issues = await this.prisma.youtrackIssue.findMany({
-        select: { id: true, youtrack_id: true, issue_number: true },
+        select: { id: true, youtrackId: true, issueNumber: true },
       });
 
       this.logger.log(`Loading work items for ${issues.length} issues`);
@@ -414,7 +478,7 @@ export class SyncEngine {
       for (const issue of issues) {
         try {
           const workItems = await this.apiClient.get<YouTrackWorkItem[]>(
-            `/issues/${issue.youtrack_id}/timeTracking/workItems`,
+            `/issues/${issue.youtrackId}/timeTracking/workItems`,
             { fields: workItemFields },
             true, // paginated
           );
@@ -423,11 +487,11 @@ export class SyncEngine {
             try {
               const workItemData = this.mapper.mapWorkItem(ytWorkItem, issue.id);
 
-              // Находим автора по youtrack_login
+              // Находим автора по youtrackLogin
               let authorId: string | null = null;
               if (workItemData.authorLogin) {
                 const author = await this.prisma.user.findFirst({
-                  where: { youtrack_login: workItemData.authorLogin },
+                  where: { youtrackLogin: workItemData.authorLogin },
                 });
                 authorId = author?.id || null;
               }
@@ -435,8 +499,8 @@ export class SyncEngine {
               // Проверяем существование work item
               const existingWorkItem = await this.prisma.workItem.findFirst({
                 where: {
-                  youtrack_work_item_id: ytWorkItem.id,
-                  issue_id: issue.id,
+                  youtrackWorkItemId: ytWorkItem.id,
+                  issueId: issue.id,
                 },
               });
 
@@ -444,11 +508,11 @@ export class SyncEngine {
                 await this.prisma.workItem.update({
                   where: { id: existingWorkItem.id },
                   data: {
-                    author_id: authorId,
-                    duration_minutes: workItemData.durationMinutes,
+                    authorId: authorId,
+                    durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
-                    work_date: workItemData.workDate,
-                    work_type_name: workItemData.workTypeName,
+                    workDate: workItemData.workDate,
+                    workTypeName: workItemData.workTypeName,
                   },
                 });
                 result.updated++;
@@ -456,13 +520,13 @@ export class SyncEngine {
                 await this.prisma.workItem.create({
                   data: {
                     id: uuidv4(),
-                    issue_id: issue.id,
-                    youtrack_work_item_id: ytWorkItem.id,
-                    author_id: authorId,
-                    duration_minutes: workItemData.durationMinutes,
+                    issueId: issue.id,
+                    youtrackWorkItemId: ytWorkItem.id,
+                    authorId: authorId,
+                    durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
-                    work_date: workItemData.workDate,
-                    work_type_name: workItemData.workTypeName,
+                    workDate: workItemData.workDate,
+                    workTypeName: workItemData.workTypeName,
                   },
                 });
                 result.created++;
@@ -476,7 +540,7 @@ export class SyncEngine {
           }
         } catch (error) {
           result.errors.push({
-            entityId: issue.issue_number,
+            entityId: issue.issueNumber,
             message: error instanceof Error ? error.message : 'Failed to fetch work items',
           });
         }
@@ -498,7 +562,7 @@ export class SyncEngine {
 
     try {
       const issues = await this.prisma.youtrackIssue.findMany({
-        select: { id: true, youtrack_id: true, issue_number: true },
+        select: { id: true, youtrackId: true, issueNumber: true },
       });
 
       const workItemFields = 'id,author(id,login,fullName),text,textPreview,type(id,name),duration(presentation,minutes),date,created,updated,issue(id,idReadable)';
@@ -506,7 +570,7 @@ export class SyncEngine {
       for (const issue of issues) {
         try {
           const workItems = await this.apiClient.get<YouTrackWorkItem[]>(
-            `/issues/${issue.youtrack_id}/timeTracking/workItems`,
+            `/issues/${issue.youtrackId}/timeTracking/workItems`,
             { fields: workItemFields },
             true,
           );
@@ -526,15 +590,15 @@ export class SyncEngine {
               let authorId: string | null = null;
               if (workItemData.authorLogin) {
                 const author = await this.prisma.user.findFirst({
-                  where: { youtrack_login: workItemData.authorLogin },
+                  where: { youtrackLogin: workItemData.authorLogin },
                 });
                 authorId = author?.id || null;
               }
 
               const existingWorkItem = await this.prisma.workItem.findFirst({
                 where: {
-                  youtrack_work_item_id: ytWorkItem.id,
-                  issue_id: issue.id,
+                  youtrackWorkItemId: ytWorkItem.id,
+                  issueId: issue.id,
                 },
               });
 
@@ -542,12 +606,12 @@ export class SyncEngine {
                 await this.prisma.workItem.update({
                   where: { id: existingWorkItem.id },
                   data: {
-                    author_id: authorId,
-                    duration_minutes: workItemData.durationMinutes,
+                    authorId: authorId,
+                    durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
-                    work_date: workItemData.workDate,
-                    work_type_name: workItemData.workTypeName,
-                    period_id: periodId,
+                    workDate: workItemData.workDate,
+                    workTypeName: workItemData.workTypeName,
+                    periodId: periodId,
                   },
                 });
                 result.updated++;
@@ -555,14 +619,14 @@ export class SyncEngine {
                 await this.prisma.workItem.create({
                   data: {
                     id: uuidv4(),
-                    issue_id: issue.id,
-                    youtrack_work_item_id: ytWorkItem.id,
-                    author_id: authorId,
-                    duration_minutes: workItemData.durationMinutes,
+                    issueId: issue.id,
+                    youtrackWorkItemId: ytWorkItem.id,
+                    authorId: authorId,
+                    durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
-                    work_date: workItemData.workDate,
-                    work_type_name: workItemData.workTypeName,
-                    period_id: periodId,
+                    workDate: workItemData.workDate,
+                    workTypeName: workItemData.workTypeName,
+                    periodId: periodId,
                   },
                 });
                 result.created++;
@@ -576,7 +640,7 @@ export class SyncEngine {
           }
         } catch (error) {
           result.errors.push({
-            entityId: issue.issue_number,
+            entityId: issue.issueNumber,
             message: error instanceof Error ? error.message : 'Failed to fetch work items',
           });
         }
@@ -588,6 +652,16 @@ export class SyncEngine {
     }
 
     return result;
+  }
+
+  /**
+   * Обновить текущий этап синхронизации для отслеживания прогресса
+   */
+  private async updateStage(syncRunId: string, stage: string): Promise<void> {
+    await this.prisma.syncRun.update({
+      where: { id: syncRunId },
+      data: { currentStage: stage },
+    });
   }
 
   /**
@@ -617,7 +691,7 @@ export class SyncEngine {
     if (settings) {
       await this.prisma.integrationSettings.update({
         where: { id: settings.id },
-        data: { updated_at: new Date() },
+        data: { updatedAt: new Date() },
       });
     }
   }

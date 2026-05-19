@@ -28,4 +28,10 @@ export interface UserRepository extends BaseRepository<User, string> {
 
   /** Получить подчинённых руководителя */
   findSubordinatesByManagerId(managerId: string): Promise<User[]>;
-}
+
+
+  /** Find user role names */
+  findUserRoleNames(userId: string): Promise<string[]>;
+
+  /** Sync user roles (overwrite) */
+  syncRoles(userId: string, roleIds: string[]): Promise<void>;}

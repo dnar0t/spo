@@ -63,6 +63,8 @@ export interface SyncRunDetailDto {
   startedAt: Date;
   completedAt: Date | null;
   duration: number | null;
+  currentStage: string | null;
+  stageDetails: Record<string, unknown> | null;
   logs: SyncLogEntryDto[];
 }
 

@@ -1,13 +1,4 @@
-/**
- * GetBacklogUseCase
- *
- * Загружает и возвращает backlog (список задач) для указанного отчётного периода.
- * - Принимает periodId и фильтры (проекты, приоритеты, поиск)
- * - Загружает задачи из YouTrack для данного периода (по проектам из фильтра периода)
- * - Строит дерево задач (task → parent issue → ...)
- * - Сортирует по readiness и приоритету
- * - Возвращает backlog с пагинацией
- */
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PlannedTaskRepository } from '../../../domain/repositories/planned-task.repository';
 import { ReportingPeriodRepository } from '../../../domain/repositories/reporting-period.repository';
 import { PlannedTask } from '../../../domain/entities/planned-task.entity';
@@ -19,47 +10,34 @@ import {
 } from '../../common/pagination.dto';
 
 export interface BacklogItem {
-  /** ID задачи */
   id: string;
-  /** Номер задачи в YouTrack (PROJECT-123) */
   issueNumber: string;
-  /** Краткое описание */
   summary: string;
-  /** ID задачи в YouTrack */
   youtrackIssueId: string | null;
-  /** Назначенный исполнитель */
   assigneeId: string | null;
-  /** Процент готовности (0-100) */
   readinessPercent: number;
-  /** Является ли запланированной */
   isPlanned: boolean;
-  /** Общее запланированное время в часах */
   totalPlannedHours: number;
-  /** Порядок сортировки */
   sortOrder: number;
-  /** Номер родительской задачи */
   parentIssueNumber: string | null;
-  /** Дочерние задачи (дерево) */
   children: BacklogItem[];
 }
 
 export interface GetBacklogFilters {
-  /** Фильтр по проектам (идентификаторы проектов в YouTrack) */
   projectIds?: string[];
-  /** Фильтр по приоритетам */
   priorities?: string[];
-  /** Поиск по тексту (issue number или summary) */
   search?: string;
-  /** Только запланированные */
   onlyPlanned?: boolean;
-  /** Только незапланированные */
   onlyUnplanned?: boolean;
+  systemName?: string;
+  typeName?: string;
 }
 
 export class GetBacklogUseCase {
   constructor(
     private readonly reportingPeriodRepository: ReportingPeriodRepository,
     private readonly plannedTaskRepository: PlannedTaskRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(
@@ -67,15 +45,27 @@ export class GetBacklogUseCase {
     filters: GetBacklogFilters,
     pagination: PaginationDto,
   ): Promise<PaginatedResult<BacklogItem>> {
-    // 1. Проверяем, что период существует
-    const period = await this.reportingPeriodRepository.findById(periodId);
+    let period = await this.reportingPeriodRepository.findById(periodId);
     if (!period) {
-      throw new NotFoundError('ReportingPeriod', periodId);
+      // If not a reporting period, check if it's a sprint (planning_settings) ID
+      const sprint = await this.prisma.planningSettings.findUnique({
+        where: { id: periodId },
+        select: { extensions: true }
+      });
+      if (sprint?.extensions) {
+        const ext = sprint.extensions as Record<string, unknown>;
+        const month = typeof ext.month === 'number' ? ext.month : undefined;
+        const year = typeof ext.year === 'number' ? ext.year : undefined;
+        if (month !== undefined && year !== undefined) {
+          period = await this.reportingPeriodRepository.findByMonthYear(month, year);
+        }
+      }
+      if (!period) {
+        // No reporting period found, fall back to YouTrack backlog
+        return this.loadYouTrackBacklog(filters, pagination);
+      }
     }
-
-    // 2. Загружаем все задачи для периода
     let tasks: PlannedTask[];
-
     if (filters.onlyPlanned) {
       tasks = await this.plannedTaskRepository.findPlannedByPeriodId(periodId);
     } else if (filters.onlyUnplanned) {
@@ -83,8 +73,9 @@ export class GetBacklogUseCase {
     } else {
       tasks = await this.plannedTaskRepository.findByPeriodId(periodId);
     }
-
-    // 3. Применяем фильтры
+    if (tasks.length === 0) {
+      return this.loadYouTrackBacklog(filters, pagination);
+    }
     if (filters.projectIds && filters.projectIds.length > 0) {
       tasks = tasks.filter((task) =>
         filters.projectIds!.some((projectId) =>
@@ -92,7 +83,6 @@ export class GetBacklogUseCase {
         ),
       );
     }
-
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       tasks = tasks.filter(
@@ -101,12 +91,8 @@ export class GetBacklogUseCase {
           task.summary.toLowerCase().includes(searchLower),
       );
     }
-
-    // 4. Строим дерево задач: определяем parent-child отношения
     const taskMap = new Map<string, BacklogItem>();
     const rootTasks: BacklogItem[] = [];
-
-    // Сначала создаём BacklogItem для каждой задачи
     for (const task of tasks) {
       const item: BacklogItem = {
         id: task.id,
@@ -123,11 +109,8 @@ export class GetBacklogUseCase {
       };
       taskMap.set(task.id, item);
     }
-
-    // Строим дерево: распределяем задачи по родителям
     for (const item of taskMap.values()) {
       if (item.parentIssueNumber) {
-        // Ищем родителя по parentIssueNumber среди всех задач
         const parent = tasks.find(
           (t) => t.issueNumber === item.parentIssueNumber,
         );
@@ -139,44 +122,124 @@ export class GetBacklogUseCase {
           }
         }
       }
-      // Если нет родителя или родитель не найден — это корневая задача
       rootTasks.push(item);
     }
-
-    // 5. Сортируем: сначала по readiness (возрастание), потом по sortOrder
     const sortTasks = (items: BacklogItem[]): void => {
       items.sort((a, b) => {
-        // Сначала сортируем по готовности (менее готовые — выше)
         if (a.readinessPercent !== b.readinessPercent) {
           return a.readinessPercent - b.readinessPercent;
         }
-        // Затем по порядку сортировки
         if (a.sortOrder !== b.sortOrder) {
           return a.sortOrder - b.sortOrder;
         }
-        // По номеру задачи для стабильности
         return a.issueNumber.localeCompare(b.issueNumber);
       });
-
-      // Рекурсивно сортируем дочерние задачи
       for (const item of items) {
         if (item.children.length > 0) {
           sortTasks(item.children);
         }
       }
     };
-
     sortTasks(rootTasks);
-
-    // 6. Применяем пагинацию (только для корневых задач)
     const total = rootTasks.length;
     const startIndex = (pagination.page - 1) * pagination.limit;
     const paginatedItems = rootTasks.slice(
       startIndex,
       startIndex + pagination.limit,
     );
-
-    // 7. Возвращаем результат
     return toPaginatedResult(paginatedItems, total, pagination);
+  }
+
+  private async loadYouTrackBacklog(
+    filters: GetBacklogFilters,
+    pagination: PaginationDto,
+  ): Promise<PaginatedResult<BacklogItem>> {
+    const where: Record<string, unknown> = {};
+    if (filters.projectIds && filters.projectIds.length > 0) {
+      where.projectName = { in: filters.projectIds };
+    }
+    if (filters.systemName) {
+      where.systemName = filters.systemName;
+    }
+    if (filters.typeName) {
+      where.typeName = filters.typeName;
+    }
+    if (filters.search) {
+      where.OR = [
+        { summary: { contains: filters.search, mode: 'insensitive' } },
+        { issueNumber: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+    const safeLimit = Math.min(Math.max(1, pagination.limit), 100);
+    const skip = (pagination.page - 1) * safeLimit;
+    const [issues, total] = await Promise.all([
+      this.prisma.youTrackIssue.findMany({
+        where,
+        orderBy: [{ updatedAt: 'desc' }],
+        take: safeLimit,
+        skip,
+        select: {
+          id: true, issueNumber: true, summary: true,
+          projectName: true, systemName: true, typeName: true,
+          stateName: true, isResolved: true, assigneeId: true,
+          estimationMinutes: true, parentIssueId: true,
+          lastSyncAt: true, updatedAt: true,
+        },
+      }),
+      this.prisma.youTrackIssue.count({ where }),
+    ]);
+    const allIssuesForTree = issues.length > 0 ? await this.prisma.youTrackIssue.findMany({
+      where: {
+        OR: [
+          { id: { in: issues.map(i => i.id) } },
+          { parentIssueId: { in: issues.map(i => i.id).filter(Boolean) } },
+          { childIssues: { some: { id: { in: issues.map(i => i.id) } } } },
+        ],
+      },
+      select: {
+        id: true, issueNumber: true, summary: true,
+        projectName: true, systemName: true, typeName: true,
+        stateName: true, isResolved: true, assigneeId: true,
+        estimationMinutes: true, parentIssueId: true,
+        lastSyncAt: true, updatedAt: true,
+      },
+    }) : [];
+    const issueMap = new Map<string, typeof allIssuesForTree[0]>();
+    const childMap = new Map<string, string[]>();
+    for (const issue of allIssuesForTree) {
+      issueMap.set(issue.id, issue);
+      if (issue.parentIssueId) {
+        const children = childMap.get(issue.parentIssueId) ?? [];
+        children.push(issue.id);
+        childMap.set(issue.parentIssueId, children);
+      }
+    }
+    const buildItem = (issue: typeof allIssuesForTree[0]): BacklogItem => {
+      const childItems = (childMap.get(issue.id) ?? [])
+        .map(childId => {
+          const child = issueMap.get(childId);
+          return child ? buildItem(child) : null;
+        })
+        .filter((n): n is BacklogItem => n !== null);
+      return {
+        id: issue.id,
+        issueNumber: issue.issueNumber,
+        summary: issue.summary,
+        youtrackIssueId: issue.id,
+        assigneeId: issue.assigneeId,
+        readinessPercent: issue.isResolved ? 100 : 0,
+        isPlanned: false,
+        totalPlannedHours: (issue.estimationMinutes ?? 0) / 60,
+        sortOrder: 0,
+        parentIssueNumber: null,
+        children: childItems,
+      };
+    };
+    const rootIssues = allIssuesForTree.filter(issue => {
+      if (!issue.parentIssueId) return true;
+      return !issueMap.has(issue.parentIssueId);
+    });
+    const rootItems = rootIssues.map(buildItem);
+    return toPaginatedResult(rootItems, total, pagination);
   }
 }

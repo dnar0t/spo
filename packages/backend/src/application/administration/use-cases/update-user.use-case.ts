@@ -66,7 +66,27 @@ export class UpdateUserUseCase {
 
     user.updateProfile(updateParams);
 
-    // 4. Проверка на дубликат логина
+    // 4. Handle isActive — explicitly persist
+    if (dto.isActive !== undefined) {
+      oldValues['isActive'] = user.isActive;
+      newValues['isActive'] = dto.isActive;
+      if (dto.isActive) {
+        user.activate();
+      } else {
+        user.deactivate();
+      }
+      // Persist isActive change immediately
+      await this.userRepository.update(user);
+    }
+
+    // 5. Handle canPlan
+    if (dto.canPlan !== undefined) {
+      oldValues['canPlan'] = user.canPlan;
+      newValues['canPlan'] = dto.canPlan;
+      user.canPlan = dto.canPlan;
+    }
+
+    // 6. Проверка на дубликат логина
     if (dto.login !== undefined && dto.login !== user.login) {
       const existingByLogin = await this.userRepository.findByLogin(dto.login);
       if (existingByLogin) {
@@ -74,14 +94,12 @@ export class UpdateUserUseCase {
       }
       oldValues.login = user.login;
       newValues.login = dto.login;
-      // Примечание: login не обновляется через updateProfile, обновляем напрямую
-      // В будущем можно добавить метод в User entity
     }
 
-    // 5. Сохранение
+    // 7. Сохранение (if not already saved via isActive block)
     const updatedUser = await this.userRepository.update(user);
 
-    // 6. Аудит
+    // 8. Аудит
     await this.auditLogger.log({
       userId: context?.userId ?? 'system',
       action: 'USER_UPDATED',
@@ -95,13 +113,14 @@ export class UpdateUserUseCase {
       userAgent: context?.userAgent,
     });
 
-    // 7. Формирование ответа
+    // 9. Формирование ответа
     return {
       id: updatedUser.id,
       login: updatedUser.login,
       email: updatedUser.email,
       fullName: updatedUser.fullName,
       roles: [],
+      canPlan: (updatedUser.extensions && (updatedUser.extensions as any).canPlan === true) || false,
       isActive: updatedUser.isActive,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,

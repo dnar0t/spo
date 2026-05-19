@@ -252,6 +252,30 @@ async function main() {
 
   console.log('  ✓ Created default integration settings');
 
+  // ─── LDAP Integration Settings ───
+  await prisma.integrationSettings.upsert({
+    where: { id: 'ldap' },
+    update: {},
+    create: {
+      id: 'ldap',
+      baseUrl: '',
+      apiTokenEncrypted: '',
+      projects: [],
+      isActive: true,
+      extensions: {
+        host: '',
+        port: 389,
+        baseDn: 'OU=Users,DC=company,DC=com',
+        bindDn: '',
+        bindPassword: '',
+        useMock: true,
+        tlsEnabled: false,
+      },
+    },
+  });
+
+  console.log('  ✓ Created LDAP integration settings');
+
   // ─── Notification Templates ───
   const notificationTemplates = [
     {

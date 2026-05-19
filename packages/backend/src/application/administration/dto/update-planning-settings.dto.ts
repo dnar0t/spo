@@ -13,5 +13,7 @@ export class UpdatePlanningSettingsDto {
   mgmtPercent?: number | null; // как float (0..1), напр. 0.1 = 10%
   yellowThreshold?: number | null; // как float (0..1), напр. 0.8 = 80%
   redThreshold?: number | null; // как float (0..1), напр. 1.0 = 100%
+  month?: number | null;
+  year?: number | null;
   businessGroupingLevel?: string | null;
 }

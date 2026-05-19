@@ -16,13 +16,13 @@
 import { ReportingPeriodRepository } from '../../../domain/repositories/reporting-period.repository';
 import { PlannedTaskRepository } from '../../../domain/repositories/planned-task.repository';
 import { UserRepository } from '../../../domain/repositories/user.repository';
+import { PlanningSettingsRepository } from '../../../domain/repositories/planning-settings.repository';
 import {
   CapacityCalculator,
   CapacityCalculationResult,
 } from '../../../domain/services/capacity-calculator.service';
 import { Percentage } from '../../../domain/value-objects/percentage.vo';
 import { Minutes } from '../../../domain/value-objects/minutes.vo';
-import { NotFoundError } from '../../../domain/errors/domain.error';
 
 export interface EmployeeCapacitySummary {
   /** ID сотрудника */
@@ -61,58 +61,80 @@ export class GetCapacityUseCase {
     private readonly reportingPeriodRepository: ReportingPeriodRepository,
     private readonly plannedTaskRepository: PlannedTaskRepository,
     private readonly userRepository: UserRepository,
+    private readonly planningSettingsRepository?: PlanningSettingsRepository,
   ) {
     this.capacityCalculator = new CapacityCalculator();
   }
 
   async execute(periodId: string): Promise<CapacitySummary> {
-    // 1. Проверяем, что период существует
+    // 1. Prob
     const period = await this.reportingPeriodRepository.findById(periodId);
-    if (!period) {
-      throw new NotFoundError('ReportingPeriod', periodId);
+    let config;
+    if (period) {
+      config = {
+        workHoursPerMonth: period.workHoursPerMonth ?? 168,
+        reservePercent: period.reservePercent ?? Percentage.fromPercent(30),
+        yellowThreshold: period.yellowThreshold ?? Percentage.fromPercent(80),
+        redThreshold: period.redThreshold ?? Percentage.fromPercent(100),
+        employeeFilter: period.employeeFilter ?? [],
+      };
+    } else if (this.planningSettingsRepository) {
+      let settings = await this.planningSettingsRepository.findById(periodId);
+      if (!settings) {
+        settings = await this.planningSettingsRepository.findLatest();
+      }
+      if (settings) {
+        config = {
+          workHoursPerMonth: settings.workHoursPerMonth ?? 168,
+          reservePercent: settings.reservePercent !== null
+            ? Percentage.fromBasisPoints(settings.reservePercent)
+            : Percentage.fromPercent(30),
+          yellowThreshold: settings.yellowThreshold !== null
+            ? Percentage.fromBasisPoints(settings.yellowThreshold)
+            : Percentage.fromPercent(80),
+          redThreshold: settings.redThreshold !== null
+            ? Percentage.fromBasisPoints(settings.redThreshold)
+            : Percentage.fromPercent(100),
+          employeeFilter: [],
+        };
+      } else {
+        config = {};
+        config.workHoursPerMonth = 168;
+        config.reservePercent = Percentage.fromPercent(30);
+        config.yellowThreshold = Percentage.fromPercent(80);
+        config.redThreshold = Percentage.fromPercent(100);
+        config.employeeFilter = [];
+      }
+    } else {
+      config = {};
+      config.workHoursPerMonth = 168;
+      config.reservePercent = Percentage.fromPercent(30);
+      config.yellowThreshold = Percentage.fromPercent(80);
+      config.redThreshold = Percentage.fromPercent(100);
+      config.employeeFilter = [];
     }
-
-    // 2. Определяем параметры расчёта
-    const workHoursPerMonth = period.workHoursPerMonth ?? 168; // 168 часов = 21 день × 8 часов
-    const reservePercent = period.reservePercent ?? Percentage.fromPercent(30);
-    const yellowThreshold = period.yellowThreshold ?? Percentage.fromPercent(80);
-    const redThreshold = period.redThreshold ?? Percentage.fromPercent(100);
-
-    // 3. Определяем, по каким сотрудникам считаем мощность
-    const employeeFilter = period.employeeFilter ?? [];
     let allUsers = await this.userRepository.findAllActive();
-
-    // Если указан фильтр по сотрудникам, применяем его
-    if (employeeFilter.length > 0) {
-      allUsers = allUsers.filter((user) => employeeFilter.includes(user.id));
+    if (config.employeeFilter.length > 0) {
+      allUsers = allUsers.filter((user) => config.employeeFilter.includes(user.id));
     }
-
-    // 4. Для каждого сотрудника загружаем задачи и рассчитываем мощность
-    const employeeCapacities: EmployeeCapacitySummary[] = [];
-
+    allUsers = allUsers.filter((user) => user.canPlan === true);
+    const employeeCapacities = [];
     for (const user of allUsers) {
-      // 4a. Загружаем задачи, назначенные на этого сотрудника в данном периоде
       const assignedTasks = await this.plannedTaskRepository.findAssignedToUser(user.id, periodId);
-
-      // 4b. Суммируем запланированное время
       let totalPlannedMinutes = Minutes.zero();
       for (const task of assignedTasks) {
         totalPlannedMinutes = totalPlannedMinutes.add(task.totalPlannedMinutes);
       }
-
-      // 4c. Рассчитываем мощность через CapacityCalculator
-      const result: CapacityCalculationResult = this.capacityCalculator.calculate(
+      const result = this.capacityCalculator.calculate(
         {
           employeeId: user.id,
-          workHoursPerMonth,
-          reservePercent,
+          workHoursPerMonth: config.workHoursPerMonth,
+          reservePercent: config.reservePercent,
           plannedMinutes: totalPlannedMinutes,
         },
-        yellowThreshold,
-        redThreshold,
+        config.yellowThreshold,
+        config.redThreshold,
       );
-
-      // 4d. Формируем сводку по сотруднику
       employeeCapacities.push({
         employeeId: user.id,
         fullName: user.fullName,
@@ -123,8 +145,6 @@ export class GetCapacityUseCase {
         taskCount: assignedTasks.length,
       });
     }
-
-    // 5. Считаем агрегированные метрики
     const totalAvailableMinutes = employeeCapacities.reduce(
       (sum, emp) => sum + Minutes.fromHours(emp.availableHours).minutes,
       0,
@@ -133,22 +153,28 @@ export class GetCapacityUseCase {
       (sum, emp) => sum + Minutes.fromHours(emp.plannedHours).minutes,
       0,
     );
-
     const totalAvailableHours = Math.round((totalAvailableMinutes / 60) * 100) / 100;
     const totalPlannedHours = Math.round((totalPlannedMinutes / 60) * 100) / 100;
-
     const totalLoadPercent =
       totalAvailableMinutes > 0
         ? Percentage.calculatePercentage(totalPlannedMinutes, totalAvailableMinutes)
         : Percentage.zero();
-
-    // 6. Возвращаем сводку
     return {
       employees: employeeCapacities,
       totalAvailableHours,
       totalPlannedHours,
       totalLoadPercent: totalLoadPercent.percent,
       employeeCount: employeeCapacities.length,
+    };
+  }
+
+  private getDefaultConfig() {
+    return {
+      workHoursPerMonth: 168,
+      reservePercent: Percentage.fromPercent(30),
+      yellowThreshold: Percentage.fromPercent(80),
+      redThreshold: Percentage.fromPercent(100),
+      employeeFilter: [],
     };
   }
 }

@@ -54,28 +54,8 @@ import {
   ArrowDown,
   ArrowUpDown,
 } from 'lucide-react';
-import {
-  PRIORITY_LABEL_RU,
-  STATE_LABEL_RU,
-  TYPE_LABEL_RU,
-  ytIssueUrl,
-  type Priority,
-} from '@/data/planningMock';
 import { MONTHS_RU } from '@/lib/planning';
-import {
-  actionsFor,
-  DIRECTOR_ID,
-  minutesToHoursStr,
-  orgEmployees,
-  parseHoursToMinutes,
-  TIMESHEET_STATUS_LABEL_RU,
-  totalHours,
-  type Timesheet,
-  type TimesheetRow,
-  type TimesheetRowChange,
-  type TimesheetStatus,
-  type ViewerRole,
-} from '@/data/timesheetsMock';
+import type { Priority } from '@/lib/planning';
 import {
   activeSalaryFor,
   baseHourlyRateKop,
@@ -84,10 +64,18 @@ import {
   DEFAULT_FINANCE_SETTINGS,
   formatRubInt,
   initialSalaryHistory,
+  KOPECKS_PER_RUB,
   MANAGER_GRADE_LABEL,
+  minutesToHoursStr,
+  orgEmployees,
+  totalHours,
   type BusinessGrade,
   type ManagerGrade,
-} from '@/data/salaryMock';
+  type SalaryRecord,
+  type Timesheet,
+  type TimesheetStatus,
+} from '@/lib/finance';
+
 import {
   useTimesheets,
   type TimesheetDto,
@@ -105,6 +93,7 @@ const VIEWER_OPTIONS: { id: string; label: string }[] = [
   { id: 'e-pm-3', label: 'Беляев С. В. (Руководитель / PM)' },
   { id: 'e-pm-1', label: 'Морозов И. К. (Директор)' },
 ];
+const DIRECTOR_ID = 'director';
 
 // Вспомогательная функция для преобразования DTO табеля в доменный тип Timesheet
 function dtoToTimesheet(dto: TimesheetDto): Timesheet {

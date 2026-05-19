@@ -38,13 +38,17 @@ import { UpdateFormulaUseCase } from '../../application/administration/use-cases
 import { GetFormulasUseCase } from '../../application/administration/use-cases/get-formulas.use-case';
 import { UpdateEvaluationScaleUseCase } from '../../application/administration/use-cases/update-evaluation-scale.use-case';
 import { GetEvaluationScalesUseCase } from '../../application/administration/use-cases/get-evaluation-scales.use-case';
+import { ListPlanningSettingsUseCase } from '../../application/administration/use-cases/list-planning-settings.use-case';
+import { CreatePlanningSettingsUseCase } from '../../application/administration/use-cases/create-planning-settings.use-case';
 import { UpdatePlanningSettingsUseCase } from '../../application/administration/use-cases/update-planning-settings.use-case';
 import { GetPlanningSettingsUseCase } from '../../application/administration/use-cases/get-planning-settings.use-case';
+import { DeletePlanningSettingsUseCase } from '../../application/administration/use-cases/delete-planning-settings.use-case';
 import { GetDictionariesUseCase } from '../../application/administration/use-cases/get-dictionaries.use-case';
 import { GetAuditLogUseCase } from '../../application/administration/use-cases/get-audit-log.use-case';
 import { GetIntegrationsUseCase } from '../../application/administration/use-cases/get-integrations.use-case';
 import { UpdateIntegrationUseCase } from '../../application/administration/use-cases/update-integration.use-case';
 import { YouTrackApiClient } from '../../infrastructure/youtrack/youtrack-api.client';
+import { LdapService } from '../../infrastructure/auth/ldap.service';
 import { GetActiveSessionsUseCase } from '../../application/administration/use-cases/get-active-sessions.use-case';
 import { GetSensitiveChangesUseCase } from '../../application/administration/use-cases/get-sensitive-changes.use-case';
 import { CreateUserDto } from '../../application/administration/dto/create-user.dto';
@@ -76,6 +80,9 @@ export class AdminController {
     private readonly updateEvaluationScaleUseCase: UpdateEvaluationScaleUseCase,
     private readonly getEvaluationScalesUseCase: GetEvaluationScalesUseCase,
     private readonly updatePlanningSettingsUseCase: UpdatePlanningSettingsUseCase,
+    private readonly listPlanningSettingsUseCase: ListPlanningSettingsUseCase,
+    private readonly createPlanningSettingsUseCase: CreatePlanningSettingsUseCase,
+    private readonly deletePlanningSettingsUseCase: DeletePlanningSettingsUseCase,
     private readonly getDictionariesUseCase: GetDictionariesUseCase,
     private readonly getAuditLogUseCase: GetAuditLogUseCase,
     private readonly getIntegrationsUseCase: GetIntegrationsUseCase,
@@ -84,6 +91,7 @@ export class AdminController {
     private readonly getSensitiveChangesUseCase: GetSensitiveChangesUseCase,
     private readonly getPlanningSettingsUseCase: GetPlanningSettingsUseCase,
     private readonly youtrackApiClient: YouTrackApiClient,
+    private readonly ldapService: LdapService,
   ) {}
 
   // ====================================================================
@@ -446,34 +454,94 @@ export class AdminController {
   }
 
   // ====================================================================
-  // Settings (Настройки)
+  // Settings — Sprint Configs (Настройки спринтов)
   // ====================================================================
 
   /**
-   * Получить текущие настройки планирования.
+   * Получить список всех конфигураций спринтов.
    *
    * GET /api/admin/settings/planning
    */
   @Get('settings/planning')
   @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
+  async listPlanningSettings() {
+    this.logger.log('Listing all planning settings');
+    return await this.listPlanningSettingsUseCase.execute();
+  }
+
+  /**
+   * Получить последнюю (текущую) конфигурацию спринта.
+   *
+   * GET /api/admin/settings/planning/latest
+   */
+  @Get('settings/planning/latest')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
   async getPlanningSettings() {
-    this.logger.log('Getting planning settings');
+    this.logger.log('Getting latest planning settings');
     return await this.getPlanningSettingsUseCase.execute();
   }
 
   /**
-   * Обновить настройки планирования.
+   * Создать новую конфигурацию спринта.
    *
-   * PUT /api/admin/settings/planning
+   * POST /api/admin/settings/planning
    */
-  @Put('settings/planning')
+  @Post('settings/planning')
+  @HttpCode(HttpStatus.CREATED)
   @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
-  async updatePlanningSettings(@Body() dto: UpdatePlanningSettingsDto, @Req() req?: any) {
-    this.logger.log('Updating planning settings');
+  async createPlanningSettings(@Body() dto: UpdatePlanningSettingsDto, @Req() req?: any) {
+    this.logger.log('Creating planning settings');
+
+    const updatedBy = req?.user?.id ?? 'system';
+    return await this.createPlanningSettingsUseCase.execute(
+      { ...dto, updatedBy },
+      {
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
+  }
+
+  /**
+   * Обновить конфигурацию спринта по ID.
+   *
+   * PUT /api/admin/settings/planning/:id
+   */
+  @Put('settings/planning/:id')
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
+  async updatePlanningSettings(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlanningSettingsDto,
+    @Req() req?: any,
+  ) {
+    this.logger.log(`Updating planning settings: ${id}`);
 
     const updatedBy = req?.user?.id ?? 'system';
     await this.updatePlanningSettingsUseCase.execute(
+
+      id,
       { ...dto, updatedBy },
+      {
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    );
+  }
+
+  /**
+   * Удалить конфигурацию спринта по ID.
+   *
+   * DELETE /api/admin/settings/planning/:id
+   */
+  @Delete('settings/planning/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(ROLES.ADMIN, ROLES.DIRECTOR)
+  async deletePlanningSettings(@Param('id') id: string, @Req() req?: any) {
+    this.logger.log(`Deleting planning settings: ${id}`);
+
+    const updatedBy = req?.user?.id ?? 'system';
+    await this.deletePlanningSettingsUseCase.execute(
+      { id, updatedBy },
       {
         ipAddress: req?.ip,
         userAgent: req?.headers?.['user-agent'],
@@ -515,8 +583,12 @@ export class AdminController {
       userAgent: req?.headers?.['user-agent'],
     });
 
-    // После обновления настроек перезагружаем конфигурацию YouTrack API клиента из БД
-    await this.youtrackApiClient.reloadConfig();
+    // После обновления настроек перезагружаем конфигурацию соответствующего клиента из БД
+    if (id === 'ldap') {
+      await this.ldapService.reloadConfig();
+    } else {
+      await this.youtrackApiClient.reloadConfig();
+    }
 
     return result;
   }

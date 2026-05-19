@@ -5,6 +5,18 @@ export declare enum Role {
     EMPLOYEE = "employee",
     VIEWER = "viewer"
 }
+export declare const ROLES: {
+    readonly ADMIN: "admin";
+    readonly DIRECTOR: "director";
+    readonly MANAGER: "manager";
+    readonly EMPLOYEE: "employee";
+    readonly BUSINESS: "business";
+    readonly ACCOUNTANT: "accountant";
+    readonly VIEWER: "viewer";
+    readonly HR: "hr";
+    readonly FINANCE: "finance";
+};
+export type RoleType = (typeof ROLES)[keyof typeof ROLES];
 export declare enum PeriodState {
     DRAFT = "draft",
     ACTIVE = "active",
@@ -12,6 +24,15 @@ export declare enum PeriodState {
     APPROVED = "approved",
     ARCHIVED = "archived"
 }
+export declare const PERIOD_STATE: {
+    readonly PLANNING: "PLANNING";
+    readonly PLAN_FIXED: "PLAN_FIXED";
+    readonly FACT_LOADED: "FACT_LOADED";
+    readonly EVALUATIONS_DONE: "EVALUATIONS_DONE";
+    readonly PERIOD_CLOSED: "PERIOD_CLOSED";
+    readonly PERIOD_REOPENED: "PERIOD_REOPENED";
+};
+export type PeriodStateType = (typeof PERIOD_STATE)[keyof typeof PERIOD_STATE];
 export declare enum WorkItemType {
     TASK = "task",
     BUG = "bug",

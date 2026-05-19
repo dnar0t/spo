@@ -1,7 +1,7 @@
 /**
  * UpdateUserDto
  *
- * DTO для обновления профиля пользователя.
+ * DTO dlya obnovleniya profilya polzovatelya.
  */
 export class UpdateUserDto {
   login?: string;
@@ -10,4 +10,6 @@ export class UpdateUserDto {
   youtrackLogin?: string | null;
   youtrackUserId?: string | null;
   adLogin?: string | null;
+  isActive?: boolean;
+  canPlan?: boolean;
 }

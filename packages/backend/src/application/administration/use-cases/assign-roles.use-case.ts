@@ -25,6 +25,10 @@ export class AssignRolesUseCase {
     }
 
     // 2. Аудит — записываем назначение ролей
+    // 2. Save roles in DB
+    await this.userRepository.syncRoles(dto.userId, dto.roleIds);
+
+    // 3. Audit
     await this.auditLogger.log({
       userId: context?.userId ?? 'system',
       action: 'ROLES_ASSIGNED',

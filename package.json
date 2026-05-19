@@ -20,6 +20,7 @@
     "format:check": "prettier --check 'packages/*/src/**/*.ts'"
   },
   "devDependencies": {
+    "@swc/core": "^1.7.42",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
@@ -28,5 +29,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@swc/cli": "^0.8.1"
   }
 }

@@ -39,6 +39,9 @@ import { UpdateEvaluationScaleUseCase } from '../../application/administration/u
 import { GetEvaluationScalesUseCase } from '../../application/administration/use-cases/get-evaluation-scales.use-case';
 import { UpdatePlanningSettingsUseCase } from '../../application/administration/use-cases/update-planning-settings.use-case';
 import { GetPlanningSettingsUseCase } from '../../application/administration/use-cases/get-planning-settings.use-case';
+import { ListPlanningSettingsUseCase } from '../../application/administration/use-cases/list-planning-settings.use-case';
+import { CreatePlanningSettingsUseCase } from '../../application/administration/use-cases/create-planning-settings.use-case';
+import { DeletePlanningSettingsUseCase } from '../../application/administration/use-cases/delete-planning-settings.use-case';
 import { GetDictionariesUseCase } from '../../application/administration/use-cases/get-dictionaries.use-case';
 import { GetAuditLogUseCase } from '../../application/administration/use-cases/get-audit-log.use-case';
 import { GetIntegrationsUseCase } from '../../application/administration/use-cases/get-integrations.use-case';
@@ -46,6 +49,10 @@ import { UpdateIntegrationUseCase } from '../../application/administration/use-c
 import { GetActiveSessionsUseCase } from '../../application/administration/use-cases/get-active-sessions.use-case';
 import { GetSensitiveChangesUseCase } from '../../application/administration/use-cases/get-sensitive-changes.use-case';
 import { AUDIT_LOGGER, IAuditLogger } from '../../application/auth/ports/audit-logger';
+import {
+  ENCRYPTION_SERVICE,
+  IEncryptionService,
+} from '../../application/auth/ports/encryption.service';
 
 @Module({
   imports: [AdministrationModule, AuthModule, YouTrackModule],
@@ -194,6 +201,33 @@ import { AUDIT_LOGGER, IAuditLogger } from '../../application/auth/ports/audit-l
       useFactory: (settingsRepo: PrismaPlanningSettingsRepository) =>
         new GetPlanningSettingsUseCase(settingsRepo),
       inject: [PrismaPlanningSettingsRepository],
+    },
+
+    // --- ListPlanningSettingsUseCase ---
+    // Зависимости: PlanningSettingsRepository
+    {
+      provide: ListPlanningSettingsUseCase,
+      useFactory: (settingsRepo: PrismaPlanningSettingsRepository) =>
+        new ListPlanningSettingsUseCase(settingsRepo),
+      inject: [PrismaPlanningSettingsRepository],
+    },
+
+    // --- CreatePlanningSettingsUseCase ---
+    // Зависимости: PlanningSettingsRepository, IAuditLogger
+    {
+      provide: CreatePlanningSettingsUseCase,
+      useFactory: (settingsRepo: PrismaPlanningSettingsRepository, auditLogger: IAuditLogger) =>
+        new CreatePlanningSettingsUseCase(settingsRepo, auditLogger),
+      inject: [PrismaPlanningSettingsRepository, AUDIT_LOGGER],
+    },
+
+    // --- DeletePlanningSettingsUseCase ---
+    // Зависимости: PlanningSettingsRepository, IAuditLogger
+    {
+      provide: DeletePlanningSettingsUseCase,
+      useFactory: (settingsRepo: PrismaPlanningSettingsRepository, auditLogger: IAuditLogger) =>
+        new DeletePlanningSettingsUseCase(settingsRepo, auditLogger),
+      inject: [PrismaPlanningSettingsRepository, AUDIT_LOGGER],
     },
 
     // --- GetDictionariesUseCase ---

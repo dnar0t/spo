@@ -1,6 +1,104 @@
 // Расчёты планирования согласно ТЗ СПО v2 §9.
 
-import type { Assignment, BacklogIssue, Employee, WorkRole } from '@/data/planningMock';
+
+
+
+// ============================================================================
+
+export type WorkRole = "development" | "testing" | "management" | "other";
+export type Priority = "Blocker" | "High" | "Medium" | "Low";
+export type IssueType = "Epic" | "Feature" | "Story" | "Task" | "Bug";
+export type IssueState =
+  | "Open"
+  | "In Progress"
+  | "In Review"
+  | "Testing"
+  | "Done"
+  | "Reopened";
+
+export interface Employee {
+  id: string;
+  name: string;
+  position: string;
+  workRole: WorkRole;
+  monthlyNetSalary: number;
+  ytLogin: string;
+}
+
+export interface BacklogIssue {
+  id: string;
+  idReadable: string;
+  summary: string;
+  projectId: string;
+  systemId: string;
+  type: IssueType;
+  priority: Priority;
+  state: IssueState;
+  reporterId: string;
+  estimateHours: number;
+  readiness: number;
+  spentHours?: number;
+  parentIdReadable?: string;
+  parentSummary?: string;
+  parentType?: IssueType;
+  assigneeId?: string;
+}
+
+export interface Assignment {
+  issueId: string;
+  employeeId: string;
+  role: WorkRole;
+}
+
+
+
+// Domain types (moved from @/data/planningMock)
+// ============================================================================
+
+export type WorkRole = "development" | "testing" | "management" | "other";
+export type Priority = "Blocker" | "High" | "Medium" | "Low";
+export type IssueType = "Epic" | "Feature" | "Story" | "Task" | "Bug";
+export type IssueState =
+  | "Open"
+  | "In Progress"
+  | "In Review"
+  | "Testing"
+  | "Done"
+  | "Reopened";
+
+export interface Employee {
+  id: string;
+  name: string;
+  position: string;
+  workRole: WorkRole;
+  monthlyNetSalary: number;
+  ytLogin: string;
+}
+
+export interface BacklogIssue {
+  id: string;
+  idReadable: string;
+  summary: string;
+  projectId: string;
+  systemId: string;
+  type: IssueType;
+  priority: Priority;
+  state: IssueState;
+  reporterId: string;
+  estimateHours: number;
+  readiness: number;
+  spentHours?: number;
+  parentIdReadable?: string;
+  parentSummary?: string;
+  parentType?: IssueType;
+  assigneeId?: string;
+}
+
+export interface Assignment {
+  issueId: string;
+  employeeId: string;
+  role: WorkRole;
+}
 
 export interface SprintSettings {
   // Календарный месяц спринта.
@@ -32,6 +130,34 @@ export const DEFAULT_SPRINT_SETTINGS: SprintSettings = {
   yellowThreshold: 0.8,
   redThreshold: 1.0,
   workHoursPerYear: 1973,
+};
+
+export const TYPE_LABEL_RU: Record<string, string> = {
+  Epic: 'Эпик',
+  Feature: 'Функция',
+  Story: 'История',
+  Task: 'Задача',
+  Bug: 'Ошибка',
+};
+
+export const STATE_LABEL_RU: Record<string, string> = {
+  'Open': 'Открыта',
+  'In Progress': 'В работе',
+  'Submitted': 'Отправлена',
+  'Can not Reproduce': 'Не воспроизводится',
+  'Fixed': 'Исправлена',
+  'Verified': 'Проверена',
+  'Closed': 'Закрыта',
+  'Duplicate': 'Дубликат',
+  'Rejected': 'Отклонена',
+};
+
+export const PRIORITY_LABEL_RU: Record<string, string> = {
+  Blocker: 'Блокер',
+  Critical: 'Критический',
+  High: 'Высокий',
+  Medium: 'Средний',
+  Low: 'Низкий',
 };
 
 export const MONTHS_RU = [

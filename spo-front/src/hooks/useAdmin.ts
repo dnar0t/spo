@@ -45,6 +45,7 @@ export interface AdminUserDto {
   createdAt: string;
   managerId: string | null;
   managerName: string | null;
+  canPlan: boolean;
 }
 
 /** Роль из справочника */
@@ -82,16 +83,35 @@ export interface AdminDictionariesDto {
   systems: DictionarySystemDto[];
 }
 
-/** Планировочные настройки из GET /api/admin/settings/planning */
+/** Планировочные настройки — элемент списка (GET /api/admin/settings/planning) */
+export interface PlanningSettingsListItemDto {
+  id: string;
+  workHoursPerMonth: number | null;
+  reservePercent: number | null;
+  testPercent: number | null;
+  debugPercent: number | null;
+  mgmtPercent: number | null;
+  yellowThreshold: number | null;
+  redThreshold: number | null;
+  businessGroupingLevel: string | null;
+  month: number | null;
+  year: number | null;
+  updatedBy: string;
+  updatedAt: string;
+  createdAt: string;
+}
+
+/** Планировочные настройки — создание/обновление */
 export interface PlanningSettingsDto {
-  workHoursPerMonth: number;
-  workHoursPerYear: number;
-  reservePercent: number;
-  testPercent: number;
-  debugPercent: number;
-  mgmtPercent: number;
-  yellowThreshold: number;
-  redThreshold: number;
+  workHoursPerMonth?: number | null;
+  reservePercent?: number | null;
+  testPercent?: number | null;
+  debugPercent?: number | null;
+  mgmtPercent?: number | null;
+  yellowThreshold?: number | null;
+  redThreshold?: number | null;
+  month?: number | null;
+  year?: number | null;
 }
 
 /** Интеграция из GET /api/admin/integrations */
@@ -160,6 +180,7 @@ export interface SensitiveChangeDto {
 const adminKeys = {
   all: ['admin'] as const,
   users: (filters?: Record<string, unknown>) => ['admin', 'users', filters] as const,
+  usersAll: ['admin', 'users'] as const,
   dictionaries: ['admin', 'dictionaries'] as const,
   auditLog: (filters?: Record<string, unknown>) => ['admin', 'audit-log', filters] as const,
   sessions: ['admin', 'sessions'] as const,
@@ -212,7 +233,7 @@ export function useAdmin() {
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
         toast({
           title: 'Пользователь создан',
           description: 'Учётная запись успешно создана.',
@@ -240,18 +261,38 @@ export function useAdmin() {
         email: string;
         fullName: string;
         isActive: boolean;
+        canPlan?: boolean;
       }): Promise<AdminUserDto> => {
         const response = await api.put<AdminUserDto>(`/admin/users/${id}`, data);
         return response;
       },
+      onMutate: async (vars) => {
+        await queryClient.cancelQueries({ queryKey: adminKeys.usersAll });
+        const snapshots = queryClient.getQueriesData<PaginatedResult<AdminUserDto>>({ queryKey: adminKeys.usersAll });
+        queryClient.setQueriesData<PaginatedResult<AdminUserDto>>({ queryKey: adminKeys.usersAll }, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: old.data.map((u) =>
+              u.id === vars.id ? { ...u, ...vars } : u
+            ),
+          };
+        });
+        return { snapshots };
+      },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
         toast({
           title: 'Изменения сохранены',
           description: 'Данные пользователя обновлены.',
         });
       },
-      onError: (error: Error) => {
+      onError: (error: Error, vars, context) => {
+        if (context?.snapshots) {
+          for (const [key, data] of context.snapshots) {
+            queryClient.setQueryData(key, data);
+          }
+        }
         toast({
           title: 'Ошибка обновления',
           description: error.message || 'Не удалось обновить пользователя.',
@@ -268,14 +309,33 @@ export function useAdmin() {
       mutationFn: async (id: string): Promise<void> => {
         await api.delete(`/admin/users/${id}`);
       },
+      onMutate: async (id) => {
+        await queryClient.cancelQueries({ queryKey: adminKeys.usersAll });
+        const snapshots = queryClient.getQueriesData<PaginatedResult<AdminUserDto>>({ queryKey: adminKeys.usersAll });
+        queryClient.setQueriesData<PaginatedResult<AdminUserDto>>({ queryKey: adminKeys.usersAll }, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: old.data.map((u) =>
+              u.id === id ? { ...u, isActive: false } : u
+            ),
+          };
+        });
+        return { snapshots };
+      },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
         toast({
           title: 'Учётная запись деактивирована',
           description: 'Пользователь успешно деактивирован.',
         });
       },
-      onError: (error: Error) => {
+      onError: (error: Error, id, context) => {
+        if (context?.snapshots) {
+          for (const [key, data] of context.snapshots) {
+            queryClient.setQueryData(key, data);
+          }
+        }
         toast({
           title: 'Ошибка деактивации',
           description: error.message || 'Не удалось деактивировать пользователя.',
@@ -290,11 +350,13 @@ export function useAdmin() {
   const useAssignRoles = () =>
     useMutation({
       mutationFn: async ({ id, roles }: { id: string; roles: string[] }): Promise<AdminUserDto> => {
-        const response = await api.put<AdminUserDto>(`/admin/users/${id}/roles`, { roles });
+        const response = await api.put<AdminUserDto>(`/admin/users/${id}/roles`, {
+          roleIds: roles,
+        });
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
         toast({
           title: 'Роли назначены',
           description: 'Роли пользователя обновлены.',
@@ -325,7 +387,7 @@ export function useAdmin() {
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
         toast({
           title: 'Руководитель назначен',
           description: 'Руководитель пользователя обновлён.',
@@ -416,38 +478,86 @@ export function useAdmin() {
     });
 
   // ========================================================================
-  // GET /api/admin/settings/planning — планировочные настройки
+  // GET /api/admin/settings/planning — список всех конфигураций спринтов
   // ========================================================================
-  const usePlanningSettings = () =>
+  const useListPlanningSettings = () =>
     useQuery({
       queryKey: adminKeys.planningSettings,
-      queryFn: async (): Promise<PlanningSettingsDto> => {
-        const response = await api.get<PlanningSettingsDto>('/admin/settings/planning');
+      queryFn: async (): Promise<PlanningSettingsListItemDto[]> => {
+        const response = await api.get<PlanningSettingsListItemDto[]>('/admin/settings/planning');
         return response;
       },
       staleTime: 30_000,
     });
 
   // ========================================================================
-  // PUT /api/admin/settings/planning — обновление планировочных настроек
+  // POST /api/admin/settings/planning — создать новую конфигурацию спринта
   // ========================================================================
-  const useUpdatePlanningSettings = () =>
+  const useCreatePlanningSettings = () =>
     useMutation({
-      mutationFn: async (data: PlanningSettingsDto): Promise<PlanningSettingsDto> => {
-        const response = await api.put<PlanningSettingsDto>('/admin/settings/planning', data);
+      mutationFn: async (data: PlanningSettingsDto): Promise<{ id: string }> => {
+        const response = await api.post<{ id: string }>('/admin/settings/planning', data);
         return response;
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: adminKeys.planningSettings });
         toast({
+          title: 'Конфигурация создана',
+          description: 'Новый спринт добавлен.',
+        });
+      },
+      onError: (error: Error) => {
+        toast({
+          title: 'Ошибка создания',
+          description: error.message || 'Не удалось создать конфигурацию спринта.',
+          variant: 'destructive',
+        });
+      },
+    });
+
+  // ========================================================================
+  // PUT /api/admin/settings/planning/:id — обновление конфигурации спринта
+  // ========================================================================
+  const useUpdatePlanningSettings = () =>
+    useMutation({
+      mutationFn: async ({ id, ...data }: { id: string } & PlanningSettingsDto): Promise<void> => {
+        await api.put(`/admin/settings/planning/${id}`, data);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: adminKeys.planningSettings });
+        toast({
           title: 'Параметры сохранены',
-          description: 'Параметры спринта по умолчанию обновлены.',
+          description: 'Конфигурация спринта обновлена.',
         });
       },
       onError: (error: Error) => {
         toast({
           title: 'Ошибка сохранения',
           description: error.message || 'Не удалось сохранить параметры спринта.',
+          variant: 'destructive',
+        });
+      },
+    });
+
+  // ========================================================================
+  // DELETE /api/admin/settings/planning/:id — удаление конфигурации спринта
+  // ========================================================================
+  const useDeletePlanningSettings = () =>
+    useMutation({
+      mutationFn: async (id: string): Promise<void> => {
+        await api.delete(`/admin/settings/planning/${id}`);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: adminKeys.planningSettings });
+        toast({
+          title: 'Конфигурация удалена',
+          description: 'Спринт удалён из списка.',
+        });
+      },
+      onError: (error: Error) => {
+        toast({
+          title: 'Ошибка удаления',
+          description: error.message || 'Не удалось удалить конфигурацию спринта.',
           variant: 'destructive',
         });
       },
@@ -478,6 +588,10 @@ export function useAdmin() {
         id: string;
         baseUrl?: string;
         secret?: string;
+        login?: string;
+        password?: string;
+        baseDn?: string;
+        bindDn?: string;
         notes?: string;
       }): Promise<IntegrationDto> => {
         const response = await api.put<IntegrationDto>(`/admin/integrations/${id}`, data);
@@ -510,8 +624,10 @@ export function useAdmin() {
     useAuditLog,
     useSessions,
     useSensitiveChanges,
-    usePlanningSettings,
+    useListPlanningSettings,
+    useCreatePlanningSettings,
     useUpdatePlanningSettings,
+    useDeletePlanningSettings,
     useIntegrations,
     useUpdateIntegration,
   };

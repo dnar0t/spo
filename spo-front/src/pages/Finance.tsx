@@ -37,15 +37,6 @@ import {
   type IssueLine,
   type SystemBucket,
 } from '@/lib/finance';
-import {
-  BUSINESS_GRADE_LABEL,
-  DEFAULT_FINANCE_SETTINGS,
-  formatPct,
-  formatRubInt,
-  MANAGER_GRADE_LABEL,
-  type BusinessGrade,
-} from '@/data/salaryMock';
-import { TYPE_LABEL_RU, ytIssueUrl, type IssueType } from '@/data/planningMock';
 import { useFinance } from '@/hooks/useFinance';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 

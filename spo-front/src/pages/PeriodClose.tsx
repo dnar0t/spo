@@ -38,11 +38,17 @@ import {
   Snowflake,
   XCircle,
 } from 'lucide-react';
-import { MONTHS_FULL_RU, PERIOD_STATUS_LABEL_RU, type PeriodStatus } from '@/data/periodCloseMock';
-import { TIMESHEET_STATUS_LABEL_RU, type TimesheetStatus } from '@/data/timesheetsMock';
-import { formatRubInt } from '@/data/salaryMock';
 import { usePeriodClose, type ChecklistItemDto } from '@/hooks/usePeriodClose';
 import type { PlanningPeriodDto } from '@/hooks/usePlanning';
+import { formatRubInt } from '@/lib/finance';
+
+const MONTHS_FULL_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+type PeriodStatus = 'PLANNING'|'ACTIVE'|'CLOSING'|'CLOSED';
+const PERIOD_STATUS_LABEL_RU = {PLANNING:'Планирование',ACTIVE:'Активен',CLOSING:'Закрывается',CLOSED:'Закрыт'};
+
+type TSStatus = 'draft'|'submitted'|'manager_approved'|'approved'|'rejected';
+const TIMESHEET_STATUS_LABEL_RU = {draft:'Черновик',submitted:'Отправлен',manager_approved:'Утверждён руководителем',approved:'Утверждён',rejected:'Отклонён'};
 
 const PeriodClose = () => {
   const { toast } = useToast();

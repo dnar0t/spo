@@ -85,6 +85,22 @@ export class User {
     return this._extensions;
   }
 
+  /** Can user plan (canPlan from extensions) */
+  get canPlan(): boolean {
+    if (this._extensions && typeof this._extensions === "object") {
+      return (this._extensions as Record<string, unknown>)["canPlan"] === true;
+    }
+    return false;
+  }
+
+  set canPlan(value: boolean) {
+    if (!this._extensions) {
+      this._extensions = {};
+    }
+    (this._extensions as Record<string, unknown>)["canPlan"] = value;
+    this._updatedAt = new Date();
+  }
+
   // ─── Бизнес-правила ───
 
   /** Заблокировать пользователя */
@@ -138,12 +154,14 @@ export class User {
     youtrackLogin?: string | null;
     youtrackUserId?: string | null;
     adLogin?: string | null;
+    extensions?: Record<string, unknown> | null;
   }): void {
     if (params.email !== undefined) this._email = params.email;
     if (params.fullName !== undefined) this._fullName = params.fullName;
     if (params.youtrackLogin !== undefined) this._youtrackLogin = params.youtrackLogin;
     if (params.youtrackUserId !== undefined) this._youtrackUserId = params.youtrackUserId;
     if (params.adLogin !== undefined) this._adLogin = params.adLogin;
+    if (params.extensions !== undefined) this._extensions = params.extensions;
     this._updatedAt = new Date();
   }
 

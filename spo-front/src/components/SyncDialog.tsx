@@ -19,6 +19,19 @@ interface SyncDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface StageCounts {
+  processed: number;
+  changes: number;
+  errors: number;
+}
+
+interface StageDetails {
+  users: StageCounts | null;
+  projects: StageCounts | null;
+  issues: StageCounts | null;
+  workItems: StageCounts | null;
+}
+
 interface SyncRunStatus {
   id: string;
   triggerType: string;
@@ -31,40 +44,41 @@ interface SyncRunStatus {
   completedAt: string | null;
   duration: number | null;
   errors?: Record<string, unknown> | null;
+  currentStage: string | null;
+  stageDetails: StageDetails | null;
   logs?: { level: string; message: string }[];
 }
 
-type SyncStage =
-  | { id: 'idle'; label: string }
-  | { id: 'starting'; label: string }
-  | { id: 'users'; label: string }
-  | { id: 'projects'; label: string }
-  | { id: 'issues'; label: string }
-  | { id: 'workItems'; label: string }
-  | { id: 'done'; label: string }
-  | { id: 'error'; label: string };
+interface StageConfig {
+  id: string;
+  label: string;
+  description: string;
+}
 
-const STAGES: SyncStage[] = [
-  { id: 'starting', label: 'Запуск синхронизации…' },
-  { id: 'users', label: 'Синхронизация пользователей…' },
-  { id: 'projects', label: 'Синхронизация проектов…' },
-  { id: 'issues', label: 'Синхронизация задач…' },
-  { id: 'workItems', label: 'Синхронизация трудозатрат…' },
-  { id: 'done', label: 'Синхронизация завершена' },
+const STAGES: StageConfig[] = [
+  { id: 'users', label: 'Пользователи', description: 'Синхронизация пользователей' },
+  { id: 'projects', label: 'Проекты', description: 'Синхронизация проектов' },
+  { id: 'issues', label: 'Задачи', description: 'Синхронизация задач' },
+  { id: 'workItems', label: 'Трудозатраты', description: 'Синхронизация трудозатрат' },
 ];
 
-function currentStageIndex(status: SyncRunStatus | null, stage: string): number {
-  if (!status) return 0;
-  if (status.status === 'COMPLETED') return STAGES.length - 1;
-  if (status.status === 'FAILED') return STAGES.length - 1;
-  // Estimate stage based on counts
-  if (status.totalIssues > 0) {
-    const progress = (status.createdCount + status.updatedCount) / Math.max(status.totalIssues, 1);
-    if (progress < 0.3) return 2; // issues
-    if (progress < 0.7) return 3; // issues advanced
-    return 4; // workItems
-  }
-  return 1; // projects
+function getStageCounts(stageId: string, details: StageDetails | null): StageCounts | null {
+  if (!details) return null;
+  return details[stageId as keyof StageDetails] || null;
+}
+
+function formatStageResult(counts: StageCounts | null): string {
+  if (!counts) return "";
+  const parts: string[] = [];
+  parts.push(`${counts.processed} обработано`);
+  if (counts.changes > 0) parts.push(`${counts.changes} изменений`);
+  if (counts.errors > 0) parts.push(`${counts.errors} ошибок`);
+  return parts.join(", ");
+}
+
+function getStageIndex(currentStage: string | null): number {
+  if (!currentStage) return -1;
+  return STAGES.findIndex(s => s.id === currentStage);
 }
 
 export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
@@ -76,10 +90,13 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
   const abortRef = useRef<AbortController | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const stageIdx = currentStageIndex(status, '');
-  const isDone = status?.status === 'COMPLETED';
+  const currentStageIdx = getStageIndex(status?.currentStage ?? null);
+  const isDone = status?.status === 'SUCCESS' || status?.status === 'COMPLETED';
   const isFailed = status?.status === 'FAILED' || !!error;
   const isRunning = !isDone && !isFailed && !cancelled && syncRunId !== null;
+
+  // Calculate overall progress (each stage = 25%, plus details within stages)
+  const stageProgress = isDone ? 100 : isFailed ? 100 : (currentStageIdx >= 0 ? (currentStageIdx / STAGES.length) * 100 : 0);
   const totalProcessed = (status?.createdCount ?? 0) + (status?.updatedCount ?? 0);
   const totalErrors = status?.errorCount ?? 0;
 
@@ -94,24 +111,20 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
     abortRef.current = abort;
 
     try {
-      // Таймаут 30 секунд на запуск синхронизации
+      // Timeout for starting sync: 30 seconds
       const timeoutId = setTimeout(() => abort.abort(), 30000);
       const resp = await fetch('/api/youtrack/sync', {
         method: 'POST',
         headers: {
-          Authorization: 'Bearer ' + getAccessToken(),
+          'Authorization': 'Bearer ' + getAccessToken(),
           'Content-Type': 'application/json',
         },
         signal: abort.signal,
       });
       clearTimeout(timeoutId);
-      const data = await resp.json();
-      if (!data.success) {
-        setError(data.error?.message || 'Не удалось запустить синхронизацию');
-        setLoading(false);
-        return;
-      }
-      const runId = data.data?.syncRunId;
+      const json = await resp.json();
+      const data = json.data || json;
+      const runId = data?.syncRunId;
       if (!runId) {
         setError('Сервер не вернул ID синхронизации');
         setLoading(false);
@@ -120,24 +133,26 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
       setSyncRunId(runId);
       setLoading(false);
 
-      // Начинаем опрос статуса
+      // Start polling status every 2 seconds
       pollingRef.current = setInterval(async () => {
         try {
-          const r = await fetch('/api/youtrack/sync-runs/' + runId, {
-            headers: { Authorization: 'Bearer ' + getAccessToken() },
+          const r = await fetch('/api/youtrack/sync-runs/' + runId + '/status?_=' + Date.now(), {
+            headers: { 'Cache-Control': 'no-cache' },
             signal: abort.signal,
           });
-          const d = await r.json();
-          if (d.success && d.data) {
-            setStatus(d.data);
-            if (d.data.status === 'COMPLETED' || d.data.status === 'FAILED') {
-              if (pollingRef.current) clearInterval(pollingRef.current);
+          if (r.ok) {
+            const rs = await r.json();
+            // Response can be { success: true, data: {...} } or direct {...}
+            const st = rs.data || rs;
+            if (st && st.status && st.status !== 'UNKNOWN' && st.status !== 'ERROR') {
+              setStatus(st);
+              if (st.status === 'SUCCESS' || st.status === 'COMPLETED' || st.status === 'FAILED' || st.status === 'PARTIAL') {
+                if (pollingRef.current) clearInterval(pollingRef.current);
+              }
             }
           }
-        } catch (e: any) {
-          if (e.name !== 'AbortError') {
-            // ignore polling errors
-          }
+        } catch (pollErr: any) {
+          if (pollErr.name === 'AbortError') return;
         }
       }, 2000);
     } catch (e: any) {
@@ -146,19 +161,7 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
       } else {
         setError(e.message || 'Ошибка соединения с сервером.');
       }
-      setStatus({
-        id: '',
-        triggerType: '',
-        status: 'FAILED',
-        totalIssues: 0,
-        createdCount: 0,
-        updatedCount: 0,
-        errorCount: 0,
-        startedAt: '',
-        completedAt: null,
-        duration: null,
-        errors: null,
-      });
+      setStatus(null);
       setLoading(false);
     }
   }, []);
@@ -185,12 +188,7 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
     onOpenChange(false);
   };
 
-  const progressPercent =
-    status && status.totalIssues > 0
-      ? Math.min(100, Math.round((totalProcessed / Math.max(status.totalIssues, 1)) * 100))
-      : status?.status === 'COMPLETED'
-        ? 100
-        : 0;
+  const progressPercent = Math.min(100, Math.round(stageProgress + (isRunning && currentStageIdx >= 0 ? 5 : 0)));
 
   return (
     <Dialog
@@ -202,7 +200,7 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Loader2 className={cn('h-5 w-5', !isRunning && !isDone && !isFailed && 'opacity-0')} />
+            {isRunning && <Loader2 className="h-5 w-5 animate-spin" />}
             Синхронизация с YouTrack
           </DialogTitle>
           <DialogDescription>
@@ -212,20 +210,26 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
                 ? 'При синхронизации произошли ошибки.'
                 : cancelled
                   ? 'Синхронизация отменена.'
-                  : 'Выполняется синхронизация данных. Пожалуйста, подождите…'}
+                  : loading
+                    ? 'Запуск синхронизации…'
+                    : 'Выполняется синхронизация данных. Пожалуйста, подождите…'}
           </DialogDescription>
         </DialogHeader>
 
         {/* Stages */}
         <div className="space-y-2 py-2">
           {STAGES.map((s, i) => {
+            const stageIdx = getStageIndex(status?.currentStage ?? null);
             const isActive = i === stageIdx && isRunning;
-            const isPast = i < stageIdx || (i === stageIdx && (isDone || isFailed));
+            const isPast = i < stageIdx || isDone || (i === stageIdx && isDone);
+            const counts = getStageCounts(s.id, status?.stageDetails ?? null);
+            const resultText = formatStageResult(counts);
+
             return (
               <div
                 key={s.id}
                 className={cn(
-                  'flex items-center gap-2 text-sm px-2 py-1 rounded',
+                  'flex items-center gap-2 text-sm px-2 py-2 rounded',
                   isActive && 'bg-primary/10 text-primary font-medium',
                   isPast && 'text-muted-foreground',
                   !isPast && !isActive && 'text-muted-foreground/60',
@@ -238,13 +242,33 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
                 ) : (
                   <div className="h-4 w-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
                 )}
-                <span>{s.label}</span>
-                {isPast && s.id === 'done' && (
+                <div className="flex-1 min-w-0">
+                  <span>{s.label}</span>
+                  {isPast && resultText && (
+                    <span className="text-[11px] text-muted-foreground ml-1">— {resultText}</span>
+                  )}
+                  {isActive && (
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      {s.description}
+                      {s.id === 'workItems' && status && (
+                        <span className="ml-1">
+                          ({status.updatedCount} записей обработано)
+                        </span>
+                      )}
+                      {s.id !== 'workItems' && status && status.totalIssues > 0 && (
+                        <span className="ml-1">
+                          ({totalProcessed} из {status.totalIssues} обработано)
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isPast && counts && counts.errors > 0 && (
                   <Badge
                     variant="outline"
-                    className="ml-auto text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200"
+                    className="text-[10px] bg-destructive/5 text-destructive border-destructive/20"
                   >
-                    {status?.totalIssues || 0} задач, {totalProcessed} обработано
+                    {counts.errors} ошиб.
                   </Badge>
                 )}
               </div>
@@ -253,15 +277,37 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
         </div>
 
         {/* Progress bar */}
-        {isRunning && status && status.totalIssues > 0 && (
+        {(isRunning || isDone) && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>
-                Обработано: {totalProcessed} из {status.totalIssues} задач
+                {isDone
+                  ? `Обработано: ${totalProcessed} записей`
+                  : currentStageIdx >= 0
+                    ? `Этап ${currentStageIdx + 1} из ${STAGES.length}: ${STAGES[currentStageIdx].label}${status?.updatedCount ? ' (' + status.updatedCount + ' зап.)' : ''}`
+                    : 'Подготовка…'}
               </span>
-              <span>{progressPercent}%</span>
+              <span>{isDone ? '100%' : progressPercent + '%'}</span>
             </div>
             <Progress value={progressPercent} className="h-2" />
+          </div>
+        )}
+
+        {/* Completion stats */}
+        {isDone && (
+          <div className="grid grid-cols-3 gap-2 p-3 rounded-md bg-muted/30 border border-border text-center text-xs">
+            <div>
+              <div className="text-lg font-semibold text-emerald-600">{totalProcessed}</div>
+              <div className="text-muted-foreground">Всего обработано</div>
+            </div>
+            <div>
+              <div className="text-lg font-semibold text-primary">{totalErrors}</div>
+              <div className="text-muted-foreground">Ошибок</div>
+            </div>
+            <div>
+              <div className="text-lg font-semibold">{status?.duration ? Math.round(status.duration / 60) : '—'}</div>
+              <div className="text-muted-foreground">Минут</div>
+            </div>
           </div>
         )}
 
@@ -272,9 +318,9 @@ export function SyncDialog({ open, onOpenChange }: SyncDialogProps) {
             <div>
               <p className="font-medium">Ошибка синхронизации</p>
               <p className="text-xs mt-0.5">
-                {error || status?.errors ? JSON.stringify(status?.errors) : 'Неизвестная ошибка'}
+                {error || (status?.errors ? JSON.stringify(status.errors) : 'Неизвестная ошибка')}
               </p>
-              {totalErrors > 0 && <p className="text-xs mt-1">Количество ошибок: {totalErrors}</p>}
+              {totalErrors > 0 && <p className="text-xs mt-1">Всего ошибок: {totalErrors}</p>}
             </div>
           </div>
         )}

@@ -18,6 +18,12 @@ export class UpdateIntegrationUseCase {
     dto: {
       baseUrl?: string;
       apiTokenEncrypted?: string;
+      secret?: string;
+      login?: string;
+      password?: string;
+      baseDn?: string;
+      bindDn?: string;
+      notes?: string;
       projects?: string[];
       searchQuery?: string;
       agileBoardId?: string;
@@ -33,18 +39,91 @@ export class UpdateIntegrationUseCase {
     context?: { userId?: string; ipAddress?: string; userAgent?: string },
   ) {
     // 1. Проверяем существование записи
-    const existing = await this.prisma.integrationSettings.findUnique({
+    let existing = await this.prisma.integrationSettings.findUnique({
       where: { id },
     });
 
+    // Если записи нет — создаём новую (для LDAP и других кастомных интеграций)
     if (!existing) {
-      throw new Error(`Integration settings not found: ${id}`);
+      existing = await this.prisma.integrationSettings.create({
+        data: {
+          id,
+          baseUrl: '',
+          apiTokenEncrypted: '',
+          projects: [],
+          isActive: true,
+        },
+      });
     }
 
     // 2. Формируем данные для обновления (только переданные поля)
     const updateData: Record<string, unknown> = {};
     if (dto.baseUrl !== undefined) updateData.baseUrl = dto.baseUrl;
-    if (dto.apiTokenEncrypted !== undefined) updateData.apiTokenEncrypted = dto.apiTokenEncrypted;
+
+    // Map frontend `secret` → store as `apiTokenEncrypted`
+    // (только для YouTrack, не для LDAP — у LDAP secret идёт в extensions)
+    // Токен хранится без шифрования (расшифровка не реализована в клиенте)
+    if (id !== 'ldap') {
+      if (dto.secret !== undefined) {
+        updateData.apiTokenEncrypted = dto.secret;
+      } else if (dto.apiTokenEncrypted !== undefined) {
+        updateData.apiTokenEncrypted = dto.apiTokenEncrypted;
+      }
+    }
+
+    // Map frontend `notes` → store in `extensions` JSON field (merge with existing)
+    if (dto.notes !== undefined) {
+      const existingExtensions =
+        typeof existing.extensions === 'object' && existing.extensions !== null
+          ? (existing.extensions as Record<string, unknown>)
+          : {};
+      updateData.extensions = {
+        ...existingExtensions,
+        notes: dto.notes,
+      };
+    }
+
+    // LDAP-specific fields stored in extensions
+    if (id === 'ldap') {
+      const existingExtensions =
+        typeof existing.extensions === 'object' && existing.extensions !== null
+          ? (existing.extensions as Record<string, unknown>)
+          : {};
+
+      // Если передан baseUrl для LDAP — разбираем host:port
+      if (dto.baseUrl !== undefined && dto.baseUrl) {
+        const parts = dto.baseUrl.split(':');
+        existingExtensions.host = parts[0];
+        existingExtensions.port = parts.length > 1 ? parseInt(parts[1], 10) || 389 : 389;
+      }
+
+      // Если передан secret — это bindPassword для LDAP
+      if (dto.secret !== undefined) {
+        existingExtensions.bindPassword = dto.secret || '';
+      }
+
+      // Если передан password — это bindPassword для LDAP
+      if (dto.password !== undefined) {
+        existingExtensions.bindPassword = dto.password || '';
+      }
+
+      // Если передан login — это bind DN или login для LDAP
+      if (dto.login !== undefined) {
+        existingExtensions.login = dto.login || '';
+      }
+
+      // Если передан baseDn — это base DN для LDAP
+      if (dto.baseDn !== undefined) {
+        existingExtensions.baseDn = dto.baseDn || '';
+      }
+
+      // Если передан bindDn — это bind DN для LDAP
+      if (dto.bindDn !== undefined) {
+        existingExtensions.bindDn = dto.bindDn || '';
+      }
+
+      updateData.extensions = existingExtensions;
+    }
     if (dto.projects !== undefined) updateData.projects = dto.projects;
     if (dto.searchQuery !== undefined) updateData.searchQuery = dto.searchQuery;
     if (dto.agileBoardId !== undefined) updateData.agileBoardId = dto.agileBoardId;

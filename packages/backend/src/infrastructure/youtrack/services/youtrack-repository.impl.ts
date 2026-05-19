@@ -1,15 +1,5 @@
-/**
- * YouTrackRepositoryImpl
- *
- * Реализация порта IYouTrackRepository (application layer).
- * Делегирует вызовы существующим инфраструктурным сервисам:
- * - SyncEngine (полная синхронизация)
- * - YouTrackApiClient (тест подключения, запросы к API)
- * - PrismaService (чтение/запись данных из БД)
- *
- * Используется в DI-контейнере через токен YOUTRACK_REPOSITORY.
- */
 import { Injectable, Logger } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
 import { SyncEngine } from '../sync-engine';
 import { YouTrackApiClient } from '../youtrack-api.client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -37,34 +27,27 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
   ) {}
 
   async getStatus(): Promise<YouTrackStatusDto> {
+    await this.apiClient.reloadConfig();
     const settings = await this.prisma.integrationSettings.findFirst();
-
     return {
       configured: this.apiClient.isConfigured,
       baseUrl: this.apiClient.isConfigured ? this.apiClient.getBaseUrl() : null,
-      lastSyncAt: settings?.updated_at?.toISOString() || null,
+      lastSyncAt: settings?.updatedAt?.toISOString() || null,
       lastSyncStatus: settings?.isActive ? 'active' : 'inactive',
     };
   }
 
   async testConnection(): Promise<YouTrackTestConnectionResultDto> {
+    await this.apiClient.reloadConfig();
     if (!this.apiClient.isConfigured) {
-      return {
-        success: false,
-        message:
-          'YouTrack API client is not configured. Set YOUTRACK_BASE_URL and YOUTRACK_TOKEN.',
-      };
+      return { success: false, message: 'YouTrack API client is not configured.' };
     }
-
     try {
-      // Пробуем получить информацию о текущем пользователе API
       const currentUser = await this.apiClient.get<{
         id: string;
         login: string;
         fullName: string;
       }>('/users/me', { fields: 'id,login,fullName' });
-
-      // Пробуем получить список проектов (хотя бы первые)
       let projectCount = 0;
       try {
         const projects = await this.apiClient.get<unknown[]>('/admin/projects', {
@@ -73,9 +56,8 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
         });
         projectCount = Array.isArray(projects) ? projects.length : 0;
       } catch {
-        // Проекты могут быть недоступны — не критично
+        /* not critical */
       }
-
       return {
         success: true,
         message: `Connected to YouTrack as ${currentUser.login} (${currentUser.fullName})`,
@@ -89,59 +71,96 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`YouTrack connection test failed: ${message}`);
-      return {
-        success: false,
-        message: `Connection failed: ${message}`,
-      };
+      return { success: false, message: `Connection failed: ${message}` };
+    }
+  }
+
+  async hasRunningSync(): Promise<{ id: string } | null> {
+    try {
+      // Only consider syncs that have actual progress (current_stage is set)
+      // This filters out stuck syncs that were created but never ran
+      const running = await this.prisma.syncRun.findFirst({
+        where: { 
+          status: 'RUNNING',
+          currentStage: { not: null },
+        },
+        orderBy: { startedAt: 'desc' },
+        select: { id: true },
+      });
+      return running;
+    } catch {
+      return null;
     }
   }
 
   async startSync(periodId?: number): Promise<StartSyncResultDto> {
     this.logger.log('Manual sync requested via repository');
+    // Mark any stuck RUNNING syncs as FAILED before starting a new one
+    try {
+      await this.prisma.syncRun.updateMany({
+        where: { status: 'RUNNING', startedAt: { lt: new Date(Date.now() - 3600000) } }, // older than 1 hour
+        data: { status: 'FAILED', completedAt: new Date() },
+      });
+    } catch {
+      // non-critical
+    }
+    await this.apiClient.reloadConfig();
 
-    const result = await this.syncEngine.runFullSync('MANUAL');
+    const syncRunId = uuidv4();
+    await this.prisma.syncRun.create({
+      data: {
+        id: syncRunId,
+        triggerType: 'MANUAL',
+        status: 'RUNNING',
+        startedAt: new Date(),
+        totalIssues: 0,
+        createdCount: 0,
+        updatedCount: 0,
+        errorCount: 0,
+      },
+    });
 
-    return {
-      message: `Sync completed: ${result.status}`,
-      syncRunId: undefined,
-    };
+    this.logger.log(`Starting background sync ${syncRunId}`);
+    this.syncEngine.runFullSync('MANUAL', syncRunId).catch((err: any) => {
+      this.logger.error(`Background sync ${syncRunId} failed: ${err?.message || err}`);
+    });
+
+    return { message: 'Sync started', syncRunId };
   }
 
   async getSyncRuns(filter: SyncRunFilter): Promise<SyncRunsListDto> {
     const { limit, offset } = filter;
-
     const [runs, total] = await Promise.all([
       this.prisma.syncRun.findMany({
-        orderBy: { started_at: 'desc' },
+        orderBy: { startedAt: 'desc' },
         take: Math.min(limit, 100),
         skip: offset,
         select: {
           id: true,
-          trigger_type: true,
+          triggerType: true,
           status: true,
-          total_issues: true,
-          created_count: true,
-          updated_count: true,
-          error_count: true,
-          started_at: true,
-          completed_at: true,
+          totalIssues: true,
+          createdCount: true,
+          updatedCount: true,
+          errorCount: true,
+          startedAt: true,
+          completedAt: true,
           duration: true,
         },
       }),
       this.prisma.syncRun.count(),
     ]);
-
     return {
       data: runs.map((run) => ({
         id: run.id,
-        triggerType: run.trigger_type,
+        triggerType: run.triggerType,
         status: run.status,
-        totalIssues: run.total_issues,
-        createdCount: run.created_count,
-        updatedCount: run.updated_count,
-        errorCount: run.error_count,
-        startedAt: run.started_at,
-        completedAt: run.completed_at,
+        totalIssues: run.totalIssues,
+        createdCount: run.createdCount,
+        updatedCount: run.updatedCount,
+        errorCount: run.errorCount,
+        startedAt: run.startedAt,
+        completedAt: run.completedAt,
         duration: run.duration,
       })),
       total,
@@ -153,109 +172,90 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
       where: { id },
       include: {
         logs: {
-          orderBy: { created_at: 'asc' },
-          select: {
-            id: true,
-            level: true,
-            message: true,
-            entity_type: true,
-            created_at: true,
-          },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, level: true, message: true, entityType: true, createdAt: true },
         },
       },
     });
-
     if (!run) return null;
-
     return {
       id: run.id,
-      triggerType: run.trigger_type,
+      triggerType: run.triggerType,
       status: run.status,
-      totalIssues: run.total_issues,
-      createdCount: run.created_count,
-      updatedCount: run.updated_count,
-      errorCount: run.error_count,
+      totalIssues: run.totalIssues,
+      createdCount: run.createdCount,
+      updatedCount: run.updatedCount,
+      errorCount: run.errorCount,
       errors: run.errors as Record<string, unknown> | null,
-      startedAt: run.started_at,
-      completedAt: run.completed_at,
+      startedAt: run.startedAt,
+      completedAt: run.completedAt,
       duration: run.duration,
+      currentStage: run.currentStage,
+      stageDetails: run.stageDetails as Record<string, unknown> | null,
       logs: run.logs.map((log) => ({
         id: log.id,
         level: log.level,
         message: log.message,
-        entityType: log.entity_type,
-        createdAt: log.created_at,
+        entityType: log.entityType,
+        createdAt: log.createdAt,
       })),
     };
   }
 
   async getIssues(filter: IssueFilter): Promise<YouTrackIssuesListDto> {
-    const {
-      page,
-      limit,
-      projectName,
-      systemName,
-      assigneeId,
-      isResolved,
-      search,
-    } = filter;
-
+    const { page, limit, projectName, systemName, assigneeId, isResolved, search } = filter;
     const where: Record<string, unknown> = {};
-
-    if (projectName) where.project_name = projectName;
-    if (systemName) where.system_name = systemName;
-    if (assigneeId) where.assignee_id = assigneeId;
-    if (isResolved !== undefined) where.is_resolved = isResolved;
+    if (projectName) where.projectName = projectName;
+    if (systemName) where.systemName = systemName;
+    if (assigneeId) where.assigneeId = assigneeId;
+    if (isResolved !== undefined) where.isResolved = isResolved;
     if (search) {
       where.OR = [
         { summary: { contains: search, mode: 'insensitive' } },
-        { issue_number: { contains: search, mode: 'insensitive' } },
+        { issueNumber: { contains: search, mode: 'insensitive' } },
       ];
     }
-
     const safeLimit = Math.min(Math.max(1, limit), 100);
     const skip = (page - 1) * safeLimit;
-
     const [issues, total] = await Promise.all([
       this.prisma.youtrackIssue.findMany({
         where,
-        orderBy: { updated_at: 'desc' },
+        orderBy: { updatedAt: 'desc' },
         take: safeLimit,
         skip,
         select: {
           id: true,
-          issue_number: true,
+          issueNumber: true,
           summary: true,
-          project_name: true,
-          system_name: true,
-          type_name: true,
-          state_name: true,
-          is_resolved: true,
-          assignee_id: true,
-          estimation_minutes: true,
-          parent_issue_id: true,
-          last_sync_at: true,
-          updated_at: true,
+          projectName: true,
+          systemName: true,
+          typeName: true,
+          stateName: true,
+          isResolved: true,
+          assigneeId: true,
+          estimationMinutes: true,
+          parentIssueId: true,
+          lastSyncAt: true,
+          updatedAt: true,
         },
       }),
       this.prisma.youtrackIssue.count({ where }),
     ]);
-
     return {
       data: issues.map((issue) => ({
         id: issue.id,
-        issueNumber: issue.issue_number,
+        issueNumber: issue.issueNumber,
         summary: issue.summary,
-        projectName: issue.project_name,
-        systemName: issue.system_name,
-        typeName: issue.type_name,
-        stateName: issue.state_name,
-        isResolved: issue.is_resolved,
-        assigneeId: issue.assignee_id,
-        estimationMinutes: issue.estimation_minutes,
-        parentIssueId: issue.parent_issue_id,
-        lastSyncAt: issue.last_sync_at,
-        updatedAt: issue.updated_at,
+        projectName: issue.projectName,
+        systemName: issue.systemName,
+        typeName: issue.typeName,
+        stateName: issue.stateName,
+        isResolved: issue.isResolved,
+        assigneeId: issue.assigneeId,
+        estimationMinutes: issue.estimationMinutes,
+        parentIssueId: issue.parentIssueId,
+        lastSyncAt: issue.lastSyncAt,
+        updatedAt: issue.updatedAt,
       })),
       total,
       page,
@@ -265,33 +265,26 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
   }
 
   async getStats(): Promise<YouTrackStatsDto> {
-    const [
-      totalIssues,
-      totalWorkItems,
-      totalUsers,
-      lastSyncRun,
-      projectAgg,
-      stateAgg,
-    ] = await Promise.all([
-      this.prisma.youtrackIssue.count(),
-      this.prisma.workItem.count(),
-      this.prisma.user.count({ where: { youtrack_user_id: { not: null } } }),
-      this.prisma.syncRun.findFirst({
-        orderBy: { started_at: 'desc' },
-        select: { status: true, started_at: true, completed_at: true },
-      }),
-      this.prisma.youtrackIssue.groupBy({
-        by: ['project_name'],
-        _count: { id: true },
-        where: { project_name: { not: null } },
-      }),
-      this.prisma.youtrackIssue.groupBy({
-        by: ['state_name'],
-        _count: { id: true },
-        where: { state_name: { not: null } },
-      }),
-    ]);
-
+    const [totalIssues, totalWorkItems, totalUsers, lastSyncRun, projectAgg, stateAgg] =
+      await Promise.all([
+        this.prisma.youtrackIssue.count(),
+        this.prisma.workItem.count(),
+        this.prisma.user.count({ where: { youtrackUserId: { not: null } } }),
+        this.prisma.syncRun.findFirst({
+          orderBy: { startedAt: 'desc' },
+          select: { status: true, startedAt: true, completedAt: true },
+        }),
+        this.prisma.youtrackIssue.groupBy({
+          by: ['projectName'],
+          _count: { id: true },
+          where: { projectName: { not: null } },
+        }),
+        this.prisma.youtrackIssue.groupBy({
+          by: ['stateName'],
+          _count: { id: true },
+          where: { stateName: { not: null } },
+        }),
+      ]);
     return {
       totalIssues,
       totalWorkItems,
@@ -299,16 +292,12 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
       lastSyncRun: lastSyncRun
         ? {
             status: lastSyncRun.status,
-            startedAt: lastSyncRun.started_at,
-            completedAt: lastSyncRun.completed_at,
+            startedAt: lastSyncRun.startedAt,
+            completedAt: lastSyncRun.completedAt,
           }
         : null,
-      issuesByProject: Object.fromEntries(
-        projectAgg.map((p) => [p.project_name!, p._count.id]),
-      ),
-      issuesByState: Object.fromEntries(
-        stateAgg.map((s) => [s.state_name!, s._count.id]),
-      ),
+      issuesByProject: Object.fromEntries(projectAgg.map((p) => [p.projectName!, p._count.id])),
+      issuesByState: Object.fromEntries(stateAgg.map((s) => [s.stateName!, s._count.id])),
     };
   }
 }

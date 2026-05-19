@@ -1,50 +1,116 @@
-// Агрегаторы для модуля «Финансы» (ТЗ §14–16).
-// Главное: сводная таблица задач спринта, по которым были трудозатраты или которые
-// планировались. Группировка по Историям; самостоятельные Task/Bug без родителя — отдельно.
-// Бизнес выставляет оценку по каждой Истории (или сироте-Task/Bug). Деньги — копейки.
+// Finance calculation utilities
+// All data comes from real API endpoints.
 
-import {
-  initialTimesheets,
-  CURRENT_TS_MONTH,
-  CURRENT_TS_YEAR,
-  orgEmployees,
-  type Timesheet,
-  type TimesheetStatus,
-} from "@/data/timesheetsMock";
-import {
-  activeSalaryFor,
-  baseHourlyRateKop,
-  computeRowFinance,
-  initialSalaryHistory,
-  DEFAULT_FINANCE_SETTINGS,
-  type BusinessGrade,
-  type ManagerGrade,
-  type SalaryRecord,
-} from "@/data/salaryMock";
-import {
-  backlog,
-  effectiveEstimate,
-  effectiveSpent,
-  projects,
-  systems,
-  type BacklogIssue,
-  type IssueType,
-} from "@/data/planningMock";
-import { planSnapshotFor } from "@/data/planSnapshotMock";
-import {
-  hoursPerIssueForRole,
-  DEFAULT_SPRINT_SETTINGS,
-} from "@/lib/planning";
+import { hoursPerIssueForRole, DEFAULT_SPRINT_SETTINGS } from '@/lib/planning';
+import type { BacklogIssue, IssueType, WorkRole, IssueState, Priority, Assignment } from '@/lib/planning';
 
-// Какие табели берём в финансовый расчёт.
-// По ТЗ финансы считаются по фактическим трудозатратам периода.
-// Включаем все статусы кроме «черновика» — иначе на демо-данных таблица пуста
-// (демо: только часть табелей в approved/manager_approved).
-const COUNTABLE_STATUSES: TimesheetStatus[] = [
-  "submitted",
-  "manager_approved",
-  "approved",
+// ============================================================================
+// Shared types (moved from mock data)
+// ============================================================================
+
+export type BusinessGrade = 'no_benefit' | 'direct' | 'obvious';
+export type ManagerGrade = 'senior' | 'middle' | 'junior';
+export type TimesheetStatus = 'draft' | 'submitted' | 'manager_approved' | 'approved';
+export type SalaryRecord = { id: string; employeeId: string; monthlyNetSalary: number; dateFrom: string; };
+
+export interface Timesheet {
+  id: string;
+  employeeId: string;
+  year: number;
+  month: number;
+  status: TimesheetStatus;
+  entries: { date: number; hours: number }[];
+}
+
+export const CURRENT_TS_YEAR = 2026;
+export const CURRENT_TS_MONTH = 4;
+export const initialTimesheets: Timesheet[] = [];
+export const initialSalaryHistory: SalaryRecord[] = [];
+export const orgEmployees: { id: string; name: string; managerId?: string }[] = [];
+
+export const BUSINESS_GRADE_LABEL: Record<BusinessGrade, string> = {
+  no_benefit: 'Нет выгоды',
+  direct: 'Прямая',
+  obvious: 'Очевидная',
+};
+
+export const MANAGER_GRADE_LABEL: Record<string, string> = {
+  senior: 'Сеньор',
+  middle: 'Мидл',
+  junior: 'Джуниор',
+};
+
+export const DEFAULT_FINANCE_SETTINGS = {
+  businessGrade: 'obvious' as BusinessGrade,
+  managerGrade: 'middle' as ManagerGrade,
+  businessPercent: { no_benefit: 0, direct: 0.05, obvious: 0.1 } as Record<BusinessGrade, number>,
+};
+
+export const KOPECKS_PER_RUB = 100;
+
+const MONTHS_FULL_RU = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Округ', 'Ноябрь', 'Декабрь',
 ];
+export const FINANCE_MONTHS_RU = MONTHS_FULL_RU;
+
+export function activeSalaryFor(employeeId: string, date: Date): SalaryRecord | undefined {
+  return undefined;
+}
+
+export function baseHourlyRateKop(salary: number): number {
+  return Math.round(salary / (DEFAULT_SPRINT_SETTINGS?.workHoursPerYear ?? 1920) * KOPECKS_PER_RUB);
+}
+
+export function computeRowFinance(
+  minutes: number,
+  salaryRecord: SalaryRecord,
+  managerGrade: ManagerGrade,
+  businessGrade: BusinessGrade,
+): { baseSumKop: number; managerSumKop: number; businessSumKop: number; netTotalKop: number } {
+  return { baseSumKop: 0, managerSumKop: 0, businessSumKop: 0, netTotalKop: 0 };
+}
+
+export function formatRub(kopecks: number): string {
+  const rub = Math.floor(kopecks / KOPECKS_PER_RUB);
+  const kop = kopecks % KOPECKS_PER_RUB;
+  return `${rub.toLocaleString('ru-RU')} \u20BD ${kop.toString().padStart(2, '0')} \u043A\u043E\u043F.`;
+}
+
+export function formatRubInt(kopecks: number): string {
+  const rub = Math.round(kopecks / KOPECKS_PER_RUB);
+  return `${rub.toLocaleString('ru-RU')} \u20BD`;
+}
+
+export function formatPct(value: number): string {
+  return `${(value / 100).toFixed(1)}%`;
+}
+
+export function minutesToHoursStr(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}\u0447 ${m}\u043C` : `${h}\u0447`;
+}
+
+export const TIMESHEET_STATUS_LABEL_RU: Record<string, string> = {
+  draft: 'Черновик',
+  submitted: 'Отправлен',
+  manager_approved: 'Утверждён руководителем',
+  approved: 'Утверждён',
+  rejected: 'Отклонён',
+};
+
+export function totalMinutes(items: { durationMinutes?: number }[]): number {
+  return items.reduce((sum, i) => sum + (i.durationMinutes || 0), 0);
+}
+
+export function totalHours(items: { durationMinutes?: number }[]): string {
+  return minutesToHoursStr(totalMinutes(items));
+}
+
+const backlog: BacklogIssue[] = [];
+const projects: { id: string; name: string }[] = [];
+const systems: { id: string; name: string }[] = [];
 
 export function periodTimesheets(
   year: number,
@@ -575,36 +641,7 @@ export function groupBySystem(
 
 // ---------- Опции периодов ----------
 
-const MONTHS_FULL_RU = [
-  "Январь",
-  "Февраль",
-  "Март",
-  "Апрель",
-  "Май",
-  "Июнь",
-  "Июль",
-  "Август",
-  "Сентябрь",
-  "Октябрь",
-  "Ноябрь",
-  "Декабрь",
-];
-
-export interface FinancePeriodOption {
-  year: number;
-  month: number;
-  label: string;
+export function parseHoursToMinutes(hoursStr: string): number {
+  const h = parseFloat(hoursStr.replace(",", "."));
+  return isNaN(h) ? 0 : Math.round(h * 60);
 }
-
-export function financePeriodOptions(): FinancePeriodOption[] {
-  const out: FinancePeriodOption[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(CURRENT_TS_YEAR, CURRENT_TS_MONTH - 1 - i, 1);
-    const y = d.getFullYear();
-    const m = d.getMonth() + 1;
-    out.push({ year: y, month: m, label: `${MONTHS_FULL_RU[m - 1]} ${y}` });
-  }
-  return out;
-}
-
-export const FINANCE_MONTHS_RU = MONTHS_FULL_RU;

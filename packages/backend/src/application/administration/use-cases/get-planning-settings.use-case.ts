@@ -17,6 +17,8 @@ export interface PlanningSettingsResponseDto {
   yellowThreshold: number | null; // как float (0..1), напр. 0.8 = 80%
   redThreshold: number | null; // как float (0..1), напр. 1.0 = 100%
   businessGroupingLevel: string | null;
+  month: number | null;
+  year: number | null;
   updatedBy: string;
   updatedAt: string;
 }
@@ -28,7 +30,9 @@ export class GetPlanningSettingsUseCase {
     const settings = await this.planningSettingsRepository.findLatest();
 
     if (!settings) {
-      throw new NotFoundError('PlanningSettings', 'latest');
+      // Return defaults
+      return { id: "default", workHoursPerMonth: 168, reservePercent: 0.3, testPercent: 0.2, debugPercent: 0.3, mgmtPercent: 0.1, yellowThreshold: 0.8, redThreshold: 1.0, businessGroupingLevel: "STORY", updatedBy: "system", updatedAt: new Date().toISOString() };
+      // throw new NotFoundError('PlanningSettings', 'latest');
     }
 
     return {
@@ -47,6 +51,8 @@ export class GetPlanningSettingsUseCase {
       yellowThreshold: settings.yellowThreshold !== null ? settings.yellowThreshold / 10000 : null,
       redThreshold: settings.redThreshold !== null ? settings.redThreshold / 10000 : null,
       businessGroupingLevel: settings.businessGroupingLevel,
+      month: (settings.extensions as any)?.month ?? null,
+      year: (settings.extensions as any)?.year ?? null,
       updatedBy: settings.updatedBy,
       updatedAt: settings.updatedAt.toISOString(),
     };

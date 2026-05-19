@@ -1,38 +1,22 @@
-/**
- * DashboardController
- *
- * REST API для дашборда.
- * Предоставляет агрегированную статистику по системе.
- */
-import { Controller, Get, UseGuards, Req, Logger } from '@nestjs/common';
+import { Controller, Get, UseGuards, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { RolesGuard } from '../guards/roles.guard';
-import { GetDashboardStatsUseCase } from '../../application/dashboard/use-cases/get-dashboard-stats.use-case';
-
-interface RequestWithUser {
-  user: {
-    id: string;
-    login: string;
-    roles?: string[];
-  };
-}
+import { RolesGuard, Roles } from '../guards/roles.guard';
+import { GetDashboardStatsUseCase, DashboardStatsDto } from '../../application/dashboard/use-cases/get-dashboard-stats.use-case';
 
 @Controller('dashboard')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class DashboardController {
   private readonly logger = new Logger(DashboardController.name);
 
-  constructor(private readonly getDashboardStatsUseCase: GetDashboardStatsUseCase) {}
+  constructor(
+    private readonly getDashboardStatsUseCase: GetDashboardStatsUseCase,
+  ) {}
 
-  /**
-   * GET /api/dashboard/stats
-   * Возвращает агрегированные данные для дашборда:
-   * - количество активных периодов
-   * - количество сотрудников
-   * - список периодов с их статусами
-   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'director', 'manager', 'viewer')
   @Get('stats')
-  async getStats(@Req() req: RequestWithUser) {
-    return await this.getDashboardStatsUseCase.execute(req.user.id, req.user.roles ?? []);
+  async getStats(): Promise<DashboardStatsDto> {
+    this.logger.log('Fetching dashboard stats');
+    return this.getDashboardStatsUseCase.execute();
   }
 }
+

@@ -58,6 +58,7 @@ const Users = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [editing, setEditing] = useState<AdminUserDto | null>(null);
 
+
   // Запросы
   const isActiveParam =
     statusFilter === 'active' ? true : statusFilter === 'blocked' ? false : undefined;
@@ -95,12 +96,10 @@ const Users = () => {
     const with2fa = users.filter((u) => u.twoFactorEnabled).length;
     return { active, blocked: users.length - active, directors, managers, with2fa };
   }, [users]);
-
   const handleToggleActive = (u: AdminUserDto) => {
     if (u.isActive) {
       deactivateUser.mutate(u.id);
     } else {
-      // Активация через update
       updateUser.mutate({
         id: u.id,
         email: u.email,
@@ -109,6 +108,7 @@ const Users = () => {
       });
     }
   };
+
 
   const handleSaveUser = (next: AdminUserDto) => {
     // Сохраняем роли
@@ -273,7 +273,7 @@ const Users = () => {
                           const emp = empById.get(u.employeeId);
                           const mgr = emp?.managerId ? empById.get(emp.managerId) : undefined;
                           return (
-                            <tr key={u.id} className="hover:bg-muted/30">
+                            <tr key={u.id} className={cn("hover:bg-muted/30", !u.isActive && "opacity-50")}>
                               <Td>
                                 <div className="font-medium text-foreground">
                                   {u.fullName || emp?.name || '—'}

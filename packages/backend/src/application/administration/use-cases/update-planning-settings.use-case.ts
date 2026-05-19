@@ -1,13 +1,13 @@
 /**
  * UpdatePlanningSettingsUseCase
  *
- * Use case для обновления настроек планирования по умолчанию.
+ * Use case для обновления настроек планирования по ID.
  * Логирует действие в аудит.
  */
 import { PlanningSettingsRepository } from '../../../domain/repositories/planning-settings.repository';
-import { PlanningSettings } from '../../../domain/entities/planning-settings.entity';
 import { IAuditLogger } from '../../auth/ports/audit-logger';
 import { UpdatePlanningSettingsDto } from '../dto/update-planning-settings.dto';
+import { NotFoundError } from '../../../domain/errors/domain.error';
 
 export class UpdatePlanningSettingsUseCase {
   constructor(
@@ -16,16 +16,15 @@ export class UpdatePlanningSettingsUseCase {
   ) {}
 
   async execute(
+    id: string,
     dto: UpdatePlanningSettingsDto & { updatedBy: string },
     context?: { ipAddress?: string; userAgent?: string },
   ): Promise<void> {
-    // 1. Получение текущих настроек или создание новых
-    let settings = await this.planningSettingsRepository.findLatest();
+    // 1. Получение настроек по ID
+    const settings = await this.planningSettingsRepository.findById(id);
 
     if (!settings) {
-      settings = PlanningSettings.create({
-        updatedBy: dto.updatedBy,
-      });
+      throw new NotFoundError('PlanningSettings', id);
     }
 
     // 2. Конвертация человеческих единиц в system units
@@ -38,6 +37,7 @@ export class UpdatePlanningSettingsUseCase {
       yellowThreshold?: number | null;
       redThreshold?: number | null;
       businessGroupingLevel?: string | null;
+      extensions?: Record<string, unknown> | null;
       updatedBy: string;
     } = {
       workHoursPerMonth:
@@ -57,6 +57,10 @@ export class UpdatePlanningSettingsUseCase {
       redThreshold:
         dto.redThreshold !== undefined ? Math.round(dto.redThreshold * 10000) : undefined,
       businessGroupingLevel: dto.businessGroupingLevel,
+      extensions:
+        dto.month !== undefined || dto.year !== undefined
+          ? { month: dto.month ?? null, year: dto.year ?? null }
+          : undefined,
       updatedBy: dto.updatedBy,
     };
 
@@ -70,13 +74,14 @@ export class UpdatePlanningSettingsUseCase {
       yellowThreshold: settings.yellowThreshold,
       redThreshold: settings.redThreshold,
       businessGroupingLevel: settings.businessGroupingLevel,
+      extensions: settings.extensions,
     };
 
     // 4. Обновление (business rule)
     settings.update(updateParams);
 
     // 5. Сохранение
-    await this.planningSettingsRepository.save(settings);
+    await this.planningSettingsRepository.update(settings);
 
     // 6. Аудит
     await this.auditLogger.log({
@@ -95,6 +100,7 @@ export class UpdatePlanningSettingsUseCase {
           yellowThreshold: settings.yellowThreshold,
           redThreshold: settings.redThreshold,
           businessGroupingLevel: settings.businessGroupingLevel,
+          extensions: settings.extensions,
         },
       },
       ipAddress: context?.ipAddress,
