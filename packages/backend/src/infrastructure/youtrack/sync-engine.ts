@@ -206,6 +206,25 @@ export class SyncEngine {
 
       const status = totalErrors > 0 ? 'PARTIAL' : 'SUCCESS';
 
+      // Сохраняем ошибки этапов в SyncLogEntry
+      const logErrorsForStage = async (stageName: string, errors: Array<{ entityId?: string; message: string }>) => {
+        for (const err of errors) {
+          await this.logEntityError(
+            syncRun.id,
+            stageName,
+            err.entityId || 'unknown',
+            err.message,
+          );
+        }
+      };
+      await logErrorsForStage('users', usersResult.errors);
+      await logErrorsForStage('projects', projectsResult.errors);
+      await logErrorsForStage('issues', issuesResult.errors);
+      await logErrorsForStage('workItems', workItemsResult.errors);
+
+      // Очищаем логи предыдущих синхронизаций
+      await this.cleanOldSyncLogs(syncRun.id);
+
       // Финальное обновление записи о синхронизации
       const totalUsersCreatedAndUpdated = usersResult.created + usersResult.updated;
       const totalProjectsCreatedAndUpdated = projectsResult.created + projectsResult.updated;
@@ -574,7 +593,7 @@ export class SyncEngine {
           await this.prisma.youtrackIssue.update({
             where: { id: childId },
             data: {
-              parent_issueId: parentId,
+              parentIssueId: parentId,
             },
           });
         }
@@ -669,7 +688,7 @@ export class SyncEngine {
                   durationMinutes: workItemData.durationMinutes,
                   description: workItemData.description,
                   workDate: workItemData.workDate,
-                  work_typeName: workItemData.workTypeName,
+                  workTypeName: workItemData.workTypeName,
                 },
               });
               result.updated++;
@@ -683,7 +702,7 @@ export class SyncEngine {
                   durationMinutes: workItemData.durationMinutes,
                   description: workItemData.description,
                   workDate: workItemData.workDate,
-                  work_typeName: workItemData.workTypeName,
+                  workTypeName: workItemData.workTypeName,
                 },
               });
               result.created++;
@@ -794,7 +813,7 @@ export class SyncEngine {
                     durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
                     workDate: workItemData.workDate,
-                    work_typeName: workItemData.workTypeName,
+                    workTypeName: workItemData.workTypeName,
                     periodId: periodId,
                   },
                 });
@@ -809,7 +828,7 @@ export class SyncEngine {
                     durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
                     workDate: workItemData.workDate,
-                    work_typeName: workItemData.workTypeName,
+                    workTypeName: workItemData.workTypeName,
                     periodId: periodId,
                   },
                 });
@@ -861,6 +880,66 @@ export class SyncEngine {
         details: details ? { description: details } : null,
       },
     });
+  }
+
+  /**
+   * Логирование предупреждений в SyncLogEntry
+   */
+  private async logEntityWarning(
+    syncRunId: string,
+    entityType: string,
+    entityId: string,
+    message: string,
+  ): Promise<void> {
+    await this.prisma.syncLogEntry.create({
+      data: {
+        id: uuidv4(),
+        syncRunId,
+        level: 'WARN',
+        message,
+        entityId,
+        entityType,
+        details: null,
+      },
+    }).catch(() => {});
+  }
+
+  /**
+   * Логирование ошибок в SyncLogEntry
+   */
+  private async logEntityError(
+    syncRunId: string,
+    entityType: string,
+    entityId: string,
+    message: string,
+    error?: string,
+  ): Promise<void> {
+    await this.prisma.syncLogEntry.create({
+      data: {
+        id: uuidv4(),
+        syncRunId,
+        level: 'ERROR',
+        message,
+        entityId,
+        entityType,
+        details: error ? { error } : null,
+      },
+    }).catch(() => {});
+  }
+
+  /**
+   * Очистить логи предыдущих синхронизаций, оставить только последнюю
+   */
+  private async cleanOldSyncLogs(currentSyncRunId: string): Promise<void> {
+    try {
+      await this.prisma.syncLogEntry.deleteMany({
+        where: {
+          syncRunId: { not: currentSyncRunId },
+        },
+      });
+    } catch {
+      // Игнорируем ошибки очистки
+    }
   }
 
   /**
