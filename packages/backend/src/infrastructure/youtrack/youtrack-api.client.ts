@@ -16,11 +16,12 @@ import { PrismaService } from '../prisma/prisma.service';
 @Injectable()
 export class YouTrackApiClient {
   private readonly logger = new Logger(YouTrackApiClient.name);
+  /** Page size for paginated YouTrack API requests */
+  private readonly pageSize = 50;
   private baseUrl = '';
   private token = '';
   private defaultTimeout = 30000;
   private maxRetries = 3;
-  private pageSize = 50;
 
   /** Rate limiting: timestamp последнего запроса */
   private lastRequestTime = 0;
@@ -135,6 +136,13 @@ export class YouTrackApiClient {
         ...config?.headers,
       },
       timeout: this.defaultTimeout,
+      paramsSerializer: {
+        serialize: (params: Record<string, unknown>) => {
+          return Object.entries(params || {})
+            .map(([key, val]) => encodeURIComponent(key) + '=' + encodeURIComponent(String(val)))
+            .join('&');
+        },
+      },
       ...config,
     };
 
@@ -244,3 +252,4 @@ export class YouTrackApiClient {
     }
     return allItems as unknown as T;
   }
+}

@@ -134,10 +134,10 @@ export interface YouTrackSprint {
 
 /** Маппинг пользовательских полей YouTrack → система СПО */
 export interface YouTrackFieldMapping {
-  systemFieldId: string;   // ID custom field "Система"
-  sprintFieldId: string;    // ID custom field "Спринт"
-  typeFieldId: string;      // ID custom field "Type"
-  priorityFieldId: string;  // ID custom field "Priority"
+  systemFieldId: string; // ID custom field "Система"
+  sprintFieldId: string; // ID custom field "Спринт"
+  typeFieldId: string; // ID custom field "Type"
+  priorityFieldId: string; // ID custom field "Priority"
   businessValueFieldId?: string; // ID custom field "Бизнес-ценность"
 }
 
@@ -165,6 +165,7 @@ export interface YouTrackSyncResult {
   created: number;
   updated: number;
   deleted: number;
+  total: number;
   errors: Array<{
     entityId?: string;
     message: string;
@@ -181,6 +182,7 @@ export interface YouTrackFullSyncResult {
   completedAt: string;
   duration: number; // секунды
   status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
+  syncRunId: string;
 }
 
 // ─── Sync configuration ───

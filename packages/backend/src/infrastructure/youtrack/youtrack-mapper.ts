@@ -104,7 +104,8 @@ export class YouTrackMapper {
       typeName,
       priorityName,
       stateName,
-      isResolved: ytIssue.resolved,
+      isResolved:
+        ytIssue.resolved === true || ytIssue.resolved === false ? ytIssue.resolved : false,
       assigneeId: ytIssue.assignee?.id || null,
       estimationMinutes: null, // YouTrack estimation может быть в отдельном поле
       parentYtId: ytIssue.parent?.id || null,
@@ -120,6 +121,7 @@ export class YouTrackMapper {
   ): {
     youtrackWorkItemId: string;
     authorLogin: string | null;
+    authorYoutrackId: string | null;
     durationMinutes: number;
     description: string | null;
     workDate: Date | null;
@@ -128,6 +130,7 @@ export class YouTrackMapper {
     return {
       youtrackWorkItemId: ytWorkItem.id,
       authorLogin: ytWorkItem.author?.login || ytWorkItem.creator?.login || null,
+      authorYoutrackId: ytWorkItem.author?.id || ytWorkItem.creator?.id || null,
       durationMinutes: ytWorkItem.duration.minutes,
       description: ytWorkItem.text || ytWorkItem.textPreview || null,
       workDate: ytWorkItem.date ? new Date(ytWorkItem.date) : null,
