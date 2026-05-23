@@ -94,8 +94,6 @@ export interface PlanningSettingsListItemDto {
   yellowThreshold: number | null;
   redThreshold: number | null;
   businessGroupingLevel: string | null;
-  month: number | null;
-  year: number | null;
   updatedBy: string;
   updatedAt: string;
   createdAt: string;
@@ -104,14 +102,13 @@ export interface PlanningSettingsListItemDto {
 /** Планировочные настройки — создание/обновление */
 export interface PlanningSettingsDto {
   workHoursPerMonth?: number | null;
+  workHoursPerYear?: number | null;
   reservePercent?: number | null;
   testPercent?: number | null;
   debugPercent?: number | null;
   mgmtPercent?: number | null;
   yellowThreshold?: number | null;
   redThreshold?: number | null;
-  month?: number | null;
-  year?: number | null;
 }
 
 /** Интеграция из GET /api/admin/integrations */
@@ -180,7 +177,6 @@ export interface SensitiveChangeDto {
 const adminKeys = {
   all: ['admin'] as const,
   users: (filters?: Record<string, unknown>) => ['admin', 'users', filters] as const,
-  usersAll: ['admin', 'users'] as const,
   dictionaries: ['admin', 'dictionaries'] as const,
   auditLog: (filters?: Record<string, unknown>) => ['admin', 'audit-log', filters] as const,
   sessions: ['admin', 'sessions'] as const,
@@ -233,7 +229,7 @@ export function useAdmin() {
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
+        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
         toast({
           title: 'Пользователь создан',
           description: 'Учётная запись успешно создана.',
@@ -249,7 +245,7 @@ export function useAdmin() {
     });
 
   // ========================================================================
-  // PUT /api/admin/users/:id — обновление пользователя
+  // PUT /api/admin/users/:id — обновление пользователя (с optimistic update)
   // ========================================================================
   const useUpdateUser = () =>
     useMutation({
@@ -266,30 +262,31 @@ export function useAdmin() {
         const response = await api.put<AdminUserDto>(`/admin/users/${id}`, data);
         return response;
       },
-      onMutate: async (vars) => {
-        await queryClient.cancelQueries({ queryKey: adminKeys.usersAll });
-        const snapshots = queryClient.getQueriesData<PaginatedResult<AdminUserDto>>({ queryKey: adminKeys.usersAll });
-        queryClient.setQueriesData<PaginatedResult<AdminUserDto>>({ queryKey: adminKeys.usersAll }, (old) => {
-          if (!old) return old;
+      onMutate: async ({ id, ...data }) => {
+        // Отменяем фоновые запросы, чтобы они не перезаписали наш optimistic update
+        await queryClient.cancelQueries({ queryKey: adminKeys.users() });
+        // Сохраняем предыдущее состояние для отката
+        const previousQueries = queryClient.getQueriesData({ queryKey: adminKeys.users() });
+        // Оптимистично обновляем кэш
+        queryClient.setQueriesData({ queryKey: adminKeys.users() }, (old: unknown) => {
+          if (!old || typeof old !== 'object') return old;
+          const paginated = old as PaginatedResult<AdminUserDto>;
           return {
-            ...old,
-            data: old.data.map((u) =>
-              u.id === vars.id ? { ...u, ...vars } : u
+            ...paginated,
+            data: paginated.data.map((u) =>
+              u.id === id ? { ...u, ...data } : u
             ),
           };
         });
-        return { snapshots };
+        return { previousQueries };
       },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
-        toast({
-          title: 'Изменения сохранены',
-          description: 'Данные пользователя обновлены.',
-        });
+      onSuccess: (_data, _variables, context) => {
+        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
       },
-      onError: (error: Error, vars, context) => {
-        if (context?.snapshots) {
-          for (const [key, data] of context.snapshots) {
+      onError: (error: Error, _variables, context) => {
+        // Откатываем изменения в случае ошибки
+        if (context?.previousQueries) {
+          for (const [key, data] of context.previousQueries) {
             queryClient.setQueryData(key, data);
           }
         }
@@ -299,10 +296,13 @@ export function useAdmin() {
           variant: 'destructive',
         });
       },
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+      },
     });
 
   // ========================================================================
-  // DELETE /api/admin/users/:id — деактивация пользователя (soft delete)
+  // DELETE /api/admin/users/:id — деактивация пользователя (с optimistic update)
   // ========================================================================
   const useDeactivateUser = () =>
     useMutation({
@@ -310,29 +310,31 @@ export function useAdmin() {
         await api.delete(`/admin/users/${id}`);
       },
       onMutate: async (id) => {
-        await queryClient.cancelQueries({ queryKey: adminKeys.usersAll });
-        const snapshots = queryClient.getQueriesData<PaginatedResult<AdminUserDto>>({ queryKey: adminKeys.usersAll });
-        queryClient.setQueriesData<PaginatedResult<AdminUserDto>>({ queryKey: adminKeys.usersAll }, (old) => {
-          if (!old) return old;
+        await queryClient.cancelQueries({ queryKey: adminKeys.users() });
+        const previousQueries = queryClient.getQueriesData({ queryKey: adminKeys.users() });
+        // Оптимистично деактивируем пользователя
+        queryClient.setQueriesData({ queryKey: adminKeys.users() }, (old: unknown) => {
+          if (!old || typeof old !== 'object') return old;
+          const paginated = old as PaginatedResult<AdminUserDto>;
           return {
-            ...old,
-            data: old.data.map((u) =>
+            ...paginated,
+            data: paginated.data.map((u) =>
               u.id === id ? { ...u, isActive: false } : u
             ),
           };
         });
-        return { snapshots };
+        return { previousQueries };
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
+        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
         toast({
           title: 'Учётная запись деактивирована',
           description: 'Пользователь успешно деактивирован.',
         });
       },
-      onError: (error: Error, id, context) => {
-        if (context?.snapshots) {
-          for (const [key, data] of context.snapshots) {
+      onError: (error: Error, _variables, context) => {
+        if (context?.previousQueries) {
+          for (const [key, data] of context.previousQueries) {
             queryClient.setQueryData(key, data);
           }
         }
@@ -341,6 +343,9 @@ export function useAdmin() {
           description: error.message || 'Не удалось деактивировать пользователя.',
           variant: 'destructive',
         });
+      },
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
       },
     });
 
@@ -356,7 +361,7 @@ export function useAdmin() {
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
+        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
         toast({
           title: 'Роли назначены',
           description: 'Роли пользователя обновлены.',
@@ -387,7 +392,7 @@ export function useAdmin() {
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.usersAll });
+        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
         toast({
           title: 'Руководитель назначен',
           description: 'Руководитель пользователя обновлён.',
