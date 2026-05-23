@@ -4,7 +4,6 @@ import {
   YOUTRACK_REPOSITORY,
   StartSyncResultDto,
 } from '../ports/youtrack-repository';
-import { SyncRun } from '@prisma/client';
 
 export interface RunYouTrackSyncParams {
   periodId?: number;
@@ -33,17 +32,6 @@ export class RunYouTrackSyncUseCase {
       throw new Error(
         'YouTrack не настроен. Укажите реальный URL и токен в Настройки → Интеграции.',
       );
-    }
-
-    // Проверяем, нет ли уже запущенной синхронизации
-    const existingRun = await this.youtrackRepository.hasRunningSync();
-    if (existingRun) {
-      this.logger.log('A sync is already running, returning existing run ID');
-      return {
-        message: 'Sync already in progress',
-        syncRunId: existingRun.id,
-        alreadyRunning: true,
-      };
     }
 
     // Запускаем синхронизацию (startSync создаёт syncRun и запускает фоновый процесс)
