@@ -43,6 +43,8 @@ jobs:
       - run: npm run build:backend
 
       - run: npx prisma validate --schema=packages/backend/src/infrastructure/prisma/prisma/schema.prisma
+        env:
+          DATABASE_URL: postgresql://spo:spo@localhost:5432/spo
 
       - run: npx prisma generate --schema=packages/backend/src/infrastructure/prisma/prisma/schema.prisma
         env:
