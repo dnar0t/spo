@@ -606,93 +606,122 @@ export class SyncEngine {
         'id,author(id,login,fullName),text,textPreview,type(id,name),duration(presentation,minutes),date,created,updated,issue(id,idReadable)';
 
       let lastProgressUpdate = Date.now();
-      let totalWorkItemsProcessed = 0;
+      let issueIndex = 0;
+      const CONCURRENCY_LIMIT = 10;
 
-      for (const issue of issues) {
+      // Функция обработки work items для одной задачи
+      const processIssueWorkItems = async (issue: {
+        id: string;
+        youtrackId: string;
+        issueNumber: string;
+      }): Promise<void> => {
+        let workItems: YouTrackWorkItem[] = [];
         try {
-          const workItems = await this.apiClient.get<YouTrackWorkItem[]>(
+          workItems = await this.apiClient.get<YouTrackWorkItem[]>(
             `/issues/${issue.youtrackId}/timeTracking/workItems`,
             { fields: workItemFields },
             true, // paginated
           );
-
-          let issueWorkItemCount = 0;
-          for (const ytWorkItem of workItems) {
-            try {
-              const workItemData = this.mapper.mapWorkItem(ytWorkItem, issue.id);
-
-              // Находим автора по youtrackLogin
-              let authorId: string | null = null;
-              if (workItemData.authorLogin) {
-                const author = await this.prisma.user.findFirst({
-                  where: { youtrackLogin: workItemData.authorLogin },
-                });
-                authorId = author?.id || null;
-              }
-
-              // Проверяем существование work item
-              const existingWorkItem = await this.prisma.workItem.findFirst({
-                where: {
-                  youtrackWorkItemId: ytWorkItem.id,
-                  issueId: issue.id,
-                },
-              });
-
-              if (existingWorkItem) {
-                await this.prisma.workItem.update({
-                  where: { id: existingWorkItem.id },
-                  data: {
-                    authorId: authorId,
-                    durationMinutes: workItemData.durationMinutes,
-                    description: workItemData.description,
-                    workDate: workItemData.workDate,
-                    work_typeName: workItemData.workTypeName,
-                  },
-                });
-                result.updated++;
-              } else {
-                await this.prisma.workItem.create({
-                  data: {
-                    id: uuidv4(),
-                    issueId: issue.id,
-                    youtrackWorkItemId: ytWorkItem.id,
-                    authorId: authorId,
-                    durationMinutes: workItemData.durationMinutes,
-                    description: workItemData.description,
-                    workDate: workItemData.workDate,
-                    work_typeName: workItemData.workTypeName,
-                  },
-                });
-                result.created++;
-              }
-              issueWorkItemCount++;
-            } catch (error) {
-              result.errors.push({
-                entityId: ytWorkItem.id,
-                message: error instanceof Error ? error.message : 'Failed to sync work item',
-              });
-            }
-          }
-          totalWorkItemsProcessed += issueWorkItemCount;
-
-          // Обновляем прогресс каждые 1.5 секунды
-          const now = Date.now();
-          if (now - lastProgressUpdate > 1500) {
-            lastProgressUpdate = now;
-            await this.updateStageProgressWithMerge(
-              syncRunId,
-              'workItems',
-              result.created,
-              result.updated,
-              result.errors.length,
-              issues.length * 10,
-            );
-          }
         } catch (error) {
+          // 404 = нет work items для этой задачи, не считаем ошибкой
+          const msg = error instanceof Error ? error.message : '';
+          if (msg.includes('404') || msg.includes('Not Found') || msg.includes('not found')) {
+            this.logger.warn(
+              `No work items for issue ${issue.issueNumber} (${issue.youtrackId}): ${msg}`,
+            );
+            return;
+          }
           result.errors.push({
             entityId: issue.issueNumber,
-            message: error instanceof Error ? error.message : 'Failed to fetch work items',
+            message: `Failed to fetch work items for ${issue.issueNumber}: ${msg}`,
           });
+          return;
+        }
+
+        if (!workItems || workItems.length === 0) return;
+
+        for (const ytWorkItem of workItems) {
+          try {
+            const workItemData = this.mapper.mapWorkItem(ytWorkItem, issue.id);
+
+            // Находим автора по youtrackLogin
+            let authorId: string | null = null;
+            if (workItemData.authorLogin) {
+              const author = await this.prisma.user.findFirst({
+                where: { youtrackLogin: workItemData.authorLogin },
+              });
+              authorId = author?.id || null;
+            }
+
+            // Проверяем существование work item
+            const existingWorkItem = await this.prisma.workItem.findFirst({
+              where: {
+                youtrackWorkItemId: ytWorkItem.id,
+                issueId: issue.id,
+              },
+            });
+
+            if (existingWorkItem) {
+              await this.prisma.workItem.update({
+                where: { id: existingWorkItem.id },
+                data: {
+                  authorId: authorId,
+                  durationMinutes: workItemData.durationMinutes,
+                  description: workItemData.description,
+                  workDate: workItemData.workDate,
+                  work_typeName: workItemData.workTypeName,
+                },
+              });
+              result.updated++;
+            } else {
+              await this.prisma.workItem.create({
+                data: {
+                  id: uuidv4(),
+                  issueId: issue.id,
+                  youtrackWorkItemId: ytWorkItem.id,
+                  authorId: authorId,
+                  durationMinutes: workItemData.durationMinutes,
+                  description: workItemData.description,
+                  workDate: workItemData.workDate,
+                  work_typeName: workItemData.workTypeName,
+                },
+              });
+              result.created++;
+            }
+          } catch (error) {
+            // Некритичная ошибка при сохранении work item - логируем но не считаем ошибкой синхронизации
+            this.logger.warn(
+              `Failed to sync work item ${ytWorkItem.id} for issue ${issue.issueNumber}: ${
+                error instanceof Error ? error.message : 'Unknown error'
+              }`,
+            );
+          }
+        }
+      };
+
+      // Разбиваем issues на батчи и обрабатываем параллельно
+      for (let start = 0; start < issues.length; start += CONCURRENCY_LIMIT) {
+        const batch = issues.slice(start, start + CONCURRENCY_LIMIT);
+        await Promise.all(batch.map(processIssueWorkItems));
+
+        issueIndex += batch.length;
+
+        // Обновляем прогресс после каждого батча
+        const now = Date.now();
+        if (now - lastProgressUpdate > 1000 || start + CONCURRENCY_LIMIT >= issues.length) {
+          lastProgressUpdate = now;
+          await this.updateStageProgressWithMerge(
+            syncRunId,
+            'workItems',
+            result.created,
+            result.updated,
+            result.errors.length,
+            issues.length,
+          );
+          this.logger.log(
+            `Work items progress: ${issueIndex}/${issues.length} issues, ` +
+              `${result.created} created, ${result.updated} updated, ${result.errors.length} errors`,
+          );
         }
       }
     } catch (error) {
