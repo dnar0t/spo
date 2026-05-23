@@ -152,16 +152,18 @@ const Users = () => {
 
   const handleSaveUser = async (next: AdminUserDto) => {
     try {
-      // Сохраняем роли
-      await assignRoles.mutateAsync({ id: next.id, roles: next.roles });
+      // Сохраняем роли — прямой вызов API
+      await api.put(`/admin/users/${next.id}/roles`, { roles: next.roles });
       // Обновляем основные поля
-      await updateUser.mutateAsync({
-        id: next.id,
+      await api.put(`/admin/users/${next.id}`, {
         email: next.email,
         fullName: next.fullName,
         isActive: next.isActive,
       });
+      // Инвалидируем кэш пользователей
+      admin.queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       setEditing(null);
+      toast({ title: 'Изменения сохранены', description: 'Роли и настройки пользователя обновлены.' });
     } catch (err) {
       toast({
         title: 'Ошибка сохранения',
