@@ -619,6 +619,7 @@ export function useAdmin() {
     });
 
   return {
+    queryClient,
     useUsers,
     useCreateUser,
     useUpdateUser,

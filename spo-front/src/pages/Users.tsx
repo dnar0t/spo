@@ -91,30 +91,62 @@ const Users = () => {
     return { active, blocked: users.length - active, directors, managers, with2fa };
   }, [users]);
 
-  const handleToggleActive = (u: AdminUserDto) => {
-    if (u.isActive) {
-      toast({ title: 'Деактивация', description: `Деактивирую ${u.fullName || u.login}...` });
-      deactivateUser.mutate(u.id, {
-        onSuccess: () => {
-          toast({ title: 'Пользователь деактивирован', description: `${u.fullName || u.login} теперь заблокирован` });
-        },
-        onError: (err) => {
-          toast({ title: 'Ошибка деактивации', description: err.message, variant: 'destructive' });
-        },
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+
+  const handleToggleActive = async (u: AdminUserDto) => {
+    const newActive = !u.isActive;
+    const userId = u.id;
+
+    // Мгновенное локальное обновление через queryClient
+    const queryClient = admin.queryClient;
+    queryClient.setQueriesData({ queryKey: ['admin', 'users'] }, (old: unknown) => {
+      if (!old || typeof old !== 'object') return old;
+      const paginated = old as PaginatedResult<AdminUserDto>;
+      return {
+        ...paginated,
+        data: paginated.data.map((x) =>
+          x.id === userId ? { ...x, isActive: newActive } : x
+        ),
+      };
+    });
+
+    // Блокируем повторные клики
+    setTogglingIds((prev) => new Set(prev).add(userId));
+
+    try {
+      if (newActive) {
+        // Активация
+        await api.put(`/admin/users/${userId}`, { isActive: true });
+      } else {
+        // Деактивация
+        await api.delete(`/admin/users/${userId}`);
+      }
+      // Обновляем с сервера после успеха
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    } catch (err) {
+      // Откат при ошибке
+      queryClient.setQueriesData({ queryKey: ['admin', 'users'] }, (old: unknown) => {
+        if (!old || typeof old !== 'object') return old;
+        const paginated = old as PaginatedResult<AdminUserDto>;
+        return {
+          ...paginated,
+          data: paginated.data.map((x) =>
+            x.id === userId ? { ...x, isActive: u.isActive } : x
+          ),
+        };
       });
-    } else {
-      toast({ title: 'Активация', description: `Активирую ${u.fullName || u.login}...` });
-      updateUser.mutate(
-        { id: u.id, email: u.email, fullName: u.fullName, isActive: true },
-        {
-          onSuccess: () => {
-            toast({ title: 'Пользователь активирован', description: `${u.fullName || u.login} теперь активен` });
-          },
-          onError: (err) => {
-            toast({ title: 'Ошибка активации', description: err.message, variant: 'destructive' });
-          },
-        },
-      );
+      toast({
+        title: newActive ? 'Ошибка активации' : 'Ошибка деактивации',
+        description: (err as Error).message || 'Повторите попытку',
+        variant: 'destructive',
+      });
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     }
   };
 
@@ -367,7 +399,6 @@ const Users = () => {
                                   <Switch
                                     checked={u.isActive}
                                     onCheckedChange={() => handleToggleActive(u)}
-                                    disabled={deactivateUser.isPending || updateUser.isPending}
                                   />
                                   <span
                                     className={cn(
