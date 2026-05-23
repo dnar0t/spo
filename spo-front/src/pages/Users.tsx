@@ -146,7 +146,6 @@ const Users = () => {
         next.delete(userId);
         return next;
       });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     }
   };
 
