@@ -11,6 +11,7 @@ import {
   SyncRunsListDto,
   SyncRunFilter,
   SyncRunDetailDto,
+  StageDetails,
   YouTrackIssuesListDto,
   IssueFilter,
   YouTrackStatsDto,
@@ -75,35 +76,8 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
     }
   }
 
-  async hasRunningSync(): Promise<{ id: string } | null> {
-    try {
-      // Only consider syncs that have actual progress (current_stage is set)
-      // This filters out stuck syncs that were created but never ran
-      const running = await this.prisma.syncRun.findFirst({
-        where: { 
-          status: 'RUNNING',
-          currentStage: { not: null },
-        },
-        orderBy: { startedAt: 'desc' },
-        select: { id: true },
-      });
-      return running;
-    } catch {
-      return null;
-    }
-  }
-
   async startSync(periodId?: number): Promise<StartSyncResultDto> {
     this.logger.log('Manual sync requested via repository');
-    // Mark any stuck RUNNING syncs as FAILED before starting a new one
-    try {
-      await this.prisma.syncRun.updateMany({
-        where: { status: 'RUNNING', startedAt: { lt: new Date(Date.now() - 3600000) } }, // older than 1 hour
-        data: { status: 'FAILED', completedAt: new Date() },
-      });
-    } catch {
-      // non-critical
-    }
     await this.apiClient.reloadConfig();
 
     const syncRunId = uuidv4();
@@ -112,11 +86,20 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
         id: syncRunId,
         triggerType: 'MANUAL',
         status: 'RUNNING',
+        currentStage: 'starting',
         startedAt: new Date(),
         totalIssues: 0,
         createdCount: 0,
         updatedCount: 0,
         errorCount: 0,
+        extensions: {
+          stageDetails: {
+            users: { created: 0, updated: 0, errors: 0 },
+            projects: { created: 0, updated: 0, errors: 0 },
+            issues: { created: 0, updated: 0, errors: 0 },
+            workItems: { created: 0, updated: 0, errors: 0 },
+          },
+        },
       },
     });
 
@@ -178,6 +161,8 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
       },
     });
     if (!run) return null;
+    const extensions = run.extensions as Record<string, unknown> | null;
+    const stageDetails = (extensions?.stageDetails as StageDetails | null) ?? null;
     return {
       id: run.id,
       triggerType: run.triggerType,
@@ -190,8 +175,8 @@ export class YouTrackRepositoryImpl implements IYouTrackRepository {
       startedAt: run.startedAt,
       completedAt: run.completedAt,
       duration: run.duration,
-      currentStage: run.currentStage,
-      stageDetails: run.stageDetails as Record<string, unknown> | null,
+      currentStage: run.currentStage ?? null,
+      stageDetails,
       logs: run.logs.map((log) => ({
         id: log.id,
         level: log.level,

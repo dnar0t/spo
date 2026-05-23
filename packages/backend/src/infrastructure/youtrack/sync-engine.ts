@@ -28,7 +28,8 @@ import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class SyncEngine {
   private readonly logger = new Logger(SyncEngine.name);
-  private readonly defaultFields = 'id,idReadable,summary,description,created,updated,resolved,project(id,name,shortName),reporter(id,login,fullName,email),assignee(id,login,fullName,email),customFields(id,name,value(id,name,localizedName)),parent(id,idReadable),subtasks(id,idReadable)';
+  private readonly defaultFields =
+    'id,idReadable,summary,description,created,updated,resolved,project(id,name,shortName),reporter(id,login,fullName,email),assignee(id,login,fullName,email),customFields(id,name,value(id,name,localizedName)),parent(id,idReadable),subtasks(id,idReadable)';
 
   constructor(
     private readonly configService: ConfigService,
@@ -40,7 +41,10 @@ export class SyncEngine {
   /**
    * Запустить полную синхронизацию
    */
-  async runFullSync(triggerType: 'MANUAL' | 'SCHEDULED' = 'MANUAL'): Promise<YouTrackFullSyncResult> {
+  async runFullSync(
+    triggerType: 'MANUAL' | 'SCHEDULED' = 'MANUAL',
+    existingSyncRunId?: string,
+  ): Promise<YouTrackFullSyncResult> {
     if (!this.apiClient.isConfigured) {
       throw new Error(
         'YouTrack API client is not configured. Set YOUTRACK_BASE_URL and YOUTRACK_TOKEN.',
@@ -50,90 +54,146 @@ export class SyncEngine {
     const startedAt = new Date();
     this.logger.log(`🚀 Starting full sync (${triggerType}) at ${startedAt.toISOString()}`);
 
-    // Создаём запись о запуске синхронизации
-    const syncRun = await this.prisma.syncRun.create({
-      data: {
-        id: uuidv4(),
-        triggerType,
-        status: 'RUNNING',
-        startedAt,
-      },
-    });
+    // Создаём запись о запуске синхронизации (если не передан существующий ID)
+    const syncRun = existingSyncRunId
+      ? { id: existingSyncRunId }
+      : await this.prisma.syncRun.create({
+          data: {
+            id: uuidv4(),
+            triggerType,
+            status: 'RUNNING',
+            currentStage: 'starting',
+            startedAt,
+          },
+        });
+
+    // Вспомогательная функция для обновления прогресса этапа
+    const updateStageProgress = async (
+      stage: string,
+      processed: number,
+      changed: number,
+      stageCreated: number,
+      stageUpdated: number,
+      stageErrors: number,
+    ) => {
+      // Читаем текущие extensions чтобы не потерять данные предыдущих этапов
+      const currentRun = await this.prisma.syncRun.findUnique({
+        where: { id: syncRun.id },
+        select: { extensions: true },
+      });
+      const currentExtensions = (currentRun?.extensions as Record<string, unknown> | null) ?? {};
+      const currentStageDetails = (currentExtensions?.stageDetails as Record<
+        string,
+        { created: number; updated: number; errors: number }
+      > | null) ?? {
+        users: null,
+        projects: null,
+        issues: null,
+        workItems: null,
+      };
+
+      const newStageDetails = {
+        ...currentStageDetails,
+        [stage]: { created: stageCreated, updated: stageUpdated, errors: stageErrors },
+      };
+
+      await this.prisma.syncRun.update({
+        where: { id: syncRun.id },
+        data: {
+          currentStage: stage,
+          createdCount: processed,
+          updatedCount: changed,
+          extensions: {
+            ...currentExtensions,
+            stageDetails: newStageDetails,
+          },
+        },
+      });
+    };
 
     try {
       // Этап 1: Синхронизация пользователей
-      await this.updateStage(syncRun.id, 'users');
+      await this.updateStageProgressWithMerge(syncRun.id, 'users', 0, 0, 0, 0);
       const usersResult = await this.syncUsers(syncRun.id);
-      await this.logSyncInfo(syncRun.id, 'Users synced', `Created: ${usersResult.created}, Updated: ${usersResult.updated}`);
-      await this.prisma.syncRun.update({
-        where: { id: syncRun.id },
-        data: {
-          createdCount: usersResult.created,
-          updatedCount: usersResult.updated,
-          stageDetails: {
-            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
-            projects: null,
-            issues: null,
-            workItems: null,
-          },
-        },
-      });
+      await this.logSyncInfo(
+        syncRun.id,
+        'Users synced',
+        `Created: ${usersResult.created}, Updated: ${usersResult.updated}`,
+      );
+      await updateStageProgress(
+        'users',
+        usersResult.created + usersResult.updated,
+        usersResult.updated,
+        usersResult.created,
+        usersResult.updated,
+        usersResult.errors.length,
+      );
 
       // Этап 2: Синхронизация проектов
-      await this.updateStage(syncRun.id, 'projects');
+      await this.updateStageProgressWithMerge(syncRun.id, 'projects', 0, 0, 0, 0);
       const projectsResult = await this.syncProjects(syncRun.id);
-      await this.logSyncInfo(syncRun.id, 'Projects synced', `Created: ${projectsResult.created}, Updated: ${projectsResult.updated}`);
-      await this.prisma.syncRun.update({
-        where: { id: syncRun.id },
-        data: {
-          createdCount: usersResult.created + projectsResult.created,
-          updatedCount: usersResult.updated + projectsResult.updated,
-          stageDetails: {
-            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
-            projects: { processed: projectsResult.created + projectsResult.updated, changes: { created: projectsResult.created, updated: projectsResult.updated }, errors: projectsResult.errors.length },
-            issues: null,
-            workItems: null,
-          },
-        },
-      });
+      await this.logSyncInfo(
+        syncRun.id,
+        'Projects synced',
+        `Created: ${projectsResult.created}, Updated: ${projectsResult.updated}`,
+      );
+      await updateStageProgress(
+        'projects',
+        usersResult.created + usersResult.updated + projectsResult.created + projectsResult.updated,
+        usersResult.updated + projectsResult.updated,
+        projectsResult.created,
+        projectsResult.updated,
+        projectsResult.errors.length,
+      );
 
       // Этап 3: Синхронизация задач
-      await this.updateStage(syncRun.id, 'issues');
+      await this.updateStageProgressWithMerge(syncRun.id, 'issues', 0, 0, 0, 0);
       const issuesResult = await this.syncIssues(syncRun.id);
-      const issuesTotal = issuesResult.created + issuesResult.updated;
-      await this.logSyncInfo(syncRun.id, 'Issues synced', `Created: ${issuesResult.created}, Updated: ${issuesResult.updated}`);
-      await this.prisma.syncRun.update({
-        where: { id: syncRun.id },
-        data: {
-          totalIssues: issuesTotal,
-          createdCount: usersResult.created + projectsResult.created + issuesResult.created,
-          updatedCount: usersResult.updated + projectsResult.updated + issuesResult.updated,
-          stageDetails: {
-            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
-            projects: { processed: projectsResult.created + projectsResult.updated, changes: { created: projectsResult.created, updated: projectsResult.updated }, errors: projectsResult.errors.length },
-            issues: { processed: issuesResult.created + issuesResult.updated, changes: { created: issuesResult.created, updated: issuesResult.updated }, errors: issuesResult.errors.length },
-            workItems: null,
-          },
-        },
-      });
+      await this.logSyncInfo(
+        syncRun.id,
+        'Issues synced',
+        `Created: ${issuesResult.created}, Updated: ${issuesResult.updated}`,
+      );
+      await updateStageProgress(
+        'issues',
+        usersResult.created +
+          usersResult.updated +
+          projectsResult.created +
+          projectsResult.updated +
+          issuesResult.created +
+          issuesResult.updated,
+        usersResult.updated + projectsResult.updated + issuesResult.updated,
+        issuesResult.created,
+        issuesResult.updated,
+        issuesResult.errors.length,
+      );
 
       // Этап 4: Синхронизация work items
-      await this.updateStage(syncRun.id, 'workItems');
+      await this.updateStageProgressWithMerge(syncRun.id, 'workItems', 0, 0, 0, 0);
       const workItemsResult = await this.syncWorkItems(syncRun.id);
-      await this.logSyncInfo(syncRun.id, 'Work items synced', `Created: ${workItemsResult.created}, Updated: ${workItemsResult.updated}`);
-      await this.prisma.syncRun.update({
-        where: { id: syncRun.id },
-        data: {
-          createdCount: usersResult.created + projectsResult.created + issuesResult.created + workItemsResult.created,
-          updatedCount: usersResult.updated + projectsResult.updated + issuesResult.updated + workItemsResult.updated,
-          stageDetails: {
-            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
-            projects: { processed: projectsResult.created + projectsResult.updated, changes: { created: projectsResult.created, updated: projectsResult.updated }, errors: projectsResult.errors.length },
-            issues: { processed: issuesResult.created + issuesResult.updated, changes: { created: issuesResult.created, updated: issuesResult.updated }, errors: issuesResult.errors.length },
-            workItems: { processed: workItemsResult.created + workItemsResult.updated, changes: { created: workItemsResult.created, updated: workItemsResult.updated }, errors: workItemsResult.errors.length },
-          },
-        },
-      });
+      await this.logSyncInfo(
+        syncRun.id,
+        'Work items synced',
+        `Created: ${workItemsResult.created}, Updated: ${workItemsResult.updated}`,
+      );
+      await updateStageProgress(
+        'workItems',
+        usersResult.created +
+          usersResult.updated +
+          projectsResult.created +
+          projectsResult.updated +
+          issuesResult.created +
+          issuesResult.updated +
+          workItemsResult.created +
+          workItemsResult.updated,
+        usersResult.updated +
+          projectsResult.updated +
+          issuesResult.updated +
+          workItemsResult.updated,
+        workItemsResult.created,
+        workItemsResult.updated,
+        workItemsResult.errors.length,
+      );
 
       const completedAt = new Date();
       const duration = Math.round((completedAt.getTime() - startedAt.getTime()) / 1000);
@@ -146,33 +206,64 @@ export class SyncEngine {
 
       const status = totalErrors > 0 ? 'PARTIAL' : 'SUCCESS';
 
-      // Обновляем запись о синхронизации
+      // Финальное обновление записи о синхронизации
+      const totalUsersCreatedAndUpdated = usersResult.created + usersResult.updated;
+      const totalProjectsCreatedAndUpdated = projectsResult.created + projectsResult.updated;
+      const totalIssuesCreatedAndUpdated = issuesResult.created + issuesResult.updated;
+      const totalWorkItemsCreatedAndUpdated = workItemsResult.created + workItemsResult.updated;
+
       await this.prisma.syncRun.update({
         where: { id: syncRun.id },
         data: {
           status,
-          totalIssues: issuesResult.created + issuesResult.updated,
+          currentStage: null,
+          totalIssues: totalIssuesCreatedAndUpdated,
           createdCount:
-            usersResult.created + projectsResult.created + issuesResult.created + workItemsResult.created,
+            usersResult.created +
+            projectsResult.created +
+            issuesResult.created +
+            workItemsResult.created,
           updatedCount:
-            usersResult.updated + projectsResult.updated + issuesResult.updated + workItemsResult.updated,
+            usersResult.updated +
+            projectsResult.updated +
+            issuesResult.updated +
+            workItemsResult.updated,
           errorCount: totalErrors,
-          errors: totalErrors > 0
-            ? {
-                users: usersResult.errors,
-                projects: projectsResult.errors,
-                issues: issuesResult.errors,
-                workItems: workItemsResult.errors,
-              }
-            : null,
+          errors:
+            totalErrors > 0
+              ? {
+                  users: usersResult.errors,
+                  projects: projectsResult.errors,
+                  issues: issuesResult.errors,
+                  workItems: workItemsResult.errors,
+                }
+              : null,
+          extensions: {
+            stageDetails: {
+              users: {
+                created: usersResult.created,
+                updated: usersResult.updated,
+                errors: usersResult.errors.length,
+              },
+              projects: {
+                created: projectsResult.created,
+                updated: projectsResult.updated,
+                errors: projectsResult.errors.length,
+              },
+              issues: {
+                created: issuesResult.created,
+                updated: issuesResult.updated,
+                errors: issuesResult.errors.length,
+              },
+              workItems: {
+                created: workItemsResult.created,
+                updated: workItemsResult.updated,
+                errors: workItemsResult.errors.length,
+              },
+            },
+          },
           completedAt,
           duration,
-          stageDetails: {
-            users: { processed: usersResult.created + usersResult.updated, changes: { created: usersResult.created, updated: usersResult.updated }, errors: usersResult.errors.length },
-            projects: { processed: projectsResult.created + projectsResult.updated, changes: { created: projectsResult.created, updated: projectsResult.updated }, errors: projectsResult.errors.length },
-            issues: { processed: issuesResult.created + issuesResult.updated, changes: { created: issuesResult.created, updated: issuesResult.updated }, errors: issuesResult.errors.length },
-            workItems: { processed: workItemsResult.created + workItemsResult.updated, changes: { created: workItemsResult.created, updated: workItemsResult.updated }, errors: workItemsResult.errors.length },
-          },
         },
       });
 
@@ -185,13 +276,14 @@ export class SyncEngine {
         completedAt: completedAt.toISOString(),
         duration,
         status,
+        syncRunId: syncRun.id,
       };
 
       this.logger.log(
         `✅ Sync completed: ${status} in ${duration}s. ` +
-        `Users: ${usersResult.created}+${usersResult.updated}, ` +
-        `Issues: ${issuesResult.created}+${issuesResult.updated}, ` +
-        `WorkItems: ${workItemsResult.created}+${workItemsResult.updated}`,
+          `Users: ${usersResult.created}+${usersResult.updated}, ` +
+          `Issues: ${issuesResult.created}+${issuesResult.updated}, ` +
+          `WorkItems: ${workItemsResult.created}+${workItemsResult.updated}`,
       );
 
       return result;
@@ -219,7 +311,10 @@ export class SyncEngine {
         },
       });
 
-      this.logger.error(`❌ Sync failed: ${errorMessage}`, error instanceof Error ? error.stack : undefined);
+      this.logger.error(
+        `❌ Sync failed: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
+      );
 
       throw error;
     }
@@ -235,10 +330,13 @@ export class SyncEngine {
       const users = await this.apiClient.get<YouTrackUser[]>(
         '/users',
         { fields: 'id,login,fullName,email,banned,guest' },
-        true, // paginated
+        false,
       );
 
       this.logger.log(`Fetched ${users.length} users from YouTrack`);
+
+      let lastProgressUpdate = Date.now();
+      let processedCount = 0;
 
       for (const ytUser of users) {
         try {
@@ -300,11 +398,27 @@ export class SyncEngine {
               result.created++;
             }
           }
+          processedCount++;
         } catch (error) {
           result.errors.push({
             entityId: ytUser.id,
             message: error instanceof Error ? error.message : 'Failed to sync user',
           });
+          processedCount++;
+        }
+
+        // Обновляем прогресс каждые 1.5 секунды
+        const now = Date.now();
+        if (now - lastProgressUpdate > 1500 && users.length > 0) {
+          lastProgressUpdate = now;
+          await this.updateStageProgressWithMerge(
+            syncRunId,
+            'users',
+            result.created,
+            result.updated,
+            result.errors.length,
+            users.length,
+          );
         }
       }
     } catch (error) {
@@ -362,6 +476,7 @@ export class SyncEngine {
 
       // Первый проход: сохраняем все задачи (без parent связей)
       const issueMap = new Map<string, string>(); // youtrackId → ourId
+      let lastProgressUpdate = Date.now();
 
       for (const ytIssue of issues) {
         try {
@@ -432,6 +547,20 @@ export class SyncEngine {
             message: error instanceof Error ? error.message : 'Failed to sync issue',
           });
         }
+
+        // Обновляем прогресс каждые 1.5 секунды
+        const now = Date.now();
+        if (now - lastProgressUpdate > 1500 && issues.length > 0) {
+          lastProgressUpdate = now;
+          await this.updateStageProgressWithMerge(
+            syncRunId,
+            'issues',
+            result.created,
+            result.updated,
+            result.errors.length,
+            issues.length,
+          );
+        }
       }
 
       // Второй проход: устанавливаем parent-child связи
@@ -445,7 +574,7 @@ export class SyncEngine {
           await this.prisma.youtrackIssue.update({
             where: { id: childId },
             data: {
-              parentIssueId: parentId,
+              parent_issueId: parentId,
             },
           });
         }
@@ -473,7 +602,11 @@ export class SyncEngine {
 
       this.logger.log(`Loading work items for ${issues.length} issues`);
 
-      const workItemFields = 'id,author(id,login,fullName),text,textPreview,type(id,name),duration(presentation,minutes),date,created,updated,issue(id,idReadable)';
+      const workItemFields =
+        'id,author(id,login,fullName),text,textPreview,type(id,name),duration(presentation,minutes),date,created,updated,issue(id,idReadable)';
+
+      let lastProgressUpdate = Date.now();
+      let totalWorkItemsProcessed = 0;
 
       for (const issue of issues) {
         try {
@@ -483,6 +616,7 @@ export class SyncEngine {
             true, // paginated
           );
 
+          let issueWorkItemCount = 0;
           for (const ytWorkItem of workItems) {
             try {
               const workItemData = this.mapper.mapWorkItem(ytWorkItem, issue.id);
@@ -512,7 +646,7 @@ export class SyncEngine {
                     durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
                     workDate: workItemData.workDate,
-                    workTypeName: workItemData.workTypeName,
+                    work_typeName: workItemData.workTypeName,
                   },
                 });
                 result.updated++;
@@ -526,17 +660,33 @@ export class SyncEngine {
                     durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
                     workDate: workItemData.workDate,
-                    workTypeName: workItemData.workTypeName,
+                    work_typeName: workItemData.workTypeName,
                   },
                 });
                 result.created++;
               }
+              issueWorkItemCount++;
             } catch (error) {
               result.errors.push({
                 entityId: ytWorkItem.id,
                 message: error instanceof Error ? error.message : 'Failed to sync work item',
               });
             }
+          }
+          totalWorkItemsProcessed += issueWorkItemCount;
+
+          // Обновляем прогресс каждые 1.5 секунды
+          const now = Date.now();
+          if (now - lastProgressUpdate > 1500) {
+            lastProgressUpdate = now;
+            await this.updateStageProgressWithMerge(
+              syncRunId,
+              'workItems',
+              result.created,
+              result.updated,
+              result.errors.length,
+              issues.length * 10,
+            );
           }
         } catch (error) {
           result.errors.push({
@@ -557,7 +707,11 @@ export class SyncEngine {
   /**
    * Синхронизация work items по периоду (для загрузки факта)
    */
-  async syncWorkItemsByPeriod(periodId: string, startDate: Date, endDate: Date): Promise<YouTrackSyncResult> {
+  async syncWorkItemsByPeriod(
+    periodId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<YouTrackSyncResult> {
     const result: YouTrackSyncResult = { created: 0, updated: 0, deleted: 0, errors: [] };
 
     try {
@@ -565,7 +719,8 @@ export class SyncEngine {
         select: { id: true, youtrackId: true, issueNumber: true },
       });
 
-      const workItemFields = 'id,author(id,login,fullName),text,textPreview,type(id,name),duration(presentation,minutes),date,created,updated,issue(id,idReadable)';
+      const workItemFields =
+        'id,author(id,login,fullName),text,textPreview,type(id,name),duration(presentation,minutes),date,created,updated,issue(id,idReadable)';
 
       for (const issue of issues) {
         try {
@@ -610,7 +765,7 @@ export class SyncEngine {
                     durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
                     workDate: workItemData.workDate,
-                    workTypeName: workItemData.workTypeName,
+                    work_typeName: workItemData.workTypeName,
                     periodId: periodId,
                   },
                 });
@@ -625,7 +780,7 @@ export class SyncEngine {
                     durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
                     workDate: workItemData.workDate,
-                    workTypeName: workItemData.workTypeName,
+                    work_typeName: workItemData.workTypeName,
                     periodId: periodId,
                   },
                 });
@@ -667,11 +822,7 @@ export class SyncEngine {
   /**
    * Логирование информационных сообщений в SyncLogEntry
    */
-  private async logSyncInfo(
-    syncRunId: string,
-    message: string,
-    details?: string,
-  ): Promise<void> {
+  private async logSyncInfo(syncRunId: string, message: string, details?: string): Promise<void> {
     await this.prisma.syncLogEntry.create({
       data: {
         id: uuidv4(),
@@ -691,8 +842,53 @@ export class SyncEngine {
     if (settings) {
       await this.prisma.integrationSettings.update({
         where: { id: settings.id },
-        data: { updatedAt: new Date() },
+        data: { updated_at: new Date() },
       });
+    }
+  }
+
+  /**
+   * Обновить прогресс этапа с сохранением существующих stageDetails
+   */
+  private async updateStageProgressWithMerge(
+    syncRunId: string,
+    stage: string,
+    created: number,
+    updated: number,
+    errors: number,
+    totalIssues: number,
+  ): Promise<void> {
+    try {
+      const currentRun = await this.prisma.syncRun.findUnique({
+        where: { id: syncRunId },
+        select: { extensions: true },
+      });
+      const currentExtensions = (currentRun?.extensions as Record<string, unknown> | null) ?? {};
+      const currentStageDetails =
+        (currentExtensions?.stageDetails as Record<
+          string,
+          { created: number; updated: number; errors: number } | null
+        > | null) ?? {};
+
+      await this.prisma.syncRun.update({
+        where: { id: syncRunId },
+        data: {
+          currentStage: stage,
+          createdCount: created,
+          updatedCount: updated,
+          errorCount: errors,
+          totalIssues: totalIssues,
+          extensions: {
+            ...currentExtensions,
+            stageDetails: {
+              ...currentStageDetails,
+              [stage]: { created, updated, errors },
+            },
+          },
+        },
+      });
+    } catch {
+      // Игнорируем ошибки обновления прогресса
     }
   }
 }

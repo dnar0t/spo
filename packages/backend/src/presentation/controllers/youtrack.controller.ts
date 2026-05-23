@@ -131,8 +131,6 @@ export class YouTrackController {
         duration: detail.duration,
         currentStage: detail.currentStage,
         stageDetails: detail.stageDetails,
-        currentStage: detail.currentStage,
-        stageDetails: detail.stageDetails,
       };
     } catch {
       return { status: 'ERROR' };

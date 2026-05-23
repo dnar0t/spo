@@ -51,6 +51,19 @@ export interface SyncLogEntryDto {
   createdAt: Date;
 }
 
+export interface StageCounts {
+  created: number;
+  updated: number;
+  errors: number;
+}
+
+export interface StageDetails {
+  users: StageCounts | null;
+  projects: StageCounts | null;
+  issues: StageCounts | null;
+  workItems: StageCounts | null;
+}
+
 export interface SyncRunDetailDto {
   id: string;
   triggerType: string;
@@ -64,7 +77,7 @@ export interface SyncRunDetailDto {
   completedAt: Date | null;
   duration: number | null;
   currentStage: string | null;
-  stageDetails: Record<string, unknown> | null;
+  stageDetails: StageDetails | null;
   logs: SyncLogEntryDto[];
 }
 
