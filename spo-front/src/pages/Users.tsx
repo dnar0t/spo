@@ -153,7 +153,7 @@ const Users = () => {
   const handleSaveUser = async (next: AdminUserDto) => {
     try {
       // Сохраняем роли — прямой вызов API
-      await api.put(`/admin/users/${next.id}/roles`, { roles: next.roles });
+      await api.put(`/admin/users/${next.id}/roles`, { roleIds: next.roles });
       // Обновляем основные поля
       await api.put(`/admin/users/${next.id}`, {
         email: next.email,
@@ -659,8 +659,8 @@ function EditUserDialog({
   const toggleArr = <T,>(arr: T[], v: T): T[] =>
     arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 
-  const dictProjects = dictionaries?.projects ?? projects;
-  const dictSystems = dictionaries?.systems ?? systems;
+  const dictProjects = (dictionaries?.projects && dictionaries.projects.length > 0) ? dictionaries.projects : projects;
+  const dictSystems = (dictionaries?.systems && dictionaries.systems.length > 0) ? dictionaries.systems : systems;
   const dictWorkRoles = dictionaries?.workRoles ?? [];
 
   return (
