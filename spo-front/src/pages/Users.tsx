@@ -93,48 +93,39 @@ const Users = () => {
 
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
-  const handleToggleActive = async (u: AdminUserDto) => {
-    const newActive = !u.isActive;
-    const userId = u.id;
-
-    // Мгновенное локальное обновление через queryClient
+  const updateUserInCache = (userId: string, updater: (u: AdminUserDto) => AdminUserDto) => {
     const queryClient = admin.queryClient;
-    queryClient.setQueriesData({ queryKey: ['admin', 'users'] }, (old: unknown) => {
+    // Обновляем ВСЕ кэшированные запросы пользователей (с любыми фильтрами)
+    queryClient.setQueriesData({ queryKey: ['admin', 'users'], exact: false }, (old: unknown) => {
       if (!old || typeof old !== 'object') return old;
       const paginated = old as PaginatedResult<AdminUserDto>;
       return {
         ...paginated,
-        data: paginated.data.map((x) =>
-          x.id === userId ? { ...x, isActive: newActive } : x
-        ),
+        data: paginated.data.map((x) => (x.id === userId ? updater(x) : x)),
       };
     });
+  };
 
-    // Блокируем повторные клики
+  const handleToggleActive = async (u: AdminUserDto) => {
+    const newActive = !u.isActive;
+    const userId = u.id;
+
+    // Мгновенное локальное обновление
+    updateUserInCache(userId, (x) => ({ ...x, isActive: newActive }));
+
     setTogglingIds((prev) => new Set(prev).add(userId));
 
     try {
       if (newActive) {
-        // Активация
         await api.put(`/admin/users/${userId}`, { isActive: true });
       } else {
-        // Деактивация
         await api.delete(`/admin/users/${userId}`);
       }
-      // Обновляем с сервера после успеха
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      // Перезапрашиваем с сервера после успеха
+      admin.queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
     } catch (err) {
       // Откат при ошибке
-      queryClient.setQueriesData({ queryKey: ['admin', 'users'] }, (old: unknown) => {
-        if (!old || typeof old !== 'object') return old;
-        const paginated = old as PaginatedResult<AdminUserDto>;
-        return {
-          ...paginated,
-          data: paginated.data.map((x) =>
-            x.id === userId ? { ...x, isActive: u.isActive } : x
-          ),
-        };
-      });
+      updateUserInCache(userId, (x) => ({ ...x, isActive: u.isActive }));
       toast({
         title: newActive ? 'Ошибка активации' : 'Ошибка деактивации',
         description: (err as Error).message || 'Повторите попытку',
@@ -160,6 +151,7 @@ const Users = () => {
         isActive: next.isActive,
       });
       // Инвалидируем кэш пользователей
+      admin.queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
       admin.queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       setEditing(null);
       toast({ title: 'Изменения сохранены', description: 'Роли и настройки пользователя обновлены.' });
