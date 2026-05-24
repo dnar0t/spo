@@ -72,6 +72,7 @@ import {
   SingleSelectFilter,
 } from '@/components/planning/MultiSelectFilter';
 import { usePlanning, type BacklogItemDto } from '@/hooks/usePlanning';
+import { useAdmin } from '@/hooks/useAdmin';
 import type {
   Assignment,
   BacklogIssue,
@@ -222,7 +223,16 @@ const Planning = () => {
   // ---- Период ----
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const periodsQuery = usePeriods();
-  const periods = periodsQuery.data?.data ?? [];
+  const periods = periodsQuery.data?.items ?? [];
+  const { useListPlanningSettings } = useAdmin();
+  const { data: sprintsData } = useListPlanningSettings();
+  const sprints = useMemo(() => (sprintsData ?? []).map(s => ({ ...s, state: 'SPRINT_CONFIG' })), [sprintsData]);
+  const allPeriods = useMemo(() => [...sprints, ...periods], [sprints, periods]);
+  const isSprint = (p: any): boolean => p.state === 'SPRINT_CONFIG';
+  const selectedPeriod = useMemo(() => {
+    if (!selectedPeriodId || allPeriods.length === 0) return null;
+    return allPeriods.find(p => p.id === selectedPeriodId) ?? null;
+  }, [selectedPeriodId, allPeriods]);
 
   useEffect(() => {
     if (!selectedPeriodId && periods.length > 0) {
@@ -236,22 +246,23 @@ const Planning = () => {
   // ---- Настройки ----
   const [settings, setSettings] = useState<SprintSettings>(DEFAULT_SPRINT_SETTINGS);
   useEffect(() => {
-    if (currentPeriod) {
+    const src = selectedPeriod && isSprint(selectedPeriod) ? selectedPeriod : currentPeriod;
+    if (src) {
       setSettings({
-        year: currentPeriod.year,
-        month: currentPeriod.month,
+        year: src.year,
+        month: src.month,
         workHoursPerMonth:
-          currentPeriod.workHoursPerMonth ?? DEFAULT_SPRINT_SETTINGS.workHoursPerMonth,
-        reservePercent: currentPeriod.reservePercent ?? DEFAULT_SPRINT_SETTINGS.reservePercent,
-        debugPercent: currentPeriod.debugPercent ?? DEFAULT_SPRINT_SETTINGS.debugPercent,
-        testingPercent: currentPeriod.testPercent ?? DEFAULT_SPRINT_SETTINGS.testingPercent,
-        managementPercent: currentPeriod.mgmtPercent ?? DEFAULT_SPRINT_SETTINGS.managementPercent,
-        yellowThreshold: currentPeriod.yellowThreshold ?? DEFAULT_SPRINT_SETTINGS.yellowThreshold,
-        redThreshold: currentPeriod.redThreshold ?? DEFAULT_SPRINT_SETTINGS.redThreshold,
+          src.workHoursPerMonth ?? DEFAULT_SPRINT_SETTINGS.workHoursPerMonth,
+        reservePercent: src.reservePercent ?? DEFAULT_SPRINT_SETTINGS.reservePercent,
+        debugPercent: src.debugPercent ?? DEFAULT_SPRINT_SETTINGS.debugPercent,
+        testingPercent: src.testPercent ?? DEFAULT_SPRINT_SETTINGS.testingPercent,
+        managementPercent: src.mgmtPercent ?? DEFAULT_SPRINT_SETTINGS.managementPercent,
+        yellowThreshold: src.yellowThreshold ?? DEFAULT_SPRINT_SETTINGS.yellowThreshold,
+        redThreshold: src.redThreshold ?? DEFAULT_SPRINT_SETTINGS.redThreshold,
         workHoursPerYear: DEFAULT_SPRINT_SETTINGS.workHoursPerYear,
       });
     }
-  }, [currentPeriod]);
+  }, [currentPeriod, selectedPeriod]);
 
   const planLocked = currentPeriod?.state === 'PLAN_FIXED' || currentPeriod?.state === 'CLOSED';
 
@@ -276,7 +287,7 @@ const Planning = () => {
   });
 
   const apiBacklog = useMemo(
-    () => (backlogQuery.data?.data ? convertBacklogDto(backlogQuery.data.data) : []),
+    () => (backlogQuery.data?.items ? convertBacklogDto(backlogQuery.data.items) : []),
     [backlogQuery.data],
   );
 
@@ -304,7 +315,7 @@ const Planning = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
 
   useEffect(() => {
-    if (backlogQuery.data?.data) {
+    if (backlogQuery.data?.items) {
       const newAssignments: Assignment[] = [];
       function walkChildren(items: BacklogItemDto[]) {
         for (const item of items) {
@@ -318,7 +329,7 @@ const Planning = () => {
           if (item.children?.length) walkChildren(item.children);
         }
       }
-      walkChildren(backlogQuery.data.data);
+      walkChildren(backlogQuery.data.items);
       setAssignments(newAssignments);
     }
   }, [backlogQuery.data]);
@@ -336,7 +347,6 @@ const Planning = () => {
 
   // ---- UI состояние ----
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [history, setHistory] = useState<PlanHistoryEntry[]>([]);
 
   // ---- Фильтрация клиентская ----
@@ -559,36 +569,6 @@ const Planning = () => {
   const isLoading = periodsQuery.isLoading || backlogQuery.isLoading || capacityQuery.isLoading;
   const isError = periodsQuery.isError || backlogQuery.isError || capacityQuery.isError;
 
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="text-center space-y-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-            <p className="text-sm text-muted-foreground">Загрузка данных планирования...</p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (isError) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="text-center space-y-3">
-            <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
-            <p className="text-sm text-muted-foreground">
-              Ошибка загрузки данных. Попробуйте перезагрузить страницу.
-            </p>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Перезагрузить
-            </Button>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
 
   // ---- Фильтр опции ----
   const filterProjects = useMemo(() => {
@@ -635,42 +615,15 @@ const Planning = () => {
                 <SelectValue placeholder="Выберите период" />
               </SelectTrigger>
               <SelectContent>
-                {periods.map((p) => (
+                {allPeriods.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {MONTHS_RU[p.month - 1]} {p.year} · {PERIOD_STATE_LABEL_RU[p.state] ?? p.state}
+                    {MONTHS_RU[p.month - 1]} {p.year}{p.state === 'SPRINT_CONFIG' ? '' : ' · ' + (PERIOD_STATE_LABEL_RU[p.state] ?? p.state)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <SettingsIcon className="h-4 w-4" />
-                  Настройки спринта
-                </Button>
-              </DialogTrigger>
-              <SprintSettingsDialog
-                value={settings}
-                onSave={(s) => {
-                  setSettings(s);
-                  setSettingsOpen(false);
-                  if (selectedPeriodId) {
-                    updatePeriodMutation.mutate({
-                      periodId: selectedPeriodId,
-                      workHoursPerMonth: s.workHoursPerMonth,
-                      reservePercent: s.reservePercent,
-                      testPercent: s.testingPercent,
-                      debugPercent: s.debugPercent,
-                      mgmtPercent: s.managementPercent,
-                      yellowThreshold: s.yellowThreshold,
-                      redThreshold: s.redThreshold,
-                    });
-                  }
-                }}
-              />
-            </Dialog>
-            <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm">
               <Download className="h-4 w-4" />
               Экспорт
             </Button>

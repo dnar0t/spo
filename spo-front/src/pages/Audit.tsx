@@ -26,13 +26,31 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
-import { AUDIT_ACTION_LABEL_RU, SENSITIVE_KIND_LABEL_RU, type AuditAction } from '@/data/adminMock';
 import {
   useAdmin,
   type AuditEventDto,
   type UserSessionDto,
   type SensitiveChangeDto,
 } from '@/hooks/useAdmin';
+
+type AuditAction = login | logout | create | update | 'delete' | string;
+const AUDIT_ACTION_LABEL_RU: Record<AuditAction, string> = {
+  login: 'Вход в систему',
+  logout: 'Выход из системы',
+  create: 'Создание',
+  update: 'Изменение',
+  delete: 'Удаление',
+  assign_role: 'Назначение роли',
+  revoke_role: 'Отзыв роли',
+  other: 'Другое',
+};
+const SENSITIVE_KIND_LABEL_RU: Record<string, string> = {
+  salary: 'Зарплата',
+  rate: 'Ставка',
+  role: 'Роль',
+  manager: 'Руководитель',
+  permission: 'Права доступа',
+};
 
 const Audit = () => {
   const { toast } = useToast();
