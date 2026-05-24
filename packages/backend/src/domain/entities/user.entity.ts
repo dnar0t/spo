@@ -85,19 +85,13 @@ export class User {
     return this._extensions;
   }
 
-  /** Can user plan (canPlan from extensions) */
+  /** Может ли пользователь участвовать в планировании */
   get canPlan(): boolean {
-    if (this._extensions && typeof this._extensions === "object") {
-      return (this._extensions as Record<string, unknown>)["canPlan"] === true;
-    }
-    return false;
+    return this._extensions?.canPlan === true;
   }
 
-  set canPlan(value: boolean) {
-    if (!this._extensions) {
-      this._extensions = {};
-    }
-    (this._extensions as Record<string, unknown>)["canPlan"] = value;
+  setCanPlan(value: boolean): void {
+    this._extensions = { ...(this._extensions ?? {}), canPlan: value };
     this._updatedAt = new Date();
   }
 
@@ -123,9 +117,7 @@ export class User {
 
   /** Деактивировать пользователя (soft delete) */
   deactivate(): void {
-    if (!this._isActive) {
-      throw new Error('User is already inactive');
-    }
+    if (!this._isActive) return; // уже неактивен — ничего не делаем
     this._isActive = false;
     this._deletedAt = new Date();
     this._updatedAt = new Date();
@@ -133,9 +125,7 @@ export class User {
 
   /** Активировать пользователя */
   activate(): void {
-    if (this._isActive) {
-      throw new Error('User is already active');
-    }
+    if (this._isActive) return; // уже активен — ничего не делаем
     this._isActive = true;
     this._deletedAt = null;
     this._updatedAt = new Date();
@@ -154,14 +144,12 @@ export class User {
     youtrackLogin?: string | null;
     youtrackUserId?: string | null;
     adLogin?: string | null;
-    extensions?: Record<string, unknown> | null;
   }): void {
     if (params.email !== undefined) this._email = params.email;
     if (params.fullName !== undefined) this._fullName = params.fullName;
     if (params.youtrackLogin !== undefined) this._youtrackLogin = params.youtrackLogin;
     if (params.youtrackUserId !== undefined) this._youtrackUserId = params.youtrackUserId;
     if (params.adLogin !== undefined) this._adLogin = params.adLogin;
-    if (params.extensions !== undefined) this._extensions = params.extensions;
     this._updatedAt = new Date();
   }
 
@@ -252,17 +240,17 @@ export class User {
       id: this._id,
       login: this._login,
       email: this._email,
-      full_name: this._fullName,
-      youtrack_login: this._youtrackLogin,
-      youtrack_user_id: this._youtrackUserId,
-      ad_login: this._adLogin,
-      is_active: this._isActive,
-      is_blocked: this._isBlocked,
-      employment_date: this._employmentDate,
-      termination_date: this._terminationDate,
-      created_at: this._createdAt,
-      updated_at: this._updatedAt,
-      deleted_at: this._deletedAt,
+      fullName: this._fullName,
+      youtrackLogin: this._youtrackLogin,
+      youtrackUserId: this._youtrackUserId,
+      adLogin: this._adLogin,
+      isActive: this._isActive,
+      isBlocked: this._isBlocked,
+      employmentDate: this._employmentDate,
+      terminationDate: this._terminationDate,
+      createdAt: this._createdAt,
+      updatedAt: this._updatedAt,
+      deletedAt: this._deletedAt,
       extensions: this._extensions,
     };
   }
