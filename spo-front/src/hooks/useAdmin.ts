@@ -262,30 +262,8 @@ export function useAdmin() {
         const response = await api.put<AdminUserDto>(`/admin/users/${id}`, data);
         return response;
       },
-      onMutate: async ({ id, ...data }) => {
-        await queryClient.cancelQueries({ queryKey: ['admin', 'users'], exact: false });
-        const previousQueries = queryClient.getQueriesData({ queryKey: ['admin', 'users'], exact: false });
-        queryClient.setQueriesData({ queryKey: ['admin', 'users'], exact: false }, (old: unknown) => {
-          if (!old || typeof old !== 'object') return old;
-          const paginated = old as PaginatedResult<AdminUserDto>;
-          return {
-            ...paginated,
-            data: paginated.data.map((u) =>
-              u.id === id ? { ...u, ...data } : u
-            ),
-          };
-        });
-        return { previousQueries };
-      },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
-      },
-      onError: (error: Error, _variables, context) => {
-        if (context?.previousQueries) {
-          for (const [key, data] of context.previousQueries) {
-            queryClient.setQueryData(key, data);
-          }
-        }
       },
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
@@ -300,30 +278,8 @@ export function useAdmin() {
       mutationFn: async (id: string): Promise<void> => {
         await api.delete(`/admin/users/${id}`);
       },
-      onMutate: async (id) => {
-        await queryClient.cancelQueries({ queryKey: ['admin', 'users'], exact: false });
-        const previousQueries = queryClient.getQueriesData({ queryKey: ['admin', 'users'], exact: false });
-        queryClient.setQueriesData({ queryKey: ['admin', 'users'], exact: false }, (old: unknown) => {
-          if (!old || typeof old !== 'object') return old;
-          const paginated = old as PaginatedResult<AdminUserDto>;
-          return {
-            ...paginated,
-            data: paginated.data.map((u) =>
-              u.id === id ? { ...u, isActive: false } : u
-            ),
-          };
-        });
-        return { previousQueries };
-      },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
-      },
-      onError: (error: Error, _variables, context) => {
-        if (context?.previousQueries) {
-          for (const [key, data] of context.previousQueries) {
-            queryClient.setQueryData(key, data);
-          }
-        }
       },
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
@@ -338,30 +294,8 @@ export function useAdmin() {
       mutationFn: async ({ id, roles }: { id: string; roles: string[] }): Promise<void> => {
         await api.put(`/admin/users/${id}/roles`, { roleIds: roles });
       },
-      onMutate: async ({ id, roles }) => {
-        await queryClient.cancelQueries({ queryKey: ['admin', 'users'], exact: false });
-        const previousQueries = queryClient.getQueriesData({ queryKey: ['admin', 'users'], exact: false });
-        queryClient.setQueriesData({ queryKey: ['admin', 'users'], exact: false }, (old: unknown) => {
-          if (!old || typeof old !== 'object') return old;
-          const paginated = old as PaginatedResult<AdminUserDto>;
-          return {
-            ...paginated,
-            data: paginated.data.map((u) =>
-              u.id === id ? { ...u, roles } : u
-            ),
-          };
-        });
-        return { previousQueries };
-      },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
-      },
-      onError: (error: Error, _variables, context) => {
-        if (context?.previousQueries) {
-          for (const [key, data] of context.previousQueries) {
-            queryClient.setQueryData(key, data);
-          }
-        }
       },
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
