@@ -20,7 +20,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import type { WorkRole, Priority, IssueType, IssueState, BacklogIssue, Assignment, Employee } from '@/lib/planning';
+import type {
+  WorkRole,
+  Priority,
+  IssueType,
+  IssueState,
+  BacklogIssue,
+  Employee,
+  Assignment,
+} from "@/data/planningMock";
 
 // ============================================================================
 // Типы ответов API (согласно backend-контроллеру и DTO)
@@ -53,7 +61,7 @@ export interface PlanningPeriodDto {
 
 /** Пагинированный ответ */
 export interface PaginatedResult<T> {
-  items: T[];
+  data: T[];
   total: number;
   page: number;
   limit: number;

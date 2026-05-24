@@ -36,6 +36,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertTriangle,
@@ -72,7 +73,6 @@ import {
   SingleSelectFilter,
 } from '@/components/planning/MultiSelectFilter';
 import { usePlanning, type BacklogItemDto } from '@/hooks/usePlanning';
-import { useAdmin } from '@/hooks/useAdmin';
 import type {
   Assignment,
   BacklogIssue,
@@ -88,6 +88,16 @@ import type {
 
 const PLANNABLE_ROLES: WorkRole[] = ['development', 'testing', 'management'];
 
+/** Состояния, соответствующие отчётным периодам (не спринтам) */
+const REPORTING_PERIOD_STATES = [
+  'PLANNING',
+  'PLAN_FIXED',
+  'FACT_LOADING',
+  'EVALUATION',
+  'CLOSED',
+  'PERIOD_REOPENED',
+];
+
 /** Маппинг состояний периода на русский */
 const PERIOD_STATE_LABEL_RU: Record<string, string> = {
   PLANNING: 'Планирование',
@@ -96,7 +106,23 @@ const PERIOD_STATE_LABEL_RU: Record<string, string> = {
   EVALUATION: 'Оценка',
   CLOSED: 'Закрыт',
   PERIOD_REOPENED: 'Переоткрыт',
+  SPRINT_CONFIG: 'Спринт (настройки)',
 };
+
+/** Признак: период является спринтом (не отчётным периодом) */
+function isSprint(p: PlanningPeriodDto): boolean {
+  return !REPORTING_PERIOD_STATES.includes(p.state);
+}
+
+/** Найти отчётный период, соответствующий спринту по месяцу/году */
+function findMatchingPeriod(
+  sprint: PlanningPeriodDto,
+  allPeriods: PlanningPeriodDto[],
+): PlanningPeriodDto | undefined {
+  return allPeriods.find(
+    (p) => p.id !== sprint.id && p.month === sprint.month && p.year === sprint.year && !isSprint(p),
+  );
+}
 
 const ISSUE_STATES: IssueState[] = [
   'Open',
@@ -223,24 +249,78 @@ const Planning = () => {
   // ---- Период ----
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const periodsQuery = usePeriods();
-  const periods = periodsQuery.data?.items ?? [];
-  const { useListPlanningSettings } = useAdmin();
-  const { data: sprintsData } = useListPlanningSettings();
-  const sprints = useMemo(() => (sprintsData ?? []).map(s => ({ ...s, state: 'SPRINT_CONFIG' })), [sprintsData]);
+  const periods = periodsQuery.data?.data ?? [];
+
+  // Загрузка спринтов из planning_settings (админ-эндпоинт)
+  const [sprints, setSprints] = useState<PlanningPeriodDto[]>([]);
+  useEffect(() => {
+    api
+      .get<any[]>('/admin/settings/planning')
+      .then((data) => {
+        const items = (data ?? [])
+          .filter((s: any) => s.month && s.year)
+          .map(
+            (s: any) =>
+              ({
+                id: s.id,
+                month: s.month,
+                year: s.year,
+                state: 'SPRINT_CONFIG',
+                workHoursPerMonth: s.workHoursPerMonth ?? null,
+                reservePercent: s.reservePercent ?? null,
+                testPercent: s.testPercent ?? null,
+                debugPercent: s.debugPercent ?? null,
+                mgmtPercent: s.mgmtPercent ?? null,
+                yellowThreshold: s.yellowThreshold ?? null,
+                redThreshold: s.redThreshold ?? null,
+                businessGroupingLevel: s.businessGroupingLevel ?? null,
+                employeeFilter: null,
+                projectFilter: null,
+                priorityFilter: null,
+                createdById: '',
+                closedAt: null,
+                reopenedAt: null,
+                reopenReason: null,
+                createdAt: '',
+                updatedAt: '',
+              }) as PlanningPeriodDto,
+          );
+        setSprints(items);
+      })
+      .catch(() => {
+        /* ignore */
+      });
+  }, []);
+
+  // Объединяем спринты и отчётные периоды для селектора
   const allPeriods = useMemo(() => [...sprints, ...periods], [sprints, periods]);
-  const isSprint = (p: any): boolean => p.state === 'SPRINT_CONFIG';
-  const selectedPeriod = useMemo(() => {
-    if (!selectedPeriodId || allPeriods.length === 0) return null;
-    return allPeriods.find(p => p.id === selectedPeriodId) ?? null;
-  }, [selectedPeriodId, allPeriods]);
 
   useEffect(() => {
-    if (!selectedPeriodId && periods.length > 0) {
-      setSelectedPeriodId(periods[0].id);
+    if (!selectedPeriodId && allPeriods.length > 0) {
+      setSelectedPeriodId(allPeriods[0].id);
     }
-  }, [periods, selectedPeriodId]);
+  }, [allPeriods, selectedPeriodId]);
 
-  const periodDetailQuery = usePeriodDetail(selectedPeriodId);
+  // Выбранный период (из объединённого списка спринтов и отчётных периодов)
+  const selectedPeriod = useMemo(
+    () => allPeriods.find((p) => p.id === selectedPeriodId) ?? null,
+    [allPeriods, selectedPeriodId],
+  );
+
+  // Если выбран спринт (не отчётный период) — используем ID первого подходящего отчётного периода
+  // для API-запросов, чтобы избежать 404
+  const apiPeriodId = useMemo(() => {
+    if (!selectedPeriod) return selectedPeriodId;
+    if (!isSprint(selectedPeriod)) return selectedPeriodId;
+    // Спринт — ищем отчётный период с тем же месяцем/годом
+    const match = findMatchingPeriod(selectedPeriod, periods);
+    if (match) return match.id;
+    // Если не нашли — используем первый отчётный период
+    const fallback = periods.find((p) => !isSprint(p));
+    return fallback?.id ?? selectedPeriodId;
+  }, [selectedPeriod, selectedPeriodId, periods]);
+
+  const periodDetailQuery = usePeriodDetail(apiPeriodId);
   const currentPeriod = periodDetailQuery.data;
 
   // ---- Настройки ----
@@ -251,8 +331,7 @@ const Planning = () => {
       setSettings({
         year: src.year,
         month: src.month,
-        workHoursPerMonth:
-          src.workHoursPerMonth ?? DEFAULT_SPRINT_SETTINGS.workHoursPerMonth,
+        workHoursPerMonth: src.workHoursPerMonth ?? DEFAULT_SPRINT_SETTINGS.workHoursPerMonth,
         reservePercent: src.reservePercent ?? DEFAULT_SPRINT_SETTINGS.reservePercent,
         debugPercent: src.debugPercent ?? DEFAULT_SPRINT_SETTINGS.debugPercent,
         testingPercent: src.testPercent ?? DEFAULT_SPRINT_SETTINGS.testingPercent,
@@ -279,20 +358,20 @@ const Planning = () => {
   const [readinessF, setReadinessF] = useState<'all' | 'new' | 'in_progress' | 'near_done'>('all');
 
   // ---- Бэклог ----
-  const backlogQuery = useBacklog(selectedPeriodId, {
+  const backlogQuery = useBacklog(apiPeriodId, {
     search: search || undefined,
     isPlanned: plannedF === 'all' ? undefined : plannedF === 'planned' ? 'true' : 'false',
     page: 1,
-    limit: 200,
+    limit: 10000,
   });
 
   const apiBacklog = useMemo(
-    () => (backlogQuery.data?.items ? convertBacklogDto(backlogQuery.data.items) : []),
+    () => (backlogQuery.data?.data ? convertBacklogDto(backlogQuery.data.data) : []),
     [backlogQuery.data],
   );
 
   // ---- Capacity ----
-  const capacityQuery = useCapacity(selectedPeriodId);
+  const capacityQuery = useCapacity(apiPeriodId);
   const capacityData = capacityQuery.data;
 
   const allEmployees = useMemo(() => {
@@ -315,7 +394,7 @@ const Planning = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
 
   useEffect(() => {
-    if (backlogQuery.data?.items) {
+    if (backlogQuery.data?.data) {
       const newAssignments: Assignment[] = [];
       function walkChildren(items: BacklogItemDto[]) {
         for (const item of items) {
@@ -329,8 +408,12 @@ const Planning = () => {
           if (item.children?.length) walkChildren(item.children);
         }
       }
-      walkChildren(backlogQuery.data.items);
-      setAssignments(newAssignments);
+      walkChildren(backlogQuery.data.data);
+      // Сохраняем ручные назначения (тестирование, управление), которые не приходят с бэка
+      setAssignments((prev) => {
+        const manual = prev.filter((a) => a.role !== 'development');
+        return [...newAssignments, ...manual];
+      });
     }
   }, [backlogQuery.data]);
 
@@ -342,11 +425,12 @@ const Planning = () => {
   const transitionMutation = useTransitionPeriod();
 
   // ---- Версии плана (история) ----
-  const planVersionsQuery = usePlanVersions(selectedPeriodId);
+  const planVersionsQuery = usePlanVersions(apiPeriodId);
   const planVersions = planVersionsQuery.data ?? [];
 
   // ---- UI состояние ----
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [history, setHistory] = useState<PlanHistoryEntry[]>([]);
 
   // ---- Фильтрация клиентская ----
@@ -459,7 +543,7 @@ const Planning = () => {
 
   const onDragEnd = (e: DragEndEvent) => {
     setActiveDragId(null);
-    if (planLocked || !selectedPeriodId) return;
+    if (planLocked || !apiPeriodId) return;
     const issueId = String(e.active.id);
     const overId = e.over?.id ? String(e.over.id) : null;
     if (!overId || !overId.startsWith('emp:')) return;
@@ -477,7 +561,7 @@ const Planning = () => {
     });
 
     assignTaskMutation.mutate({
-      periodId: selectedPeriodId,
+      periodId: apiPeriodId,
       taskId: issueId,
       employeeId,
       plannedHours: remaining,
@@ -485,7 +569,7 @@ const Planning = () => {
   };
 
   const toggleAssign = (issueId: string, employeeId: string, role: WorkRole, checked: boolean) => {
-    if (planLocked || !selectedPeriodId) return;
+    if (planLocked || !apiPeriodId) return;
     setAssignments((prev) => {
       const filtered = prev.filter((a) => !(a.issueId === issueId && a.role === role));
       return checked ? [...filtered, { issueId, employeeId, role }] : filtered;
@@ -495,30 +579,30 @@ const Planning = () => {
       const issue = apiBacklog.find((i) => i.id === issueId);
       const remaining = issue ? remainingEstimate(issue, apiBacklog) : 0;
       assignTaskMutation.mutate({
-        periodId: selectedPeriodId,
+        periodId: apiPeriodId,
         taskId: issueId,
         employeeId,
         plannedHours: remaining,
       });
     } else {
-      unassignTaskMutation.mutate({ periodId: selectedPeriodId, taskId: issueId });
+      unassignTaskMutation.mutate({ periodId: apiPeriodId, taskId: issueId });
     }
   };
 
   const removeAssignment = (issueId: string, role?: WorkRole) => {
-    if (planLocked || !selectedPeriodId) return;
+    if (planLocked || !apiPeriodId) return;
     setAssignments((prev) =>
       prev.filter((a) =>
         role ? !(a.issueId === issueId && a.role === role) : a.issueId !== issueId,
       ),
     );
-    unassignTaskMutation.mutate({ periodId: selectedPeriodId, taskId: issueId });
+    unassignTaskMutation.mutate({ periodId: apiPeriodId, taskId: issueId });
   };
 
   const fixPlan = () => {
-    if (!selectedPeriodId) return;
+    if (!apiPeriodId) return;
     fixPlanMutation.mutate(
-      { periodId: selectedPeriodId },
+      { periodId: apiPeriodId },
       {
         onSuccess: (data) => {
           const sprint = `${MONTHS_RU[settings.month - 1]} ${settings.year}`;
@@ -540,9 +624,9 @@ const Planning = () => {
   };
 
   const unlockPlan = () => {
-    if (!selectedPeriodId) return;
+    if (!apiPeriodId) return;
     transitionMutation.mutate(
-      { periodId: selectedPeriodId, transition: 'REOPEN' },
+      { periodId: apiPeriodId, transition: 'REOPEN' },
       {
         onSuccess: () => {
           const sprint = `${MONTHS_RU[settings.month - 1]} ${settings.year}`;
@@ -569,6 +653,36 @@ const Planning = () => {
   const isLoading = periodsQuery.isLoading || backlogQuery.isLoading || capacityQuery.isLoading;
   const isError = periodsQuery.isError || backlogQuery.isError || capacityQuery.isError;
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+            <p className="text-sm text-muted-foreground">Загрузка данных планирования...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="text-center space-y-3">
+            <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              Ошибка загрузки данных. Попробуйте перезагрузить страницу.
+            </p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Перезагрузить
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   // ---- Фильтр опции ----
   const filterProjects = useMemo(() => {
@@ -597,10 +711,15 @@ const Planning = () => {
 
   const directionColCount = (showTesting ? 1 : 0) + (showManagement ? 1 : 0);
 
+  // Месяц/год для заголовка — из выбранного периода или текущего
+  const displayPeriod = selectedPeriod ?? currentPeriod;
+  const headerMonth = displayPeriod?.month ?? settings.month;
+  const headerYear = displayPeriod?.year ?? settings.year;
+
   return (
     <AppLayout>
       <PageHeader
-        title={`Планирование · спринт ${MONTHS_RU[settings.month - 1]} ${settings.year}`}
+        title={`Планирование · спринт ${MONTHS_RU[headerMonth - 1]} ${headerYear}`}
         description={
           currentPeriod
             ? `Статус: ${PERIOD_STATE_LABEL_RU[currentPeriod.state] ?? currentPeriod.state} · Распределение задач бэклога YouTrack на месячный спринт.`
@@ -617,13 +736,42 @@ const Planning = () => {
               <SelectContent>
                 {allPeriods.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {MONTHS_RU[p.month - 1]} {p.year}{p.state === 'SPRINT_CONFIG' ? '' : ' · ' + (PERIOD_STATE_LABEL_RU[p.state] ?? p.state)}
+                    {isSprint(p)
+                      ? `⚙ ${MONTHS_RU[p.month - 1]} ${p.year}`
+                      : `${MONTHS_RU[p.month - 1]} ${p.year} · ${PERIOD_STATE_LABEL_RU[p.state] ?? p.state}`}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-                        <Button variant="outline" size="sm">
+            <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <SettingsIcon className="h-4 w-4" />
+                  Настройки спринта
+                </Button>
+              </DialogTrigger>
+              <SprintSettingsDialog
+                value={settings}
+                onSave={(s) => {
+                  setSettings(s);
+                  setSettingsOpen(false);
+                  if (apiPeriodId) {
+                    updatePeriodMutation.mutate({
+                      periodId: apiPeriodId,
+                      workHoursPerMonth: s.workHoursPerMonth,
+                      reservePercent: s.reservePercent,
+                      testPercent: s.testingPercent,
+                      debugPercent: s.debugPercent,
+                      mgmtPercent: s.managementPercent,
+                      yellowThreshold: s.yellowThreshold,
+                      redThreshold: s.redThreshold,
+                    });
+                  }
+                }}
+              />
+            </Dialog>
+            <Button variant="outline" size="sm">
               <Download className="h-4 w-4" />
               Экспорт
             </Button>
@@ -637,7 +785,7 @@ const Planning = () => {
                 size="sm"
                 className="bg-primary hover:bg-primary-hover"
                 onClick={fixPlan}
-                disabled={plannedIssueCount === 0 || !selectedPeriodId}
+                disabled={plannedIssueCount === 0 || !apiPeriodId}
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Зафиксировать план
@@ -650,40 +798,75 @@ const Planning = () => {
       <div className="p-4 space-y-3">
         {/* KPI */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          <KpiCard
-            label="Доступная мощность"
-            value={String(capacity)}
-            unit={`ч / сотр · резерв ${Math.round(settings.reservePercent * 100)}%`}
-            icon={Zap}
-            accent="primary"
-          />
-          <KpiCard
-            label="Запланировано задач"
-            value={String(plannedIssueCount)}
-            unit={`из ${apiBacklog.length}`}
-            icon={Briefcase}
-            accent="info"
-          />
-          <KpiCard
-            label="Загрузка разработки"
-            value={`${utilization}`}
-            unit={`% · ${totalDev} ч назначено`}
-            icon={Users}
-            accent={
-              utilization >= settings.redThreshold * 100
-                ? 'warning'
-                : utilization >= settings.yellowThreshold * 100
-                  ? 'warning'
-                  : 'success'
-            }
-          />
-          <KpiCard
-            label="Перегружены"
-            value={String(overloadedDevs)}
-            unit="разработчиков"
-            icon={AlertTriangle}
-            accent={overloadedDevs > 0 ? 'warning' : 'success'}
-          />
+          {selectedPeriodId ? (
+            <>
+              <KpiCard
+                label="Доступная мощность"
+                value={String(capacity)}
+                unit={`ч / сотр · резерв ${Math.round(settings.reservePercent * 100)}%`}
+                icon={Zap}
+                accent="primary"
+              />
+              <KpiCard
+                label="Запланировано задач"
+                value={String(plannedIssueCount)}
+                unit={`из ${apiBacklog.length}`}
+                icon={Briefcase}
+                accent="info"
+              />
+              <KpiCard
+                label="Загрузка разработки"
+                value={`${utilization}`}
+                unit={`% · ${totalDev} ч назначено`}
+                icon={Users}
+                accent={
+                  utilization >= settings.redThreshold * 100
+                    ? 'warning'
+                    : utilization >= settings.yellowThreshold * 100
+                      ? 'warning'
+                      : 'success'
+                }
+              />
+              <KpiCard
+                label="Перегружены"
+                value={String(overloadedDevs)}
+                unit="разработчиков"
+                icon={AlertTriangle}
+                accent={overloadedDevs > 0 ? 'warning' : 'success'}
+              />
+            </>
+          ) : (
+            <>
+              <KpiCard
+                label="Доступная мощность"
+                value="—"
+                unit="ч / сотр"
+                icon={Zap}
+                accent="primary"
+              />
+              <KpiCard
+                label="Запланировано задач"
+                value="—"
+                unit=""
+                icon={Briefcase}
+                accent="info"
+              />
+              <KpiCard
+                label="Загрузка разработки"
+                value="—"
+                unit="%"
+                icon={Users}
+                accent="success"
+              />
+              <KpiCard
+                label="Перегружены"
+                value="—"
+                unit="разработчиков"
+                icon={AlertTriangle}
+                accent="success"
+              />
+            </>
+          )}
         </div>
 
         {/* Фильтры */}
