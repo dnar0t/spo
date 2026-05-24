@@ -45,7 +45,6 @@ export interface AdminUserDto {
   createdAt: string;
   managerId: string | null;
   managerName: string | null;
-  canPlan: boolean;
 }
 
 /** Роль из справочника */
@@ -83,32 +82,16 @@ export interface AdminDictionariesDto {
   systems: DictionarySystemDto[];
 }
 
-/** Планировочные настройки — элемент списка (GET /api/admin/settings/planning) */
-export interface PlanningSettingsListItemDto {
-  id: string;
-  workHoursPerMonth: number | null;
-  reservePercent: number | null;
-  testPercent: number | null;
-  debugPercent: number | null;
-  mgmtPercent: number | null;
-  yellowThreshold: number | null;
-  redThreshold: number | null;
-  businessGroupingLevel: string | null;
-  updatedBy: string;
-  updatedAt: string;
-  createdAt: string;
-}
-
-/** Планировочные настройки — создание/обновление */
+/** Планировочные настройки из GET /api/admin/settings/planning */
 export interface PlanningSettingsDto {
-  workHoursPerMonth?: number | null;
-  workHoursPerYear?: number | null;
-  reservePercent?: number | null;
-  testPercent?: number | null;
-  debugPercent?: number | null;
-  mgmtPercent?: number | null;
-  yellowThreshold?: number | null;
-  redThreshold?: number | null;
+  workHoursPerMonth: number;
+  workHoursPerYear: number;
+  reservePercent: number;
+  testPercent: number;
+  debugPercent: number;
+  mgmtPercent: number;
+  yellowThreshold: number;
+  redThreshold: number;
 }
 
 /** Интеграция из GET /api/admin/integrations */
@@ -229,7 +212,7 @@ export function useAdmin() {
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: ["admin", "users"], exact: false });
         toast({
           title: 'Пользователь создан',
           description: 'Учётная запись успешно создана.',
@@ -245,7 +228,7 @@ export function useAdmin() {
     });
 
   // ========================================================================
-  // PUT /api/admin/users/:id — обновление пользователя (с optimistic update)
+  // PUT /api/admin/users/:id — обновление пользователя
   // ========================================================================
   const useUpdateUser = () =>
     useMutation({
@@ -257,21 +240,28 @@ export function useAdmin() {
         email: string;
         fullName: string;
         isActive: boolean;
-        canPlan?: boolean;
       }): Promise<AdminUserDto> => {
         const response = await api.put<AdminUserDto>(`/admin/users/${id}`, data);
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["admin", "users"], exact: false });
+        toast({
+          title: 'Изменения сохранены',
+          description: 'Данные пользователя обновлены.',
+        });
       },
-      onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+      onError: (error: Error) => {
+        toast({
+          title: 'Ошибка обновления',
+          description: error.message || 'Не удалось обновить пользователя.',
+          variant: 'destructive',
+        });
       },
     });
 
   // ========================================================================
-  // DELETE /api/admin/users/:id — деактивация пользователя (с optimistic update)
+  // DELETE /api/admin/users/:id — деактивация пользователя (soft delete)
   // ========================================================================
   const useDeactivateUser = () =>
     useMutation({
@@ -279,10 +269,18 @@ export function useAdmin() {
         await api.delete(`/admin/users/${id}`);
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["admin", "users"], exact: false });
+        toast({
+          title: 'Учётная запись деактивирована',
+          description: 'Пользователь успешно деактивирован.',
+        });
       },
-      onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+      onError: (error: Error) => {
+        toast({
+          title: 'Ошибка деактивации',
+          description: error.message || 'Не удалось деактивировать пользователя.',
+          variant: 'destructive',
+        });
       },
     });
 
@@ -291,14 +289,23 @@ export function useAdmin() {
   // ========================================================================
   const useAssignRoles = () =>
     useMutation({
-      mutationFn: async ({ id, roles }: { id: string; roles: string[] }): Promise<void> => {
-        await api.put(`/admin/users/${id}/roles`, { roleIds: roles });
+      mutationFn: async ({ id, roles }: { id: string; roles: string[] }): Promise<AdminUserDto> => {
+        const response = await api.put<AdminUserDto>(`/admin/users/${id}/roles`, { roleIds: roles });
+        return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["admin", "users"], exact: false });
+        toast({
+          title: 'Роли назначены',
+          description: 'Роли пользователя обновлены.',
+        });
       },
-      onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+      onError: (error: Error) => {
+        toast({
+          title: 'Ошибка назначения ролей',
+          description: error.message || 'Не удалось назначить роли.',
+          variant: 'destructive',
+        });
       },
     });
 
@@ -318,7 +325,7 @@ export function useAdmin() {
         return response;
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: ["admin", "users"], exact: false });
         toast({
           title: 'Руководитель назначен',
           description: 'Руководитель пользователя обновлён.',
@@ -409,86 +416,38 @@ export function useAdmin() {
     });
 
   // ========================================================================
-  // GET /api/admin/settings/planning — список всех конфигураций спринтов
+  // GET /api/admin/settings/planning — планировочные настройки
   // ========================================================================
-  const useListPlanningSettings = () =>
+  const usePlanningSettings = () =>
     useQuery({
       queryKey: adminKeys.planningSettings,
-      queryFn: async (): Promise<PlanningSettingsListItemDto[]> => {
-        const response = await api.get<PlanningSettingsListItemDto[]>('/admin/settings/planning');
+      queryFn: async (): Promise<PlanningSettingsDto> => {
+        const response = await api.get<PlanningSettingsDto>('/admin/settings/planning');
         return response;
       },
       staleTime: 30_000,
     });
 
   // ========================================================================
-  // POST /api/admin/settings/planning — создать новую конфигурацию спринта
+  // PUT /api/admin/settings/planning — обновление планировочных настроек
   // ========================================================================
-  const useCreatePlanningSettings = () =>
+  const useUpdatePlanningSettings = () =>
     useMutation({
-      mutationFn: async (data: PlanningSettingsDto): Promise<{ id: string }> => {
-        const response = await api.post<{ id: string }>('/admin/settings/planning', data);
+      mutationFn: async (data: PlanningSettingsDto): Promise<PlanningSettingsDto> => {
+        const response = await api.put<PlanningSettingsDto>('/admin/settings/planning', data);
         return response;
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: adminKeys.planningSettings });
         toast({
-          title: 'Конфигурация создана',
-          description: 'Новый спринт добавлен.',
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: 'Ошибка создания',
-          description: error.message || 'Не удалось создать конфигурацию спринта.',
-          variant: 'destructive',
-        });
-      },
-    });
-
-  // ========================================================================
-  // PUT /api/admin/settings/planning/:id — обновление конфигурации спринта
-  // ========================================================================
-  const useUpdatePlanningSettings = () =>
-    useMutation({
-      mutationFn: async ({ id, ...data }: { id: string } & PlanningSettingsDto): Promise<void> => {
-        await api.put(`/admin/settings/planning/${id}`, data);
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.planningSettings });
-        toast({
           title: 'Параметры сохранены',
-          description: 'Конфигурация спринта обновлена.',
+          description: 'Параметры спринта по умолчанию обновлены.',
         });
       },
       onError: (error: Error) => {
         toast({
           title: 'Ошибка сохранения',
           description: error.message || 'Не удалось сохранить параметры спринта.',
-          variant: 'destructive',
-        });
-      },
-    });
-
-  // ========================================================================
-  // DELETE /api/admin/settings/planning/:id — удаление конфигурации спринта
-  // ========================================================================
-  const useDeletePlanningSettings = () =>
-    useMutation({
-      mutationFn: async (id: string): Promise<void> => {
-        await api.delete(`/admin/settings/planning/${id}`);
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.planningSettings });
-        toast({
-          title: 'Конфигурация удалена',
-          description: 'Спринт удалён из списка.',
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: 'Ошибка удаления',
-          description: error.message || 'Не удалось удалить конфигурацию спринта.',
           variant: 'destructive',
         });
       },
@@ -519,10 +478,6 @@ export function useAdmin() {
         id: string;
         baseUrl?: string;
         secret?: string;
-        login?: string;
-        password?: string;
-        baseDn?: string;
-        bindDn?: string;
         notes?: string;
       }): Promise<IntegrationDto> => {
         const response = await api.put<IntegrationDto>(`/admin/integrations/${id}`, data);
@@ -545,7 +500,6 @@ export function useAdmin() {
     });
 
   return {
-    queryClient,
     useUsers,
     useCreateUser,
     useUpdateUser,
@@ -556,10 +510,8 @@ export function useAdmin() {
     useAuditLog,
     useSessions,
     useSensitiveChanges,
-    useListPlanningSettings,
-    useCreatePlanningSettings,
+    usePlanningSettings,
     useUpdatePlanningSettings,
-    useDeletePlanningSettings,
     useIntegrations,
     useUpdateIntegration,
   };

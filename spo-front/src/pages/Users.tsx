@@ -39,10 +39,9 @@ import {
   X,
 } from 'lucide-react';
 import { APP_ROLE_LABEL_RU, PRIVILEGES, type AppRole } from '@/data/adminMock';
+import { orgEmployees, DIRECTOR_ID, type EmployeeOrg } from '@/data/timesheetsMock';
 import { projects, systems, WORK_ROLE_LABEL_RU, type WorkRole } from '@/data/planningMock';
 import { useAdmin, type AdminUserDto, type AdminDictionariesDto } from '@/hooks/useAdmin';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
 
 const ALL_ROLES: AppRole[] = ['employee', 'manager', 'business', 'accountant', 'director', 'admin'];
 const PLANNABLE_ROLES: WorkRole[] = ['development', 'testing', 'management'];
@@ -72,8 +71,14 @@ const Users = () => {
   const deactivateUser = admin.useDeactivateUser();
   const assignRoles = admin.useAssignRoles();
 
-  const users = useMemo(() => usersData?.data ?? [], [usersData]);
-  const totalUsers = useMemo(() => usersData?.total ?? 0, [usersData]);
+  const users = usersData?.data ?? [];
+  const totalUsers = usersData?.total ?? 0;
+
+  const empById = useMemo(() => {
+    const m = new Map<string, EmployeeOrg>();
+    for (const e of orgEmployees) m.set(e.id, e);
+    return m;
+  }, []);
 
   // Фильтрация по роли (клиентская, т.к. API фильтрует только по статусу и поиску)
   const filtered = useMemo(() => {
@@ -95,27 +100,27 @@ const Users = () => {
     if (u.isActive) {
       deactivateUser.mutate(u.id);
     } else {
-      updateUser.mutate({ id: u.id, email: u.email, fullName: u.fullName, isActive: true });
+      // Активация через update
+      updateUser.mutate({
+        id: u.id,
+        email: u.email,
+        fullName: u.fullName,
+        isActive: true,
+      });
     }
   };
 
-  const handleSaveUser = async (next: AdminUserDto) => {
-    try {
-      await assignRoles.mutateAsync({ id: next.id, roles: next.roles });
-      await updateUser.mutateAsync({
-        id: next.id,
-        email: next.email,
-        fullName: next.fullName,
-        isActive: next.isActive,
-      });
-      setEditing(null);
-    } catch (err) {
-      toast({
-        title: 'Ошибка сохранения',
-        description: (err as Error).message || 'Не удалось сохранить изменения.',
-        variant: 'destructive',
-      });
-    }
+  const handleSaveUser = (next: AdminUserDto) => {
+    // Сохраняем роли
+    assignRoles.mutate({ id: next.id, roles: next.roles });
+    // Обновляем основные поля
+    updateUser.mutate({
+      id: next.id,
+      email: next.email,
+      fullName: next.fullName,
+      isActive: next.isActive,
+    });
+    setEditing(null);
   };
 
   // Ошибка загрузки
@@ -257,7 +262,6 @@ const Users = () => {
                           <Th>Должность · Руководитель</Th>
                           <Th>Роли</Th>
                           <Th>Источник</Th>
-                          <Th>В планировании</Th>
                           <Th>2FA</Th>
                           <Th>Последний вход</Th>
                           <Th>Статус</Th>
@@ -266,27 +270,26 @@ const Users = () => {
                       </thead>
                       <tbody>
                         {filtered.map((u) => {
+                          const emp = empById.get(u.employeeId);
+                          const mgr = emp?.managerId ? empById.get(emp.managerId) : undefined;
                           return (
-                            <tr
-                              key={u.id}
-                              className={cn('hover:bg-muted/30', !u.isActive && 'opacity-50')}
-                            >
+                            <tr key={u.id} className="hover:bg-muted/30">
                               <Td>
                                 <div className="font-medium text-foreground">
-                                  {u.fullName || u.login || '—'}
+                                  {u.fullName || emp?.name || '—'}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground">
                                   {u.login} · {u.email}
                                 </div>
                               </Td>
                               <Td>
-                                <div>{u.roles.join(', ') || '—'}</div>
+                                <div>{emp?.position ?? '—'}</div>
                                 <div className="text-[10px] text-muted-foreground">
-                                  {u.managerName
-                                    ? `↳ ${u.managerName}`
-                                    : u.roles.includes('director')
-                                      ? 'директор'
-                                      : '—'}
+                                  {mgr
+                                    ? `↳ ${mgr.name}`
+                                    : u.managerName
+                                      ? `↳ ${u.managerName}`
+                                      : 'директор'}
                                 </div>
                               </Td>
                               <Td>
@@ -295,21 +298,6 @@ const Users = () => {
                                     <RoleBadge key={r} role={r as AppRole} />
                                   ))}
                                 </div>
-                              </Td>
-                              <Td>
-                                <Switch
-                                  checked={u.canPlan ?? false}
-                                  onCheckedChange={() => {
-                                    updateUser.mutate({
-                                      id: u.id,
-                                      email: u.email,
-                                      fullName: u.fullName,
-                                      isActive: u.isActive,
-                                      canPlan: !(u.canPlan ?? false),
-                                    });
-                                  }}
-                                  disabled={updateUser.isPending}
-                                />
                               </Td>
                               <Td>
                                 <Badge
@@ -346,6 +334,7 @@ const Users = () => {
                                   <Switch
                                     checked={u.isActive}
                                     onCheckedChange={() => handleToggleActive(u)}
+                                    
                                   />
                                   <span
                                     className={cn(
@@ -373,7 +362,7 @@ const Users = () => {
                         {filtered.length === 0 && !usersLoading && (
                           <tr>
                             <td
-                              colSpan={9}
+                              colSpan={8}
                               className="text-center text-muted-foreground py-6 text-xs"
                             >
                               Нет учётных записей по выбранным фильтрам
@@ -516,35 +505,21 @@ function PrivilegesMatrix() {
 }
 
 function OrgTree() {
-  const { data: usersData, isLoading } = useQuery({
-    queryKey: ['admin', 'org-tree'],
-    queryFn: async () => {
-      const result = await api.get<Record<string, unknown>>('/admin/users?limit=200');
-      const items = ((result?.data as AdminUserDto[]) ??
-        (result?.items as AdminUserDto[]) ??
-        []) as AdminUserDto[];
-      return items;
-    },
-    staleTime: 15_000,
-  });
-
-  const users = usersData ?? [];
-  const director = users.find((u) => u.roles.includes('director'));
-
-  const renderNode = (user: AdminUserDto, depth: number) => {
-    const subs = users.filter((x) => x.managerId === user.id);
+  const director = orgEmployees.find((e) => e.id === DIRECTOR_ID);
+  const renderNode = (emp: EmployeeOrg, depth: number) => {
+    const subs = orgEmployees.filter((x) => x.managerId === emp.id);
     return (
-      <div key={user.id}>
+      <div key={emp.id}>
         <div
           className="flex items-center gap-2 py-1 border-b border-border text-xs"
           style={{ paddingLeft: 8 + depth * 16 }}
         >
-          <span className="font-medium text-foreground">{user.fullName || user.login}</span>
-          <span className="text-[10px] text-muted-foreground">{user.roles.join(', ')}</span>
+          <span className="font-medium text-foreground">{emp.name}</span>
+          <span className="text-[10px] text-muted-foreground">{emp.position}</span>
           <Badge variant="outline" className="text-[10px] py-0 h-4 px-1.5 ml-auto">
-            {user.source ?? '—'}
+            {WORK_ROLE_LABEL_RU[emp.workRole]}
           </Badge>
-          {user.roles.includes('director') && (
+          {emp.isDirector && (
             <Badge
               variant="outline"
               className="text-[10px] py-0 h-4 px-1.5 bg-primary/10 text-primary border-primary/30"
@@ -557,7 +532,6 @@ function OrgTree() {
       </div>
     );
   };
-
   return (
     <div className="bg-card border border-border rounded-md shadow-card overflow-hidden">
       <div className="px-3 py-1.5 border-b border-border">
@@ -567,17 +541,7 @@ function OrgTree() {
           косвенных подчинённых.
         </p>
       </div>
-      {isLoading ? (
-        <div className="flex items-center justify-center py-6">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
-      ) : director ? (
-        renderNode(director, 0)
-      ) : (
-        <div className="text-center py-6 text-xs text-muted-foreground">
-          Нет данных об оргструктуре
-        </div>
-      )}
+      {director && renderNode(director, 0)}
     </div>
   );
 }
@@ -604,8 +568,8 @@ function EditUserDialog({
   const toggleArr = <T,>(arr: T[], v: T): T[] =>
     arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 
-  const dictProjects = (dictionaries?.projects && dictionaries.projects.length > 0) ? dictionaries.projects : projects;
-  const dictSystems = (dictionaries?.systems && dictionaries.systems.length > 0) ? dictionaries.systems : systems;
+  const dictProjects = dictionaries?.projects ?? projects;
+  const dictSystems = dictionaries?.systems ?? systems;
   const dictWorkRoles = dictionaries?.workRoles ?? [];
 
   return (
@@ -640,13 +604,6 @@ function EditUserDialog({
                 onCheckedChange={(v) => setDraft({ ...draft, twoFactorEnabled: v })}
               />
               <Label className="text-xs">Двухфакторная аутентификация (2FA)</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={draft.canPlan ?? false}
-                onCheckedChange={(v) => setDraft({ ...draft, canPlan: v })}
-              />
-              <Label className="text-xs">Участвует в планировании</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch
