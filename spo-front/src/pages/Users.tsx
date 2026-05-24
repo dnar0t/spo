@@ -91,70 +91,24 @@ const Users = () => {
     return { active, blocked: users.length - active, directors, managers, with2fa };
   }, [users]);
 
-  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
-
-  const updateUserInCache = (userId: string, updater: (u: AdminUserDto) => AdminUserDto) => {
-    const queryClient = admin.queryClient;
-    // Обновляем ВСЕ кэшированные запросы пользователей (с любыми фильтрами)
-    queryClient.setQueriesData({ queryKey: ['admin', 'users'], exact: false }, (old: unknown) => {
-      if (!old || typeof old !== 'object') return old;
-      const paginated = old as PaginatedResult<AdminUserDto>;
-      return {
-        ...paginated,
-        data: paginated.data.map((x) => (x.id === userId ? updater(x) : x)),
-      };
-    });
-  };
-
-  const handleToggleActive = async (u: AdminUserDto) => {
-    const newActive = !u.isActive;
-    const userId = u.id;
-
-    // Мгновенное локальное обновление
-    updateUserInCache(userId, (x) => ({ ...x, isActive: newActive }));
-
-    setTogglingIds((prev) => new Set(prev).add(userId));
-
-    try {
-      if (newActive) {
-        await api.put(`/admin/users/${userId}`, { isActive: true });
-      } else {
-        await api.delete(`/admin/users/${userId}`);
-      }
-      // Перезапрашиваем с сервера после успеха
-      admin.queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
-    } catch (err) {
-      // Откат при ошибке
-      updateUserInCache(userId, (x) => ({ ...x, isActive: u.isActive }));
-      toast({
-        title: newActive ? 'Ошибка активации' : 'Ошибка деактивации',
-        description: (err as Error).message || 'Повторите попытку',
-        variant: 'destructive',
-      });
-    } finally {
-      setTogglingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(userId);
-        return next;
-      });
+  const handleToggleActive = (u: AdminUserDto) => {
+    if (u.isActive) {
+      deactivateUser.mutate(u.id);
+    } else {
+      updateUser.mutate({ id: u.id, email: u.email, fullName: u.fullName, isActive: true });
     }
   };
 
   const handleSaveUser = async (next: AdminUserDto) => {
     try {
-      // Сохраняем роли — прямой вызов API
-      await api.put(`/admin/users/${next.id}/roles`, { roleIds: next.roles });
-      // Обновляем основные поля
-      await api.put(`/admin/users/${next.id}`, {
+      await assignRoles.mutateAsync({ id: next.id, roles: next.roles });
+      await updateUser.mutateAsync({
+        id: next.id,
         email: next.email,
         fullName: next.fullName,
         isActive: next.isActive,
       });
-      // Инвалидируем кэш пользователей
-      admin.queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
-      admin.queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       setEditing(null);
-      toast({ title: 'Изменения сохранены', description: 'Роли и настройки пользователя обновлены.' });
     } catch (err) {
       toast({
         title: 'Ошибка сохранения',

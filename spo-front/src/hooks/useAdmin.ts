@@ -263,12 +263,9 @@ export function useAdmin() {
         return response;
       },
       onMutate: async ({ id, ...data }) => {
-        // Отменяем фоновые запросы, чтобы они не перезаписали наш optimistic update
-        await queryClient.cancelQueries({ queryKey: adminKeys.users() });
-        // Сохраняем предыдущее состояние для отката
-        const previousQueries = queryClient.getQueriesData({ queryKey: adminKeys.users() });
-        // Оптимистично обновляем кэш
-        queryClient.setQueriesData({ queryKey: adminKeys.users() }, (old: unknown) => {
+        await queryClient.cancelQueries({ queryKey: ['admin', 'users'], exact: false });
+        const previousQueries = queryClient.getQueriesData({ queryKey: ['admin', 'users'], exact: false });
+        queryClient.setQueriesData({ queryKey: ['admin', 'users'], exact: false }, (old: unknown) => {
           if (!old || typeof old !== 'object') return old;
           const paginated = old as PaginatedResult<AdminUserDto>;
           return {
@@ -280,24 +277,18 @@ export function useAdmin() {
         });
         return { previousQueries };
       },
-      onSuccess: (_data, _variables, context) => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
       },
       onError: (error: Error, _variables, context) => {
-        // Откатываем изменения в случае ошибки
         if (context?.previousQueries) {
           for (const [key, data] of context.previousQueries) {
             queryClient.setQueryData(key, data);
           }
         }
-        toast({
-          title: 'Ошибка обновления',
-          description: error.message || 'Не удалось обновить пользователя.',
-          variant: 'destructive',
-        });
       },
       onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
       },
     });
 
@@ -310,10 +301,9 @@ export function useAdmin() {
         await api.delete(`/admin/users/${id}`);
       },
       onMutate: async (id) => {
-        await queryClient.cancelQueries({ queryKey: adminKeys.users() });
-        const previousQueries = queryClient.getQueriesData({ queryKey: adminKeys.users() });
-        // Оптимистично деактивируем пользователя
-        queryClient.setQueriesData({ queryKey: adminKeys.users() }, (old: unknown) => {
+        await queryClient.cancelQueries({ queryKey: ['admin', 'users'], exact: false });
+        const previousQueries = queryClient.getQueriesData({ queryKey: ['admin', 'users'], exact: false });
+        queryClient.setQueriesData({ queryKey: ['admin', 'users'], exact: false }, (old: unknown) => {
           if (!old || typeof old !== 'object') return old;
           const paginated = old as PaginatedResult<AdminUserDto>;
           return {
@@ -326,11 +316,7 @@ export function useAdmin() {
         return { previousQueries };
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-        toast({
-          title: 'Учётная запись деактивирована',
-          description: 'Пользователь успешно деактивирован.',
-        });
+        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
       },
       onError: (error: Error, _variables, context) => {
         if (context?.previousQueries) {
@@ -338,14 +324,9 @@ export function useAdmin() {
             queryClient.setQueryData(key, data);
           }
         }
-        toast({
-          title: 'Ошибка деактивации',
-          description: error.message || 'Не удалось деактивировать пользователя.',
-          variant: 'destructive',
-        });
       },
       onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
+        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
       },
     });
 
@@ -354,25 +335,36 @@ export function useAdmin() {
   // ========================================================================
   const useAssignRoles = () =>
     useMutation({
-      mutationFn: async ({ id, roles }: { id: string; roles: string[] }): Promise<AdminUserDto> => {
-        const response = await api.put<AdminUserDto>(`/admin/users/${id}/roles`, {
-          roleIds: roles,
+      mutationFn: async ({ id, roles }: { id: string; roles: string[] }): Promise<void> => {
+        await api.put(`/admin/users/${id}/roles`, { roleIds: roles });
+      },
+      onMutate: async ({ id, roles }) => {
+        await queryClient.cancelQueries({ queryKey: ['admin', 'users'], exact: false });
+        const previousQueries = queryClient.getQueriesData({ queryKey: ['admin', 'users'], exact: false });
+        queryClient.setQueriesData({ queryKey: ['admin', 'users'], exact: false }, (old: unknown) => {
+          if (!old || typeof old !== 'object') return old;
+          const paginated = old as PaginatedResult<AdminUserDto>;
+          return {
+            ...paginated,
+            data: paginated.data.map((u) =>
+              u.id === id ? { ...u, roles } : u
+            ),
+          };
         });
-        return response;
+        return { previousQueries };
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-        toast({
-          title: 'Роли назначены',
-          description: 'Роли пользователя обновлены.',
-        });
+        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
       },
-      onError: (error: Error) => {
-        toast({
-          title: 'Ошибка назначения ролей',
-          description: error.message || 'Не удалось назначить роли.',
-          variant: 'destructive',
-        });
+      onError: (error: Error, _variables, context) => {
+        if (context?.previousQueries) {
+          for (const [key, data] of context.previousQueries) {
+            queryClient.setQueryData(key, data);
+          }
+        }
+      },
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
       },
     });
 
