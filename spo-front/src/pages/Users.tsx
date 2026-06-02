@@ -39,9 +39,12 @@ import {
   X,
 } from 'lucide-react';
 import { APP_ROLE_LABEL_RU, PRIVILEGES, type AppRole } from '@/data/adminMock';
-import { orgEmployees, DIRECTOR_ID, type EmployeeOrg } from '@/data/timesheetsMock';
 import { projects, systems, WORK_ROLE_LABEL_RU, type WorkRole } from '@/data/planningMock';
-import { useAdmin, type AdminUserDto, type AdminDictionariesDto } from '@/hooks/useAdmin';
+import { type AdminUserDto, type AdminDictionariesDto } from '@/hooks/useAdmin';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 const ALL_ROLES: AppRole[] = ['employee', 'manager', 'business', 'accountant', 'director', 'admin'];
 const PLANNABLE_ROLES: WorkRole[] = ['development', 'testing', 'management'];
@@ -50,7 +53,6 @@ const PLANNABLE_ROLES: WorkRole[] = ['development', 'testing', 'management'];
 
 const Users = () => {
   const { toast } = useToast();
-  const admin = useAdmin();
 
   // Состояние
   const [search, setSearch] = useState('');
@@ -61,24 +63,55 @@ const Users = () => {
   // Запросы
   const isActiveParam =
     statusFilter === 'active' ? true : statusFilter === 'blocked' ? false : undefined;
+  const qc = useQueryClient();
   const {
     data: usersData,
     isLoading: usersLoading,
     error: usersError,
-  } = admin.useUsers(search || undefined, isActiveParam);
-  const { data: dictData, isLoading: dictLoading } = admin.useDictionaries();
-  const updateUser = admin.useUpdateUser();
-  const deactivateUser = admin.useDeactivateUser();
-  const assignRoles = admin.useAssignRoles();
+  } = useQuery({
+    queryKey: ['admin', 'users', { search, isActive: isActiveParam }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      params.set('page', '1');
+      params.set('limit', '50');
+      if (search) params.set('search', search);
+      if (isActiveParam !== undefined) params.set('isActive', String(isActiveParam));
+      return api.get('/admin/users?' + params.toString());
+    },
+    staleTime: 15000,
+  });
+  const useDictionaries = () =>
+    useQuery({
+      queryKey: ['admin', 'dictionaries'],
+      queryFn: () => api.get('/admin/dictionaries'),
+      staleTime: 60000,
+    });
+  const { data: dictData, isLoading: dictLoading } = useDictionaries();
+  const useUpdateUser = () =>
+    useMutation({
+      mutationFn: async ({ id, ...data }) => api.put('/admin/users/' + id, data),
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'], exact: false }),
+    });
+  const updateUser = useUpdateUser();
+  const useDeactivateUser = () =>
+    useMutation({
+      mutationFn: async (id) => {
+        await api.delete('/admin/users/' + id);
+      },
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'], exact: false }),
+    });
+  const deactivateUser = useDeactivateUser();
+  const useAssignRoles = () =>
+    useMutation({
+      mutationFn: async ({ id, roles }) => {
+        await api.put('/admin/users/' + id + '/roles', { roleIds: roles });
+      },
+      onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'], exact: false }),
+    });
+  const assignRoles = useAssignRoles();
 
-  const users = usersData?.data ?? [];
-  const totalUsers = usersData?.total ?? 0;
-
-  const empById = useMemo(() => {
-    const m = new Map<string, EmployeeOrg>();
-    for (const e of orgEmployees) m.set(e.id, e);
-    return m;
-  }, []);
+  const users = useMemo(() => usersData?.data ?? [], [usersData]);
+  const totalUsers = useMemo(() => usersData?.total ?? 0, [usersData]);
 
   // Фильтрация по роли (клиентская, т.к. API фильтрует только по статусу и поиску)
   const filtered = useMemo(() => {
@@ -100,27 +133,27 @@ const Users = () => {
     if (u.isActive) {
       deactivateUser.mutate(u.id);
     } else {
-      // Активация через update
-      updateUser.mutate({
-        id: u.id,
-        email: u.email,
-        fullName: u.fullName,
-        isActive: true,
-      });
+      updateUser.mutate({ id: u.id, email: u.email, fullName: u.fullName, isActive: true });
     }
   };
 
-  const handleSaveUser = (next: AdminUserDto) => {
-    // Сохраняем роли
-    assignRoles.mutate({ id: next.id, roles: next.roles });
-    // Обновляем основные поля
-    updateUser.mutate({
-      id: next.id,
-      email: next.email,
-      fullName: next.fullName,
-      isActive: next.isActive,
-    });
-    setEditing(null);
+  const handleSaveUser = async (next: AdminUserDto) => {
+    try {
+      await assignRoles.mutateAsync({ id: next.id, roles: next.roles });
+      await updateUser.mutateAsync({
+        id: next.id,
+        email: next.email,
+        fullName: next.fullName,
+        isActive: next.isActive,
+      });
+      setEditing(null);
+    } catch (err) {
+      toast({
+        title: 'Ошибка сохранения',
+        description: (err as Error).message || 'Не удалось сохранить изменения.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Ошибка загрузки
@@ -262,6 +295,7 @@ const Users = () => {
                           <Th>Должность · Руководитель</Th>
                           <Th>Роли</Th>
                           <Th>Источник</Th>
+                          <Th>В планировании</Th>
                           <Th>2FA</Th>
                           <Th>Последний вход</Th>
                           <Th>Статус</Th>
@@ -270,26 +304,27 @@ const Users = () => {
                       </thead>
                       <tbody>
                         {filtered.map((u) => {
-                          const emp = empById.get(u.employeeId);
-                          const mgr = emp?.managerId ? empById.get(emp.managerId) : undefined;
                           return (
-                            <tr key={u.id} className="hover:bg-muted/30">
+                            <tr
+                              key={u.id}
+                              className={cn('hover:bg-muted/30', !u.isActive && 'opacity-50')}
+                            >
                               <Td>
                                 <div className="font-medium text-foreground">
-                                  {u.fullName || emp?.name || '—'}
+                                  {u.fullName || u.login || '—'}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground">
                                   {u.login} · {u.email}
                                 </div>
                               </Td>
                               <Td>
-                                <div>{emp?.position ?? '—'}</div>
+                                <div>{u.roles.join(', ') || '—'}</div>
                                 <div className="text-[10px] text-muted-foreground">
-                                  {mgr
-                                    ? `↳ ${mgr.name}`
-                                    : u.managerName
-                                      ? `↳ ${u.managerName}`
-                                      : 'директор'}
+                                  {u.managerName
+                                    ? `↳ ${u.managerName}`
+                                    : u.roles.includes('director')
+                                      ? 'директор'
+                                      : '—'}
                                 </div>
                               </Td>
                               <Td>
@@ -298,6 +333,21 @@ const Users = () => {
                                     <RoleBadge key={r} role={r as AppRole} />
                                   ))}
                                 </div>
+                              </Td>
+                              <Td>
+                                <Switch
+                                  checked={u.canPlan ?? false}
+                                  onCheckedChange={() => {
+                                    updateUser.mutate({
+                                      id: u.id,
+                                      email: u.email,
+                                      fullName: u.fullName,
+                                      isActive: u.isActive,
+                                      canPlan: !(u.canPlan ?? false),
+                                    });
+                                  }}
+                                  disabled={updateUser.isPending}
+                                />
                               </Td>
                               <Td>
                                 <Badge
@@ -334,7 +384,6 @@ const Users = () => {
                                   <Switch
                                     checked={u.isActive}
                                     onCheckedChange={() => handleToggleActive(u)}
-                                    
                                   />
                                   <span
                                     className={cn(
@@ -362,7 +411,7 @@ const Users = () => {
                         {filtered.length === 0 && !usersLoading && (
                           <tr>
                             <td
-                              colSpan={8}
+                              colSpan={9}
                               className="text-center text-muted-foreground py-6 text-xs"
                             >
                               Нет учётных записей по выбранным фильтрам
@@ -505,21 +554,35 @@ function PrivilegesMatrix() {
 }
 
 function OrgTree() {
-  const director = orgEmployees.find((e) => e.id === DIRECTOR_ID);
-  const renderNode = (emp: EmployeeOrg, depth: number) => {
-    const subs = orgEmployees.filter((x) => x.managerId === emp.id);
+  const { data: usersData, isLoading } = useQuery({
+    queryKey: ['admin', 'org-tree'],
+    queryFn: async () => {
+      const result = await api.get<Record<string, unknown>>('/admin/users?limit=200');
+      const items = ((result?.data as AdminUserDto[]) ??
+        (result?.items as AdminUserDto[]) ??
+        []) as AdminUserDto[];
+      return items;
+    },
+    staleTime: 15_000,
+  });
+
+  const users = usersData ?? [];
+  const director = users.find((u) => u.roles.includes('director'));
+
+  const renderNode = (user: AdminUserDto, depth: number) => {
+    const subs = users.filter((x) => x.managerId === user.id);
     return (
-      <div key={emp.id}>
+      <div key={user.id}>
         <div
           className="flex items-center gap-2 py-1 border-b border-border text-xs"
           style={{ paddingLeft: 8 + depth * 16 }}
         >
-          <span className="font-medium text-foreground">{emp.name}</span>
-          <span className="text-[10px] text-muted-foreground">{emp.position}</span>
+          <span className="font-medium text-foreground">{user.fullName || user.login}</span>
+          <span className="text-[10px] text-muted-foreground">{user.roles.join(', ')}</span>
           <Badge variant="outline" className="text-[10px] py-0 h-4 px-1.5 ml-auto">
-            {WORK_ROLE_LABEL_RU[emp.workRole]}
+            {user.source ?? '—'}
           </Badge>
-          {emp.isDirector && (
+          {user.roles.includes('director') && (
             <Badge
               variant="outline"
               className="text-[10px] py-0 h-4 px-1.5 bg-primary/10 text-primary border-primary/30"
@@ -532,6 +595,7 @@ function OrgTree() {
       </div>
     );
   };
+
   return (
     <div className="bg-card border border-border rounded-md shadow-card overflow-hidden">
       <div className="px-3 py-1.5 border-b border-border">
@@ -541,7 +605,17 @@ function OrgTree() {
           косвенных подчинённых.
         </p>
       </div>
-      {director && renderNode(director, 0)}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : director ? (
+        renderNode(director, 0)
+      ) : (
+        <div className="text-center py-6 text-xs text-muted-foreground">
+          Нет данных об оргструктуре
+        </div>
+      )}
     </div>
   );
 }
@@ -568,8 +642,10 @@ function EditUserDialog({
   const toggleArr = <T,>(arr: T[], v: T): T[] =>
     arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 
-  const dictProjects = dictionaries?.projects ?? projects;
-  const dictSystems = dictionaries?.systems ?? systems;
+  const dictProjects =
+    dictionaries?.projects && dictionaries.projects.length > 0 ? dictionaries.projects : projects;
+  const dictSystems =
+    dictionaries?.systems && dictionaries.systems.length > 0 ? dictionaries.systems : systems;
   const dictWorkRoles = dictionaries?.workRoles ?? [];
 
   return (
@@ -604,6 +680,13 @@ function EditUserDialog({
                 onCheckedChange={(v) => setDraft({ ...draft, twoFactorEnabled: v })}
               />
               <Label className="text-xs">Двухфакторная аутентификация (2FA)</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={draft.canPlan ?? false}
+                onCheckedChange={(v) => setDraft({ ...draft, canPlan: v })}
+              />
+              <Label className="text-xs">Участвует в планировании</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch

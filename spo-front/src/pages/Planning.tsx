@@ -72,7 +72,8 @@ import {
   SingleSelectFilter,
 } from '@/components/planning/MultiSelectFilter';
 import { usePlanning, type BacklogItemDto } from '@/hooks/usePlanning';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import type {
   Assignment,
   BacklogIssue,
@@ -224,7 +225,7 @@ const Planning = () => {
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const periodsQuery = usePeriods();
   const periods = periodsQuery.data?.items ?? [];
-  const { useListPlanningSettings } = useAdmin();
+  const useListPlanningSettings = () => useQuery({ queryKey: ['admin', 'settings', 'planning'], queryFn: () => api.get('/admin/settings/planning'), staleTime: 30000 });
   const { data: sprintsData } = useListPlanningSettings();
   const sprints = useMemo(() => (sprintsData ?? []).map(s => ({ ...s, state: 'SPRINT_CONFIG' })), [sprintsData]);
   const allPeriods = useMemo(() => [...sprints, ...periods], [sprints, periods]);

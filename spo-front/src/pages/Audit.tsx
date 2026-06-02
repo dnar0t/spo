@@ -26,35 +26,12 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
-import {
-  useAdmin,
-  type AuditEventDto,
-  type UserSessionDto,
-  type SensitiveChangeDto,
-} from '@/hooks/useAdmin';
-
-type AuditAction = login | logout | create | update | 'delete' | string;
-const AUDIT_ACTION_LABEL_RU: Record<AuditAction, string> = {
-  login: 'Вход в систему',
-  logout: 'Выход из системы',
-  create: 'Создание',
-  update: 'Изменение',
-  delete: 'Удаление',
-  assign_role: 'Назначение роли',
-  revoke_role: 'Отзыв роли',
-  other: 'Другое',
-};
-const SENSITIVE_KIND_LABEL_RU: Record<string, string> = {
-  salary: 'Зарплата',
-  rate: 'Ставка',
-  role: 'Роль',
-  manager: 'Руководитель',
-  permission: 'Права доступа',
-};
+import { AUDIT_ACTION_LABEL_RU, SENSITIVE_KIND_LABEL_RU, type AuditAction } from '@/data/adminMock';
+import { type AuditEventDto, type UserSessionDto, type SensitiveChangeDto } from '@/hooks/useAdmin';
 
 const Audit = () => {
   const { toast } = useToast();
-  const admin = useAdmin();
+  const qc = useQueryClient();
 
   // userLabel — fallback для отображения имени пользователя по ID.
   // В нормальном состоянии API возвращает actorName/actorLogin в каждом событии.
@@ -67,17 +44,27 @@ const Audit = () => {
   const [severityFilter, setSeverityFilter] = useState<string>('all');
 
   // Запросы
-  const {
-    data: auditData,
-    isLoading: auditLoading,
-    error: auditError,
-  } = admin.useAuditLog({
-    action: actionFilter !== 'all' ? actionFilter : undefined,
-    page: 1,
-    limit: 100,
+  const { data: auditData, isLoading: auditLoading, error: auditError } = useQuery({
+    queryKey: ['admin', 'audit-log', { action: actionFilter, page: 1, limit: 100 }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      params.set('page', '1');
+      params.set('limit', '100');
+      if (actionFilter !== 'all') params.set('action', actionFilter);
+      return api.get('/admin/audit-log?' + params.toString());
+    },
+    staleTime: 10000,
   });
-  const { data: sessionsData, isLoading: sessionsLoading } = admin.useSessions();
-  const { data: sensitiveData, isLoading: sensitiveLoading } = admin.useSensitiveChanges();
+  const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
+    queryKey: ['admin', 'sessions'],
+    queryFn: () => api.get('/admin/sessions'),
+    staleTime: 10000,
+  });
+  const { data: sensitiveData, isLoading: sensitiveLoading } = useQuery({
+    queryKey: ['admin', 'sensitive-changes'],
+    queryFn: () => api.get('/admin/sensitive-changes'),
+    staleTime: 10000,
+  });
 
   const auditEvents = auditData?.data ?? [];
   const sessions = sessionsData ?? [];

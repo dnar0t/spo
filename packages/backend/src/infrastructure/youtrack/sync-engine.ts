@@ -593,7 +593,7 @@ export class SyncEngine {
           await this.prisma.youtrackIssue.update({
             where: { id: childId },
             data: {
-              parentIssueId: parentId,
+              parent_issueId: parentId,
             },
           });
         }
@@ -688,7 +688,7 @@ export class SyncEngine {
                   durationMinutes: workItemData.durationMinutes,
                   description: workItemData.description,
                   workDate: workItemData.workDate,
-                  workTypeName: workItemData.workTypeName,
+                  work_typeName: workItemData.workTypeName,
                 },
               });
               result.updated++;
@@ -702,7 +702,7 @@ export class SyncEngine {
                   durationMinutes: workItemData.durationMinutes,
                   description: workItemData.description,
                   workDate: workItemData.workDate,
-                  workTypeName: workItemData.workTypeName,
+                  work_typeName: workItemData.workTypeName,
                 },
               });
               result.created++;
@@ -813,7 +813,7 @@ export class SyncEngine {
                     durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
                     workDate: workItemData.workDate,
-                    workTypeName: workItemData.workTypeName,
+                    work_typeName: workItemData.workTypeName,
                     periodId: periodId,
                   },
                 });
@@ -828,7 +828,7 @@ export class SyncEngine {
                     durationMinutes: workItemData.durationMinutes,
                     description: workItemData.description,
                     workDate: workItemData.workDate,
-                    workTypeName: workItemData.workTypeName,
+                    work_typeName: workItemData.workTypeName,
                     periodId: periodId,
                   },
                 });

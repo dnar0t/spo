@@ -5,54 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import {
-  AlertCircle,
-  Briefcase,
-  CheckCircle2,
-  Database,
-  Layers,
-  Loader2,
-  Lock,
-  Pencil,
-  Plug,
-  Plus,
-  RefreshCw,
-  Save,
-  Settings as SettingsIcon,
-  Trash2,
-  Workflow,
-  Zap,
-  X,
-} from 'lucide-react';
-import { getAccessToken } from '@/lib/auth';
-import {
-  useAdmin,
-  type PlanningSettingsDto,
-  type PlanningSettingsListItemDto,
-  type IntegrationDto,
-} from '@/hooks/useAdmin';
+import { type AdminDictionariesDto } from '@/hooks/useAdmin';
 import { SyncDialog } from '@/components/SyncDialog';
 import { DEFAULT_SPRINT_SETTINGS, MONTHS_RU, type SprintSettings } from '@/lib/planning';
 import type { AdminDictionariesDto } from '@/hooks/useAdmin';
@@ -168,15 +121,7 @@ type EditMode = 'none' | 'create' | 'edit';
 
 const Settings = () => {
   const { toast } = useToast();
-  const {
-    useListPlanningSettings,
-    useCreatePlanningSettings,
-    useUpdatePlanningSettings,
-    useDeletePlanningSettings,
-    useIntegrations,
-    useUpdateIntegration,
-    useDictionaries,
-  } = useAdmin();
+
 
   // --- Планировочные настройки (список) ---
   const {
