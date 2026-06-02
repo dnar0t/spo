@@ -170,7 +170,7 @@ export class GetBacklogUseCase {
         { issueNumber: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
-    const safeLimit = Math.min(Math.max(1, pagination.limit), 100);
+    const safeLimit = Math.min(Math.max(1, pagination.limit), 9999);
     const skip = (pagination.page - 1) * safeLimit;
     const [issues, total] = await Promise.all([
       this.prisma.youTrackIssue.findMany({
